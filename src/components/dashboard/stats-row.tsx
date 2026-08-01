@@ -21,7 +21,7 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
-function BigNumber({ value, color }: { value: string; color?: string }) {
+function BigNumber({ value, color }: { value: string; color?: string | undefined }) {
   return (
     <div style={{ fontSize: 44, fontWeight: 800, color: color ?? "var(--text-primary)", lineHeight: 1.1 }}>
       {value}
