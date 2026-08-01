@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { RouteStub } from "@/components/portal/route-stub";
 
 export const Route = createFileRoute("/dashboard/activity")({
+  validateSearch: (search: Record<string, unknown>): { workflow?: string; run?: string } => ({
+    ...(typeof search["workflow"] === "string" ? { workflow: search["workflow"] } : {}),
+    ...(typeof search["run"] === "string" ? { run: search["run"] } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Activity — Synkra Client Portal" },
