@@ -204,3 +204,72 @@
     box-shadow: var(--shadow-focus);
   }
 }
+
+/* ---- Dashboard home utilities ---- */
+.synkra-focus:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.synkra-dashboard > * + * {
+  margin-top: 32px;
+}
+@media (min-width: 768px) {
+  .synkra-dashboard > * + * {
+    margin-top: 48px;
+  }
+}
+
+.synkra-scroll-x {
+  scrollbar-width: none;
+}
+.synkra-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.synkra-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.synkra-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border-subtle),
+    var(--border-default),
+    var(--border-subtle)
+  );
+  background-size: 200% 100%;
+  animation: synkra-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes synkra-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.synkra-pulse-dot {
+  animation: synkra-pulse 1.4s ease-in-out infinite;
+}
+@keyframes synkra-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.synkra-pop {
+  animation: synkra-pop 150ms ease-out;
+  transform-origin: bottom right;
+}
+@keyframes synkra-pop {
+  from { transform: scale(0.92) translateY(6px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .synkra-skeleton,
+  .synkra-pulse-dot,
+  .synkra-pop {
+    animation: none;
+  }
+}
