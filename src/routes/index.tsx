@@ -1,24 +1,38 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useAuthStore } from "@/stores/auth";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Synkra Client Portal" },
+      { name: "description", content: "Sign in to manage your Synkra automation workflows." },
+      { property: "og:title", content: "Synkra Client Portal" },
+      {
+        property: "og:description",
+        content: "Sign in to manage your Synkra automation workflows.",
+      },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
+  const navigate = useNavigate();
+  const isReady = useAuthStore((s) => s.isReady);
+  const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    if (!isReady) return;
+    navigate({ to: user ? "/dashboard" : "/login", replace: true });
+  }, [isReady, user, navigate]);
+
   return (
     <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
+      className="flex min-h-screen items-center justify-center text-sm"
+      style={{ color: "var(--text-muted)" }}
     >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+      Loading…
     </div>
   );
 }

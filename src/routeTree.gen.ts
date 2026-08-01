@@ -10,33 +10,160 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as DashboardActivityRouteImport } from './routes/dashboard.activity'
+import { Route as DashboardHelpRouteImport } from './routes/dashboard.help'
+import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
+import { Route as DashboardWorkflowsIndexRouteImport } from './routes/dashboard.workflows.index'
+import { Route as DashboardWorkflowsBuilderWorkflowIdRouteImport } from './routes/dashboard.workflows.builder.$workflowId'
+import { Route as DashboardWorkflowsBuilderNewRouteImport } from './routes/dashboard.workflows.builder.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardActivityRoute = DashboardActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardHelpRoute = DashboardHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardWorkflowsIndexRoute = DashboardWorkflowsIndexRouteImport.update({
+  id: '/workflows/',
+  path: '/workflows/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardWorkflowsBuilderWorkflowIdRoute =
+  DashboardWorkflowsBuilderWorkflowIdRouteImport.update({
+    id: '/workflows/builder/$workflowId',
+    path: '/workflows/builder/$workflowId',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardWorkflowsBuilderNewRoute =
+  DashboardWorkflowsBuilderNewRouteImport.update({
+    id: '/workflows/builder/new',
+    path: '/workflows/builder/new',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/help': typeof DashboardHelpRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
+  '/dashboard/workflows/builder/$workflowId': typeof DashboardWorkflowsBuilderWorkflowIdRoute
+  '/dashboard/workflows/builder/new': typeof DashboardWorkflowsBuilderNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/help': typeof DashboardHelpRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/workflows': typeof DashboardWorkflowsIndexRoute
+  '/dashboard/workflows/builder/$workflowId': typeof DashboardWorkflowsBuilderWorkflowIdRoute
+  '/dashboard/workflows/builder/new': typeof DashboardWorkflowsBuilderNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/help': typeof DashboardHelpRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
+  '/dashboard/workflows/builder/$workflowId': typeof DashboardWorkflowsBuilderWorkflowIdRoute
+  '/dashboard/workflows/builder/new': typeof DashboardWorkflowsBuilderNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/reset-password'
+    | '/dashboard/activity'
+    | '/dashboard/help'
+    | '/dashboard/settings'
+    | '/dashboard/'
+    | '/dashboard/workflows/'
+    | '/dashboard/workflows/builder/$workflowId'
+    | '/dashboard/workflows/builder/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/reset-password'
+    | '/dashboard/activity'
+    | '/dashboard/help'
+    | '/dashboard/settings'
+    | '/dashboard'
+    | '/dashboard/workflows'
+    | '/dashboard/workflows/builder/$workflowId'
+    | '/dashboard/workflows/builder/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/reset-password'
+    | '/dashboard/activity'
+    | '/dashboard/help'
+    | '/dashboard/settings'
+    | '/dashboard/'
+    | '/dashboard/workflows/'
+    | '/dashboard/workflows/builder/$workflowId'
+    | '/dashboard/workflows/builder/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +175,110 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/activity': {
+      id: '/dashboard/activity'
+      path: '/activity'
+      fullPath: '/dashboard/activity'
+      preLoaderRoute: typeof DashboardActivityRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/help': {
+      id: '/dashboard/help'
+      path: '/help'
+      fullPath: '/dashboard/help'
+      preLoaderRoute: typeof DashboardHelpRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/settings': {
+      id: '/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/workflows/': {
+      id: '/dashboard/workflows/'
+      path: '/workflows'
+      fullPath: '/dashboard/workflows/'
+      preLoaderRoute: typeof DashboardWorkflowsIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/workflows/builder/$workflowId': {
+      id: '/dashboard/workflows/builder/$workflowId'
+      path: '/workflows/builder/$workflowId'
+      fullPath: '/dashboard/workflows/builder/$workflowId'
+      preLoaderRoute: typeof DashboardWorkflowsBuilderWorkflowIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/workflows/builder/new': {
+      id: '/dashboard/workflows/builder/new'
+      path: '/workflows/builder/new'
+      fullPath: '/dashboard/workflows/builder/new'
+      preLoaderRoute: typeof DashboardWorkflowsBuilderNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
+interface DashboardRouteChildren {
+  DashboardActivityRoute: typeof DashboardActivityRoute
+  DashboardHelpRoute: typeof DashboardHelpRoute
+  DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardWorkflowsIndexRoute: typeof DashboardWorkflowsIndexRoute
+  DashboardWorkflowsBuilderWorkflowIdRoute: typeof DashboardWorkflowsBuilderWorkflowIdRoute
+  DashboardWorkflowsBuilderNewRoute: typeof DashboardWorkflowsBuilderNewRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardActivityRoute: DashboardActivityRoute,
+  DashboardHelpRoute: DashboardHelpRoute,
+  DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
+  DashboardWorkflowsIndexRoute: DashboardWorkflowsIndexRoute,
+  DashboardWorkflowsBuilderWorkflowIdRoute:
+    DashboardWorkflowsBuilderWorkflowIdRoute,
+  DashboardWorkflowsBuilderNewRoute: DashboardWorkflowsBuilderNewRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRouteWithChildren,
+  LoginRoute: LoginRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
