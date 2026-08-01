@@ -1,7 +1,9 @@
 // SECURITY: Always use pb.filter() for user-supplied values. Never interpolate strings.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { isValidEmail, sanitizeEmail } from "@/lib/sanitize";
+import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
+import { signIn } from "@/lib/auth";
+import { isValidEmail, sanitizeEmail, sanitizeInput } from "@/lib/sanitize";
 import { resetActivity } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth";
 
@@ -19,132 +21,299 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+const PROOF = [
+  "Five ready-to-use automation templates",
+  "Email automation with no API costs",
+  "Full activity log for every run",
+];
+
+const inputStyle: React.CSSProperties = {
+  backgroundColor: "var(--bg-input)",
+  border: "1px solid var(--border-default)",
+  borderRadius: "var(--radius-md)",
+  height: 48,
+  padding: "0 16px",
+  color: "var(--text-primary)",
+  fontSize: 15,
+  width: "100%",
+  outline: "none",
+};
+
+function Wordmark() {
+  return (
+    <div style={{ color: "var(--accent-green)", fontSize: 20, fontWeight: 800, letterSpacing: "0.1em" }}>
+      SYNKRA
+    </div>
+  );
+}
+
 function LoginPage() {
   const { reason } = Route.useSearch();
   const navigate = useNavigate();
-  const login = useAuthStore((s) => s.login);
   const user = useAuthStore((s) => s.user);
   const isReady = useAuthStore((s) => s.isReady);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [failures, setFailures] = useState(0);
+  const [lockMinutes, setLockMinutes] = useState(0);
 
   useEffect(() => {
     if (isReady && user && reason !== "expired") navigate({ to: "/dashboard", replace: true });
   }, [isReady, user, reason, navigate]);
 
+  useEffect(() => {
+    if (lockMinutes <= 0) return;
+    const timer = setInterval(() => setLockMinutes((m) => (m > 1 ? m - 1 : 0)), 60000);
+    return () => clearInterval(timer);
+  }, [lockMinutes]);
+
+  const locked = lockMinutes > 0;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (locked) return;
     setError(null);
-    const cleanEmail = sanitizeEmail(email);
+
+    const cleanEmail = sanitizeEmail(sanitizeInput(email));
     if (!isValidEmail(cleanEmail)) {
       setError("Enter a valid email address.");
       return;
     }
+
     setBusy(true);
-    try {
-      await login(cleanEmail, password);
+    const result = await signIn(cleanEmail, password);
+    setBusy(false);
+
+    if (result.success && result.user) {
+      setFailures(0);
+      useAuthStore.setState({ user: result.user as never });
       resetActivity();
-      navigate({ to: "/dashboard", replace: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not sign in.");
-    } finally {
-      setBusy(false);
+      if (result.user.onboarding_completed) {
+        navigate({ to: "/dashboard", replace: true });
+      } else {
+        navigate({ to: "/dashboard", search: { onboarding: true }, replace: true });
+      }
+      return;
+    }
+
+    setFailures((f) => f + 1);
+    const code = result.error ?? "unknown";
+    if (code.startsWith("rate_limited:")) {
+      setLockMinutes(Number(code.split(":")[1]) || 15);
+      setError("Too many failed attempts. Please wait 15 minutes before trying again.");
+    } else if (code === "not_verified") {
+      setError("Please verify your email address before signing in. Check your inbox.");
+    } else if (code === "suspended") {
+      setError("Your account has been suspended. Contact hello@synkra.co.za.");
+    } else {
+      setError("The email or password is not correct.");
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div
-          className="font-extrabold"
-          style={{ color: "var(--accent-green)", letterSpacing: "0.1em", fontSize: 16 }}
+    <div className="flex min-h-screen text-left" style={{ backgroundColor: "var(--bg-primary)" }}>
+      {/* Left editorial column */}
+      <div
+        className="hidden flex-col justify-center border-r md:flex"
+        style={{
+          width: "55%",
+          backgroundColor: "var(--bg-card)",
+          borderColor: "var(--border-default)",
+          padding: 64,
+        }}
+      >
+        <Wordmark />
+        <h1
+          style={{
+            marginTop: 64,
+            fontSize: 44,
+            fontWeight: 800,
+            lineHeight: 1.1,
+            color: "var(--text-primary)",
+            maxWidth: 560,
+          }}
         >
-          SYNKRA
-        </div>
-        <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Client Portal
-        </div>
-
-        {reason === "expired" && (
-          <p
-            className="mt-4 rounded-sm px-3 py-2 text-xs"
-            style={{ backgroundColor: "var(--state-info-bg)", color: "var(--state-info)" }}
-          >
-            Your session ended due to inactivity.
-          </p>
-        )}
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div className="space-y-1">
-            <label htmlFor="email" className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-11 w-full rounded-sm border px-3 text-sm outline-none"
-              style={{
-                backgroundColor: "var(--bg-input)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <label
-              htmlFor="password"
-              className="text-xs"
-              style={{ color: "var(--text-secondary)" }}
+          Your automation runs whether you are here or not.
+        </h1>
+        <p style={{ marginTop: 20, fontSize: 15, color: "var(--text-secondary)", maxWidth: 380 }}>
+          Log in to see what ran while you were away and build the next one.
+        </p>
+        <div style={{ marginTop: 48 }}>
+          {PROOF.map((item, i) => (
+            <div
+              key={item}
+              style={{ display: "flex", alignItems: "center", gap: 12, marginTop: i === 0 ? 0 : 16 }}
             >
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-11 w-full rounded-sm border px-3 text-sm outline-none"
-              style={{
-                backgroundColor: "var(--bg-input)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
-              }}
-            />
+              <Check size={14} style={{ color: "var(--accent-green)", flexShrink: 0 }} />
+              <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Form column */}
+      <div
+        className="flex w-full flex-col justify-center p-8 md:p-16"
+        style={{ flexBasis: "45%" }}
+      >
+        <div className="w-full max-w-sm">
+          <div className="md:hidden" style={{ marginBottom: 40 }}>
+            <Wordmark />
           </div>
 
-          {error && (
-            <p className="text-xs" style={{ color: "var(--state-error)" }}>
-              {error}
-            </p>
+          {reason === "expired" && (
+            <div
+              style={{
+                marginBottom: 20,
+                backgroundColor: "var(--state-info-bg)",
+                border: "1px solid rgba(59,130,246,0.3)",
+                borderRadius: "var(--radius-sm)",
+                padding: "10px 14px",
+                fontSize: 14,
+                color: "var(--state-info)",
+              }}
+            >
+              Your session ended due to inactivity. Please sign in again.
+            </div>
           )}
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="h-11 w-full rounded-sm text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+          <div
             style={{
-              backgroundColor: "var(--accent-green)",
-              color: "var(--accent-green-foreground)",
+              fontSize: 11,
+              color: "var(--text-muted)",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
             }}
           >
-            {busy ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
+            Welcome back
+          </div>
+          <h2 style={{ marginTop: 8, fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>
+            Sign in to your account
+          </h2>
 
-        <Link
-          to="/reset-password"
-          className="mt-4 inline-block text-xs"
-          style={{ color: "var(--text-muted)" }}
-        >
-          Forgot your password?
-        </Link>
+          <form onSubmit={handleSubmit} style={{ marginTop: 32 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <label htmlFor="email" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+                Email address
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@business.co.za"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = "var(--accent-green)";
+                  e.currentTarget.style.boxShadow = "var(--shadow-focus)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border-default)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gap: 6, marginTop: 20 }}>
+              <label htmlFor="password" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+                Password
+              </label>
+              <div style={{ position: "relative" }}>
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ ...inputStyle, paddingRight: 44 }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "var(--accent-green)";
+                    e.currentTarget.style.boxShadow = "var(--shadow-focus)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border-default)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword((v) => !v)}
+                  style={{
+                    position: "absolute",
+                    right: 14,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-muted)",
+                    lineHeight: 0,
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <Link to="/reset-password" style={{ fontSize: 13, color: "var(--accent-green)" }}>
+                  Forgot password
+                </Link>
+              </div>
+            </div>
+
+            {error && (
+              <div
+                style={{
+                  marginTop: 20,
+                  backgroundColor: "var(--state-error-bg)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "10px 14px",
+                  fontSize: 14,
+                  color: "var(--state-error)",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={busy || locked}
+              className="transition-opacity hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+              style={{
+                marginTop: 24,
+                width: "100%",
+                height: 48,
+                backgroundColor: "var(--accent-green)",
+                color: "#0A0A0A",
+                fontWeight: 600,
+                fontSize: 15,
+                borderRadius: "var(--radius-md)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {busy ? <Loader2 size={18} className="animate-spin" /> : "Sign in"}
+            </button>
+
+            {locked && (
+              <p style={{ marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}>
+                You can try again in {lockMinutes} minute{lockMinutes === 1 ? "" : "s"}.
+              </p>
+            )}
+
+            {!locked && failures >= 3 && (
+              <p style={{ marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}>
+                Too many attempts will temporarily lock this email.
+              </p>
+            )}
+          </form>
+        </div>
       </div>
     </div>
   );
