@@ -6,9 +6,8 @@ import { resetActivity } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    reason: typeof search["reason"] === "string" ? (search["reason"] as string) : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { reason?: string } =>
+    typeof search["reason"] === "string" ? { reason: search["reason"] as string } : {},
   head: () => ({
     meta: [
       { title: "Sign in — Synkra Client Portal" },
