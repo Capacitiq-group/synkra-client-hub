@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/portal/theme-toggle";
 import { SessionWarningModal } from "@/components/portal/session-warning-modal";
 import { OnboardingWizard } from "@/components/portal/onboarding-wizard";
 import pb from "@/lib/pocketbase";
-import { initSession, isSessionExpired, teardownSession } from "@/lib/session";
+import { getLastActivity, initSession, isSessionExpired, teardownSession } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth";
 
 export const Route = createFileRoute("/dashboard")({
@@ -87,7 +87,7 @@ function DashboardLayout() {
 
   useEffect(() => {
     if (!isReady) return;
-    if (!pb.authStore.isValid || isSessionExpired()) {
+    if (!pb.authStore.isValid || (getLastActivity() > 0 && isSessionExpired())) {
       useAuthStore.getState().logout();
       navigate({ to: "/login", search: { reason: "expired" }, replace: true });
     }
