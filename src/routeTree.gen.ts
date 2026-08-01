@@ -11,6 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as DashboardActivityRouteImport } from './routes/dashboard.activity'
+import { Route as DashboardHelpRouteImport } from './routes/dashboard.help'
+import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
+import { Route as DashboardWorkflowsIndexRouteImport } from './routes/dashboard.workflows.index'
+import { Route as DashboardWorkflowsBuilderWorkflowIdRouteImport } from './routes/dashboard.workflows.builder.$workflowId'
+import { Route as DashboardWorkflowsBuilderNewRouteImport } from './routes/dashboard.workflows.builder.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +29,115 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardActivityRoute = DashboardActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardHelpRoute = DashboardHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardWorkflowsIndexRoute = DashboardWorkflowsIndexRouteImport.update({
+  id: '/workflows/',
+  path: '/workflows/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardWorkflowsBuilderWorkflowIdRoute =
+  DashboardWorkflowsBuilderWorkflowIdRouteImport.update({
+    id: '/workflows/builder/$workflowId',
+    path: '/workflows/builder/$workflowId',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardWorkflowsBuilderNewRoute =
+  DashboardWorkflowsBuilderNewRouteImport.update({
+    id: '/workflows/builder/new',
+    path: '/workflows/builder/new',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/help': typeof DashboardHelpRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
+  '/dashboard/workflows/builder/$workflowId': typeof DashboardWorkflowsBuilderWorkflowIdRoute
+  '/dashboard/workflows/builder/new': typeof DashboardWorkflowsBuilderNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/help': typeof DashboardHelpRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/workflows': typeof DashboardWorkflowsIndexRoute
+  '/dashboard/workflows/builder/$workflowId': typeof DashboardWorkflowsBuilderWorkflowIdRoute
+  '/dashboard/workflows/builder/new': typeof DashboardWorkflowsBuilderNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/help': typeof DashboardHelpRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
+  '/dashboard/workflows/builder/$workflowId': typeof DashboardWorkflowsBuilderWorkflowIdRoute
+  '/dashboard/workflows/builder/new': typeof DashboardWorkflowsBuilderNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/dashboard/activity'
+    | '/dashboard/help'
+    | '/dashboard/settings'
+    | '/dashboard/'
+    | '/dashboard/workflows/'
+    | '/dashboard/workflows/builder/$workflowId'
+    | '/dashboard/workflows/builder/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard'
-  id: '__root__' | '/' | '/dashboard'
+  to:
+    | '/'
+    | '/dashboard/activity'
+    | '/dashboard/help'
+    | '/dashboard/settings'
+    | '/dashboard'
+    | '/dashboard/workflows'
+    | '/dashboard/workflows/builder/$workflowId'
+    | '/dashboard/workflows/builder/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/dashboard/activity'
+    | '/dashboard/help'
+    | '/dashboard/settings'
+    | '/dashboard/'
+    | '/dashboard/workflows/'
+    | '/dashboard/workflows/builder/$workflowId'
+    | '/dashboard/workflows/builder/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +156,86 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/activity': {
+      id: '/dashboard/activity'
+      path: '/activity'
+      fullPath: '/dashboard/activity'
+      preLoaderRoute: typeof DashboardActivityRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/help': {
+      id: '/dashboard/help'
+      path: '/help'
+      fullPath: '/dashboard/help'
+      preLoaderRoute: typeof DashboardHelpRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/settings': {
+      id: '/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/workflows/': {
+      id: '/dashboard/workflows/'
+      path: '/workflows'
+      fullPath: '/dashboard/workflows/'
+      preLoaderRoute: typeof DashboardWorkflowsIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/workflows/builder/$workflowId': {
+      id: '/dashboard/workflows/builder/$workflowId'
+      path: '/workflows/builder/$workflowId'
+      fullPath: '/dashboard/workflows/builder/$workflowId'
+      preLoaderRoute: typeof DashboardWorkflowsBuilderWorkflowIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/workflows/builder/new': {
+      id: '/dashboard/workflows/builder/new'
+      path: '/workflows/builder/new'
+      fullPath: '/dashboard/workflows/builder/new'
+      preLoaderRoute: typeof DashboardWorkflowsBuilderNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
+interface DashboardRouteChildren {
+  DashboardActivityRoute: typeof DashboardActivityRoute
+  DashboardHelpRoute: typeof DashboardHelpRoute
+  DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardWorkflowsIndexRoute: typeof DashboardWorkflowsIndexRoute
+  DashboardWorkflowsBuilderWorkflowIdRoute: typeof DashboardWorkflowsBuilderWorkflowIdRoute
+  DashboardWorkflowsBuilderNewRoute: typeof DashboardWorkflowsBuilderNewRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardActivityRoute: DashboardActivityRoute,
+  DashboardHelpRoute: DashboardHelpRoute,
+  DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
+  DashboardWorkflowsIndexRoute: DashboardWorkflowsIndexRoute,
+  DashboardWorkflowsBuilderWorkflowIdRoute:
+    DashboardWorkflowsBuilderWorkflowIdRoute,
+  DashboardWorkflowsBuilderNewRoute: DashboardWorkflowsBuilderNewRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
+  DashboardRoute: DashboardRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
