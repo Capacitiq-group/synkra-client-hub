@@ -4,10 +4,14 @@ import { Bell, Menu, X } from "lucide-react";
 import { NAV_ITEMS, NavLink, useIsActive } from "@/components/portal/nav-items";
 import { ThemeToggle } from "@/components/portal/theme-toggle";
 import { SessionWarningModal } from "@/components/portal/session-warning-modal";
-import { initSession, teardownSession } from "@/lib/session";
+import { OnboardingWizard } from "@/components/portal/onboarding-wizard";
+import pb from "@/lib/pocketbase";
+import { initSession, isSessionExpired, teardownSession } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth";
 
 export const Route = createFileRoute("/dashboard")({
+  validateSearch: (search: Record<string, unknown>): { onboarding?: boolean } =>
+    search["onboarding"] === true || search["onboarding"] === "true" ? { onboarding: true } : {},
   component: DashboardLayout,
 });
 
@@ -69,6 +73,8 @@ function UserFooter() {
 
 function DashboardLayout() {
   const navigate = useNavigate();
+  const { onboarding } = Route.useSearch();
+  const [wizardOpen, setWizardOpen] = useState(false);
   const isReady = useAuthStore((s) => s.isReady);
   const user = useAuthStore((s) => s.user);
   const [warningOpen, setWarningOpen] = useState(false);
@@ -78,6 +84,23 @@ function DashboardLayout() {
   useEffect(() => {
     if (isReady && !user) navigate({ to: "/login", replace: true });
   }, [isReady, user, navigate]);
+
+  useEffect(() => {
+    if (!isReady) return;
+    if (!pb.authStore.isValid || isSessionExpired()) {
+      useAuthStore.getState().logout();
+      navigate({ to: "/login", search: { reason: "expired" }, replace: true });
+    }
+  }, [isReady, navigate]);
+
+  useEffect(() => {
+    if (onboarding) setWizardOpen(true);
+  }, [onboarding]);
+
+  const closeWizard = () => {
+    setWizardOpen(false);
+    navigate({ to: "/dashboard", search: {}, replace: true });
+  };
 
   useEffect(() => {
     initSession(
@@ -190,6 +213,8 @@ function DashboardLayout() {
           );
         })}
       </nav>
+
+      <OnboardingWizard open={wizardOpen} onClose={closeWizard} />
 
       <SessionWarningModal open={warningOpen} onClose={() => setWarningOpen(false)} />
     </div>
