@@ -151,6 +151,14 @@ function fieldsOf(collection: unknown): FieldDef[] {
   return c.fields ?? c.schema ?? [];
 }
 
+/** PocketBase 0.23+ expects select values at the top level of the field definition. */
+function normalizeField(field: FieldDef): FieldDef {
+  const { options, ...rest } = field as FieldDef & { options?: Record<string, unknown> };
+  if (!options) return rest;
+  return { ...rest, ...options, maxSelect: (options["maxSelect"] as number) ?? 1 };
+}
+
+
 export async function runFirstTimeSetup(
   pbUrl: string,
   adminEmail: string,
