@@ -18,7 +18,7 @@ import {
   type PortalWorkflow,
 } from "@/hooks/useWorkflows";
 import { useAuth } from "@/contexts/AuthContext";
-import { sanitizeText } from "@/lib/sanitize";
+import { sanitizeInput } from "@/lib/sanitize";
 
 export const Route = createFileRoute("/dashboard/workflows/")({
   validateSearch: (search: Record<string, unknown>): { tab?: "mine" } =>
@@ -191,7 +191,7 @@ function WorkflowsPage() {
   const handleRename = async (workflow: PortalWorkflow) => {
     const input = window.prompt("Rename workflow", workflow.name);
     if (input === null) return;
-    const clean = sanitizeText(input).slice(0, 120);
+    const clean = sanitizeInput(input).slice(0, 120);
     if (!clean) return;
     try {
       await renameWorkflow(workflow.id, clean);
