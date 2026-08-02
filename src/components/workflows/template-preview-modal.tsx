@@ -2,6 +2,7 @@ import { Check, X } from "lucide-react";
 import { definitionFor } from "@/lib/workflow/blocks";
 import { describeBlock } from "@/lib/workflow/describe";
 import type { PortalTemplate } from "@/hooks/useTemplates";
+import type { WorkflowBlock } from "@/lib/workflow/types";
 
 export function TemplatePreviewModal({
   template,
@@ -67,8 +68,9 @@ export function TemplatePreviewModal({
           What happens step by step
         </h3>
         <ol className="mt-3 space-y-3">
-          {template.blocks.map((block, index) => {
-            const definition = definitionFor(block as never);
+          {template.blocks.map((rawBlock, index) => {
+            const block = rawBlock as unknown as WorkflowBlock;
+            const definition = definitionFor(block);
             const Icon = definition?.icon;
             return (
               <li key={block.id ?? index} className="flex items-start gap-3">
@@ -90,14 +92,14 @@ export function TemplatePreviewModal({
                   <span className="flex items-center gap-2">
                     {Icon && <Icon size={14} style={{ color: definition?.color }} aria-hidden="true" />}
                     <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
-                      {block.label as string}
+                      {block.label}
                     </span>
                   </span>
                   <span
                     className="block"
                     style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}
                   >
-                    {describeBlock(block as never)}
+                    {describeBlock(block)}
                   </span>
                 </span>
               </li>
