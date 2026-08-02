@@ -170,13 +170,15 @@ export async function runFirstTimeSetup(
     progress.onStep("Creating collections");
     for (const collection of COLLECTIONS) {
       if (existingNames.has(collection.name)) continue;
+      const fields = collection.schema.map(normalizeField);
       await pb.collections.create({
         name: collection.name,
         type: collection.type,
-        fields: collection.schema,
-        schema: collection.schema,
+        fields,
+        schema: fields,
       });
     }
+
 
     progress.onStep("Extending the users collection");
     const usersCollection = existingCollections.find((c) => c.name === "users");
