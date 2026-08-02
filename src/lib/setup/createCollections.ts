@@ -193,7 +193,7 @@ export async function runFirstTimeSetup(
     if (usersCollection) {
       const current = fieldsOf(usersCollection);
       const existingFieldNames = new Set(current.map((f) => f["name"] as string));
-      const newFields = USER_FIELDS.filter((f) => !existingFieldNames.has(f["name"] as string));
+      const newFields = USER_FIELDS.filter((f) => !existingFieldNames.has(f["name"] as string)).map(normalizeField);
       if (newFields.length > 0) {
         const updated = [...current, ...newFields];
         await pb.collections.update(usersCollection.id, {
