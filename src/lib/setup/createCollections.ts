@@ -151,6 +151,14 @@ function fieldsOf(collection: unknown): FieldDef[] {
   return c.fields ?? c.schema ?? [];
 }
 
+/** PocketBase 0.23+ expects select values at the top level of the field definition. */
+function normalizeField(field: FieldDef): FieldDef {
+  const { options, ...rest } = field as FieldDef & { options?: Record<string, unknown> };
+  if (!options) return rest;
+  return { ...rest, ...options, maxSelect: (options["maxSelect"] as number) ?? 1 };
+}
+
+
 export async function runFirstTimeSetup(
   pbUrl: string,
   adminEmail: string,
@@ -170,20 +178,22 @@ export async function runFirstTimeSetup(
     progress.onStep("Creating collections");
     for (const collection of COLLECTIONS) {
       if (existingNames.has(collection.name)) continue;
+      const fields = collection.schema.map(normalizeField);
       await pb.collections.create({
         name: collection.name,
         type: collection.type,
-        fields: collection.schema,
-        schema: collection.schema,
+        fields,
+        schema: fields,
       });
     }
+
 
     progress.onStep("Extending the users collection");
     const usersCollection = existingCollections.find((c) => c.name === "users");
     if (usersCollection) {
       const current = fieldsOf(usersCollection);
       const existingFieldNames = new Set(current.map((f) => f["name"] as string));
-      const newFields = USER_FIELDS.filter((f) => !existingFieldNames.has(f["name"] as string));
+      const newFields = USER_FIELDS.filter((f) => !existingFieldNames.has(f["name"] as string)).map(normalizeField);
       if (newFields.length > 0) {
         const updated = [...current, ...newFields];
         await pb.collections.update(usersCollection.id, {
