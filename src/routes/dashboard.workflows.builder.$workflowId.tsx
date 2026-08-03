@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RouteStub } from "@/components/portal/route-stub";
+import { WorkflowBuilder } from "@/components/workflows/workflow-builder";
 
 export const Route = createFileRoute("/dashboard/workflows/builder/$workflowId")({
   head: () => ({
@@ -15,5 +15,5 @@ export const Route = createFileRoute("/dashboard/workflows/builder/$workflowId")
 
 function WorkflowBuilderEdit() {
   const { workflowId } = Route.useParams();
-  return <RouteStub title={`Workflow Builder — ${workflowId}`} prompt="5" />;
+  return <WorkflowBuilder workflowId={workflowId} />;
 }
