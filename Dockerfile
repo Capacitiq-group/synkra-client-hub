@@ -1,15 +1,38 @@
-FROM node:22-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
+
 COPY package*.json ./
 RUN npm install
+
 COPY . .
+
+ARG VITE_POCKETBASE_URL=https://pb.synkra.co.za
+ARG VITE_APP_URL=https://client.synkra.co.za
+ARG VITE_APP_NAME=Synkra
+ARG VITE_LOOM_VIDEO_TEMPLATES=
+ARG VITE_LOOM_VIDEO_BUILDER=
+ARG VITE_LOOM_VIDEO_LOGS=
+
+ENV VITE_POCKETBASE_URL=$VITE_POCKETBASE_URL
+ENV VITE_APP_URL=$VITE_APP_URL
+ENV VITE_APP_NAME=$VITE_APP_NAME
+ENV VITE_LOOM_VIDEO_TEMPLATES=$VITE_LOOM_VIDEO_TEMPLATES
+ENV VITE_LOOM_VIDEO_BUILDER=$VITE_LOOM_VIDEO_BUILDER
+ENV VITE_LOOM_VIDEO_LOGS=$VITE_LOOM_VIDEO_LOGS
+
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
+
 ENV NODE_ENV=production
-COPY --from=builder /app/.output ./.output
-EXPOSE 3000
 ENV PORT=3000
 ENV HOST=0.0.0.0
-CMD ["node", ".output/server/index.mjs"]
+
+COPY --from=builder /app/dist ./dist
+COPY package*.json ./
+RUN npm install --omit=dev
+
+EXPOSE 3000
+
+CMD ["npx", "vite", "preview", "--host", "0.0.0.0", "--port", "3000"]
