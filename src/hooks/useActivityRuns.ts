@@ -30,8 +30,8 @@ export interface ActivityRun {
 
 export interface RunFilters {
   workflowId?: string | undefined;
-  status?: "success" | "failed" | "running" | "all";
-  dateRange?: "today" | "7days" | "30days" | "all";
+  status?: "success" | "failed" | "running" | "all" | undefined;
+  dateRange?: "today" | "7days" | "30days" | "all" | undefined;
 }
 
 function parseJson<T>(value: unknown, fallback: T): T {
