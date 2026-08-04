@@ -116,6 +116,8 @@ const USER_FIELDS: FieldDef[] = [
   { name: "business_industry", type: "text" },
   { name: "business_address", type: "text" },
   { name: "whatsapp_number", type: "text" },
+  { name: "review_link", type: "text" },
+  { name: "is_tester", type: "bool" },
   { name: "user_type", type: "select", options: { values: ["beta", "paid"] } },
   { name: "trial_ends_at", type: "date" },
   {
@@ -125,6 +127,9 @@ const USER_FIELDS: FieldDef[] = [
   },
   { name: "notify_on_failure", type: "bool" },
   { name: "notify_weekly_summary", type: "bool" },
+  { name: "notify_on_success", type: "bool" },
+  { name: "notify_credit_low", type: "bool" },
+  { name: "notify_platform_updates", type: "bool" },
   { name: "notification_email", type: "email" },
   { name: "credit_emails", type: "number" },
   { name: "credit_emails_used", type: "number" },

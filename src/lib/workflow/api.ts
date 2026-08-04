@@ -57,7 +57,21 @@ export async function registerWorkflow(params: {
 }
 
 export function webhookUrlFor(workflowId: string): string {
-  return `https://api.synkra.co.za/webhooks/run/${workflowId}`;
+  return `${API_BASE}/webhooks/run/${workflowId}`;
+}
+
+export function integrationConnectUrl(type: "google-calendar" | "google-sheets", userId: string) {
+  return `${API_BASE}/integrations/${type}/connect?user_id=${encodeURIComponent(userId)}`;
+}
+
+export async function testIntegration(type: string, userId: string): Promise<void> {
+  const response = await post(`/integrations/${type}/test`, { user_id: userId });
+  if (!response.ok) throw new Error(`Connection test failed with status ${response.status}`);
+}
+
+export async function disconnectIntegration(type: string, userId: string): Promise<void> {
+  const response = await post(`/integrations/${type}/disconnect`, { user_id: userId });
+  if (!response.ok) throw new Error(`Disconnect failed with status ${response.status}`);
 }
 
 /** Re-runs a workflow with the original trigger payload from a previous run. */

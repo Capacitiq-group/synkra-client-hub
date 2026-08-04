@@ -9,6 +9,11 @@ export interface AuthUser {
   name: string;
   business_name: string;
   business_industry?: string;
+  business_address?: string;
+  whatsapp_number?: string;
+  review_link?: string;
+  notification_email?: string;
+  is_tester?: boolean;
   user_type: "beta" | "paid";
   trial_ends_at: string | null;
   onboarding_completed: boolean;
@@ -17,6 +22,12 @@ export interface AuthUser {
   credit_emails_used: number;
   credit_workflows: number;
   credit_workflows_used: number;
+  notify_on_failure?: boolean;
+  notify_weekly_summary?: boolean;
+  notify_on_success?: boolean;
+  notify_credit_low?: boolean;
+  notify_platform_updates?: boolean;
+  created?: string;
 }
 
 export async function signIn(

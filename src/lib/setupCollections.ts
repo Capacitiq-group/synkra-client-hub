@@ -16,6 +16,8 @@ export const COLLECTION_SCHEMAS = [
       { name: "business_industry", type: "text" },
       { name: "business_address", type: "text" },
       { name: "whatsapp_number", type: "text" },
+      { name: "review_link", type: "text" },
+      { name: "is_tester", type: "bool", options: { default: false } },
       { name: "google_calendar_link", type: "text" },
       { name: "google_sheet_id", type: "text" },
       { name: "user_type", type: "select", options: { values: ["beta", "paid"] } },
@@ -27,6 +29,9 @@ export const COLLECTION_SCHEMAS = [
       },
       { name: "notify_on_failure", type: "bool", options: { default: true } },
       { name: "notify_weekly_summary", type: "bool", options: { default: true } },
+      { name: "notify_on_success", type: "bool", options: { default: false } },
+      { name: "notify_credit_low", type: "bool", options: { default: true } },
+      { name: "notify_platform_updates", type: "bool", options: { default: false } },
       { name: "notification_email", type: "email" },
       // Credits for beta users
       { name: "credit_emails", type: "number", options: { default: 100 } },

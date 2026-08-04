@@ -10,6 +10,7 @@ export interface PortalUser extends RecordModel {
   email: string;
   name?: string;
   user_type?: "beta" | "paid";
+  is_tester?: boolean;
 }
 
 interface AuthState {
