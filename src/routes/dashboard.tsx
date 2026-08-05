@@ -101,8 +101,8 @@ function DashboardLayout() {
 
   // Email the user when one of their workflow runs fails.
   useEffect(() => {
-    if (!user || !user.notify_on_failure) return;
-    const notificationEmail = user.notification_email || user.email;
+    if (!user || !user["notify_on_failure"]) return;
+    const notificationEmail = String(user["notification_email"] || user.email || "");
     void pb.collection("workflow_runs").subscribe("*", (event) => {
       const record = event.record as unknown as Record<string, string>;
       if (event.action !== "update") return;
