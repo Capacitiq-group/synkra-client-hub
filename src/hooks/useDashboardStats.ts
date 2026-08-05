@@ -2,6 +2,21 @@
 import { useQuery } from "@tanstack/react-query";
 import pb from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
+import { sendNotificationEmail } from "@/lib/notifications";
+
+/** Sends the low balance warning at most once per credit allocation. */
+function maybeWarnLowCredits(userId: string, email: string, remaining: number, total: number) {
+  if (typeof window === "undefined" || total <= 0) return;
+  if (remaining / total >= 0.2) return;
+  const key = `synkra-credit-warning-${userId}-${total}`;
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, "sent");
+  void sendNotificationEmail({
+    to: email,
+    subject: "Your Synkra email credits are running low",
+    body: `Hi,\n\nYou have ${remaining} of ${total} email credits remaining, which is under 20 percent.\n\nEmail automations pause automatically once your credits run out.\n\nhttps://client.synkra.co.za/dashboard\n\nSynkra`,
+  });
+}
 
 export interface DashboardStats {
   activeCount: number;
@@ -71,6 +86,15 @@ export function useDashboardStats() {
       const emailCreditsUsed = user.credit_emails_used ?? 0;
       const workflowCreditsTotal = user.credit_workflows ?? 2000;
       const workflowCreditsUsed = user.credit_workflows_used ?? 0;
+
+      if (user.notify_credit_low !== false) {
+        maybeWarnLowCredits(
+          user.id,
+          user.notification_email || user.email,
+          Math.max(0, emailCreditsTotal - emailCreditsUsed),
+          emailCreditsTotal,
+        );
+      }
 
       return {
         activeCount: activeWorkflows.length,
