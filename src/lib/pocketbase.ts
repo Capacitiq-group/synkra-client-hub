@@ -56,4 +56,52 @@ export async function safeSubscribe(
   };
 }
 
+type ListOptions = Record<string, unknown>;
+
+function isBadRequest(err: unknown): boolean {
+  return Boolean(err && typeof err === "object" && (err as { status?: number }).status === 400);
+}
+
+/**
+ * PocketBase rejects a sort on a field a collection does not have (older
+ * instances were created without the autodate created/updated fields). The
+ * portal must still render, so a rejected sort is retried without it.
+ */
+export async function getFullListSafe<T = Record<string, unknown>>(
+  collection: string,
+  options: ListOptions = {},
+): Promise<T[]> {
+  try {
+    return (await pb.collection(collection).getFullList(options)) as T[];
+  } catch (err) {
+    if (!isBadRequest(err) || !options["sort"]) throw err;
+    const { sort, ...rest } = options;
+    logTelemetry("query", "warn", `Sort "${String(sort)}" unsupported on ${collection}`, {});
+    return (await pb.collection(collection).getFullList(rest)) as T[];
+  }
+}
+
+export async function getListSafe<T = Record<string, unknown>>(
+  collection: string,
+  page: number,
+  perPage: number,
+  options: ListOptions = {},
+): Promise<{ items: T[]; totalItems: number }> {
+  try {
+    return (await pb.collection(collection).getList(page, perPage, options)) as unknown as {
+      items: T[];
+      totalItems: number;
+    };
+  } catch (err) {
+    if (!isBadRequest(err) || !options["sort"]) throw err;
+    const { sort, ...rest } = options;
+    logTelemetry("query", "warn", `Sort "${String(sort)}" unsupported on ${collection}`, {});
+    return (await pb.collection(collection).getList(page, perPage, rest)) as unknown as {
+      items: T[];
+      totalItems: number;
+    };
+  }
+}
+
 export default pb;
+
