@@ -104,15 +104,24 @@ async function run() {
 
   await step("Realtime activity updates", async () => {
     if (!workflowId) throw new Error("no workflow to run against");
+    let resolveEvent;
+    let rejectEvent;
     const received = new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("no realtime event within 15s")), 15000);
-      pb.collection("workflow_runs").subscribe("*", (event) => {
-        if (event.record.workflow_id === workflowId && event.action === "update") {
-          clearTimeout(timer);
-          resolve(event.record.status);
-        }
-      });
+      resolveEvent = resolve;
+      rejectEvent = reject;
     });
+    const timer = setTimeout(() => rejectEvent(new Error("no realtime event within 15s")), 15000);
+    await pb.collection("workflow_runs").subscribe("*", (event) => {
+      if (event.record.workflow_id === workflowId && event.action === "update") {
+        clearTimeout(timer);
+        resolveEvent(event.record.status);
+      }
+    });
+    cleanup.push(() => {
+      clearTimeout(timer);
+      return pb.collection("workflow_runs").unsubscribe("*");
+    });
+
     const run = await pb.collection("workflow_runs").create({
       workflow_id: workflowId,
       user_id: userId,
