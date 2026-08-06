@@ -3,7 +3,7 @@
 // issues can be triaged from inside the portal without server access.
 
 export type TelemetryLevel = "info" | "warn" | "error";
-export type TelemetryCategory = "notification" | "realtime" | "auth" | "workflow";
+export type TelemetryCategory = "notification" | "realtime" | "auth" | "workflow" | "query";
 
 export interface TelemetryEvent {
   id: string;
