@@ -110,11 +110,12 @@ export function useActivityRuns(filters: RunFilters = {}, page = 1) {
       }
       const filter = parts.join(" && ");
 
-      const runs = await pb.collection("workflow_runs").getList(page, 20, {
+      const runs = await getListSafe<Record<string, unknown>>("workflow_runs", page, 20, {
         filter,
         sort: "-triggered_at",
         expand: "workflow_id",
       });
+
 
       const countsList = await pb.collection("workflow_runs").getFullList({
         filter,
