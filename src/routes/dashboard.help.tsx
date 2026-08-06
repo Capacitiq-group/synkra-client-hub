@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Mail, PlayCircle } from "lucide-react";
+import { DiagnosticsPanel } from "@/components/portal/diagnostics-panel";
 
 export const Route = createFileRoute("/dashboard/help")({
   head: () => ({
