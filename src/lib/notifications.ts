@@ -62,7 +62,10 @@ export function claimNotification(key: string): boolean {
   if (stored.includes(key)) return false;
   if (typeof window !== "undefined") {
     try {
-      window.localStorage.setItem(DEDUPE_KEY, JSON.stringify([key, ...stored].slice(0, DEDUPE_LIMIT)));
+      window.localStorage.setItem(
+        DEDUPE_KEY,
+        JSON.stringify([key, ...stored].slice(0, DEDUPE_LIMIT)),
+      );
     } catch {
       // best effort, in-memory guard still applies for this session
     }

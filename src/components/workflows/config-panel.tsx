@@ -15,9 +15,7 @@ export function ConfigPanel({
   if (!block) {
     return (
       <div className="p-4">
-        <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          Select a block to configure it.
-        </p>
+        <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Select a block to configure it.</p>
       </div>
     );
   }
@@ -32,9 +30,7 @@ export function ConfigPanel({
   return (
     <div className="flex h-full flex-col gap-4 overflow-auto p-4">
       <div>
-        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>
-          {block.label}
-        </p>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{block.label}</p>
         <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
           {block.description}
         </p>

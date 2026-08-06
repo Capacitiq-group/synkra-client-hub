@@ -19,6 +19,7 @@ import { Route as DashboardActivityRouteImport } from './routes/dashboard.activi
 import { Route as DashboardHelpRouteImport } from './routes/dashboard.help'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as DashboardWorkflowsIndexRouteImport } from './routes/dashboard.workflows.index'
+import { Route as ApiPublicNotificationsTestRouteImport } from './routes/api/public/notifications/test'
 import { Route as DashboardWorkflowsBuilderWorkflowIdRouteImport } from './routes/dashboard.workflows.builder.$workflowId'
 import { Route as DashboardWorkflowsBuilderNewRouteImport } from './routes/dashboard.workflows.builder.new'
 
@@ -72,6 +73,12 @@ const DashboardWorkflowsIndexRoute = DashboardWorkflowsIndexRouteImport.update({
   path: '/workflows/',
   getParentRoute: () => DashboardRoute,
 } as any)
+const ApiPublicNotificationsTestRoute =
+  ApiPublicNotificationsTestRouteImport.update({
+    id: '/api/public/notifications/test',
+    path: '/api/public/notifications/test',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DashboardWorkflowsBuilderWorkflowIdRoute =
   DashboardWorkflowsBuilderWorkflowIdRouteImport.update({
     id: '/workflows/builder/$workflowId',
@@ -96,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
+  '/api/public/notifications/test': typeof ApiPublicNotificationsTestRoute
   '/dashboard/workflows/builder/$workflowId': typeof DashboardWorkflowsBuilderWorkflowIdRoute
   '/dashboard/workflows/builder/new': typeof DashboardWorkflowsBuilderNewRoute
 }
@@ -109,6 +117,7 @@ export interface FileRoutesByTo {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/workflows': typeof DashboardWorkflowsIndexRoute
+  '/api/public/notifications/test': typeof ApiPublicNotificationsTestRoute
   '/dashboard/workflows/builder/$workflowId': typeof DashboardWorkflowsBuilderWorkflowIdRoute
   '/dashboard/workflows/builder/new': typeof DashboardWorkflowsBuilderNewRoute
 }
@@ -124,6 +133,7 @@ export interface FileRoutesById {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
+  '/api/public/notifications/test': typeof ApiPublicNotificationsTestRoute
   '/dashboard/workflows/builder/$workflowId': typeof DashboardWorkflowsBuilderWorkflowIdRoute
   '/dashboard/workflows/builder/new': typeof DashboardWorkflowsBuilderNewRoute
 }
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/'
     | '/dashboard/workflows/'
+    | '/api/public/notifications/test'
     | '/dashboard/workflows/builder/$workflowId'
     | '/dashboard/workflows/builder/new'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard'
     | '/dashboard/workflows'
+    | '/api/public/notifications/test'
     | '/dashboard/workflows/builder/$workflowId'
     | '/dashboard/workflows/builder/new'
   id:
@@ -167,6 +179,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/'
     | '/dashboard/workflows/'
+    | '/api/public/notifications/test'
     | '/dashboard/workflows/builder/$workflowId'
     | '/dashboard/workflows/builder/new'
   fileRoutesById: FileRoutesById
@@ -177,6 +190,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SetupRoute: typeof SetupRoute
+  ApiPublicNotificationsTestRoute: typeof ApiPublicNotificationsTestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -251,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWorkflowsIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/api/public/notifications/test': {
+      id: '/api/public/notifications/test'
+      path: '/api/public/notifications/test'
+      fullPath: '/api/public/notifications/test'
+      preLoaderRoute: typeof ApiPublicNotificationsTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/workflows/builder/$workflowId': {
       id: '/dashboard/workflows/builder/$workflowId'
       path: '/workflows/builder/$workflowId'
@@ -299,7 +320,18 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SetupRoute: SetupRoute,
+  ApiPublicNotificationsTestRoute: ApiPublicNotificationsTestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

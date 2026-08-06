@@ -81,7 +81,12 @@ function SetupPage() {
     >
       <div style={{ width: "100%", maxWidth: 480 }}>
         <div
-          style={{ color: "var(--accent-green)", fontSize: 20, fontWeight: 800, letterSpacing: "0.1em" }}
+          style={{
+            color: "var(--accent-green)",
+            fontSize: 20,
+            fontWeight: 800,
+            letterSpacing: "0.1em",
+          }}
         >
           SYNKRA
         </div>
@@ -107,7 +112,10 @@ function SetupPage() {
 
         <form onSubmit={handleSubmit} style={{ marginTop: 32, display: "grid", gap: 20 }}>
           <div style={{ display: "grid", gap: 6 }}>
-            <label htmlFor="pb-url" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+            <label
+              htmlFor="pb-url"
+              style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}
+            >
               PocketBase URL
             </label>
             <input
@@ -119,7 +127,10 @@ function SetupPage() {
             />
           </div>
           <div style={{ display: "grid", gap: 6 }}>
-            <label htmlFor="pb-email" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+            <label
+              htmlFor="pb-email"
+              style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}
+            >
               Superuser email
             </label>
             <input
@@ -132,7 +143,10 @@ function SetupPage() {
             />
           </div>
           <div style={{ display: "grid", gap: 6 }}>
-            <label htmlFor="pb-password" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+            <label
+              htmlFor="pb-password"
+              style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}
+            >
               Superuser password
             </label>
             <input

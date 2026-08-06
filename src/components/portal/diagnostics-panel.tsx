@@ -47,7 +47,11 @@ export function DiagnosticsPanel() {
           <button
             type="button"
             className="synkra-focus inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5"
-            style={{ borderColor: "var(--border-default)", fontSize: 13, color: "var(--text-secondary)" }}
+            style={{
+              borderColor: "var(--border-default)",
+              fontSize: 13,
+              color: "var(--text-secondary)",
+            }}
             onClick={() => setEvents(getTelemetry())}
           >
             <RefreshCw size={13} aria-hidden="true" /> Refresh
@@ -55,7 +59,11 @@ export function DiagnosticsPanel() {
           <button
             type="button"
             className="synkra-focus inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5"
-            style={{ borderColor: "var(--border-default)", fontSize: 13, color: "var(--text-secondary)" }}
+            style={{
+              borderColor: "var(--border-default)",
+              fontSize: 13,
+              color: "var(--text-secondary)",
+            }}
             onClick={() => clearTelemetry()}
           >
             <Trash2 size={13} aria-hidden="true" /> Clear

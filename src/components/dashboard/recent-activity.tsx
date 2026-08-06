@@ -99,8 +99,12 @@ export function RecentActivity({
                     backgroundColor: rowBackground(run.id),
                     transition: "background-color 100ms ease",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-elevated)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = rowBackground(run.id))}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = "var(--bg-elevated)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = rowBackground(run.id))
+                  }
                 >
                   <td
                     className="max-w-[240px] truncate"
@@ -128,7 +132,9 @@ export function RecentActivity({
                         type="button"
                         className="synkra-focus rounded-sm"
                         style={{ fontSize: 13, color: "var(--accent-green)" }}
-                        onClick={() => navigate({ to: "/dashboard/activity", search: { run: run.id } })}
+                        onClick={() =>
+                          navigate({ to: "/dashboard/activity", search: { run: run.id } })
+                        }
                       >
                         View
                       </button>

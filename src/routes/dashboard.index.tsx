@@ -9,10 +9,7 @@ import { useTemplates } from "@/hooks/useTemplates";
 import { useRecentRuns, type RecentRun } from "@/hooks/useRecentRuns";
 import { greetingFor } from "@/lib/utils/time";
 import { StatsRow } from "@/components/dashboard/stats-row";
-import {
-  WorkflowsSection,
-  type WorkflowRecord,
-} from "@/components/dashboard/workflows-section";
+import { WorkflowsSection, type WorkflowRecord } from "@/components/dashboard/workflows-section";
 import { TemplatesSection } from "@/components/dashboard/templates-section";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { CreditsWidget } from "@/components/dashboard/credits-widget";

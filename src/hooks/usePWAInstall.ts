@@ -18,9 +18,12 @@ export function usePWAInstall() {
       setInstallPrompt(event as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handler);
-    const timer = window.setTimeout(() => {
-      if (window.innerWidth < 768) setShowPrompt(true);
-    }, 3 * 60 * 1000);
+    const timer = window.setTimeout(
+      () => {
+        if (window.innerWidth < 768) setShowPrompt(true);
+      },
+      3 * 60 * 1000,
+    );
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
       window.clearTimeout(timer);

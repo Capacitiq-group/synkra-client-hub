@@ -148,9 +148,7 @@ export function useRunDetail(runId: string | null) {
     enabled: Boolean(runId) && Boolean(user?.id),
     queryFn: async () => {
       if (!runId) return null;
-      const record = await pb
-        .collection("workflow_runs")
-        .getOne(runId, { expand: "workflow_id" });
+      const record = await pb.collection("workflow_runs").getOne(runId, { expand: "workflow_id" });
       return mapRun(record as unknown as Record<string, unknown>);
     },
     staleTime: 0,

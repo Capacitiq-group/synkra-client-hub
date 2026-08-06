@@ -30,7 +30,12 @@ async function step(name, fn) {
     console.log(`PASS  ${name}${detail ? ` (${detail})` : ""}`);
     return true;
   } catch (err) {
-    results.push({ name, ok: false, ms: Date.now() - started, detail: err?.message || String(err) });
+    results.push({
+      name,
+      ok: false,
+      ms: Date.now() - started,
+      detail: err?.message || String(err),
+    });
     console.error(`FAIL  ${name}: ${err?.message || err}`);
     return false;
   }

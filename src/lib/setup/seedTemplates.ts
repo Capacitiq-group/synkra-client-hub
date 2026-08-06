@@ -45,8 +45,7 @@ export const TEMPLATES = [
   {
     template_id: "tpl_daily_digest",
     name: "Daily business digest",
-    description:
-      "Every morning at 7am you get a summary email of what happened in your business.",
+    description: "Every morning at 7am you get a summary email of what happened in your business.",
     category: "Operations",
     requires_paid_api: false,
     integrations_required: ["email"],
@@ -80,8 +79,7 @@ export const TEMPLATES = [
   {
     template_id: "tpl_appointment_reminder",
     name: "Appointment reminder",
-    description:
-      "Automatically email your customer a reminder 24 hours before their appointment.",
+    description: "Automatically email your customer a reminder 24 hours before their appointment.",
     category: "Customer Service",
     requires_paid_api: false,
     integrations_required: ["email"],
@@ -107,8 +105,7 @@ export const TEMPLATES = [
         type: "action",
         action_type: "wait",
         label: "Wait until 24 hours before",
-        description:
-          "The workflow pauses here and continues 24 hours before the appointment time",
+        description: "The workflow pauses here and continues 24 hours before the appointment time",
         config: { wait_until: "{{payload.appointment_datetime}} - 24 hours" },
         next: "action_2",
       },
@@ -130,8 +127,7 @@ export const TEMPLATES = [
   {
     template_id: "tpl_review_request",
     name: "Review request",
-    description:
-      "After a completed job, automatically ask your customer to leave a Google review.",
+    description: "After a completed job, automatically ask your customer to leave a Google review.",
     category: "Marketing",
     requires_paid_api: false,
     integrations_required: ["email"],
@@ -256,7 +252,9 @@ export const TEMPLATES = [
 
 export async function seedTemplates(pb: PocketBase): Promise<void> {
   const existing = await pb.collection("workflow_templates").getFullList();
-  const existingIds = new Set(existing.map((t) => (t as unknown as { template_id?: string }).template_id));
+  const existingIds = new Set(
+    existing.map((t) => (t as unknown as { template_id?: string }).template_id),
+  );
 
   for (const template of TEMPLATES) {
     if (existingIds.has(template.template_id)) continue;

@@ -143,9 +143,7 @@ export function CreditsWidget({ stats }: { stats: DashboardStats }) {
                 Your automation pauses for that specific type. If your email credits run out, email
                 automations pause. If your workflow run credits run out, all automations pause.
               </p>
-              <p>
-                Your other automations keep running normally until their own credits are used.
-              </p>
+              <p>Your other automations keep running normally until their own credits are used.</p>
               <p>
                 In September 2026 Synkra launches paid plans with affordable top-ups. You will get
                 an email before your trial ends with everything you need to continue.

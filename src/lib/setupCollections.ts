@@ -85,7 +85,12 @@ export const COLLECTION_SCHEMAS = [
     name: "workflow_runs",
     type: "base",
     schema: [
-      { name: "workflow_id", type: "relation", required: true, options: { collectionId: "workflows" } },
+      {
+        name: "workflow_id",
+        type: "relation",
+        required: true,
+        options: { collectionId: "workflows" },
+      },
       { name: "user_id", type: "relation", required: true, options: { collectionId: "users" } },
       {
         name: "status",
@@ -115,7 +120,11 @@ export const COLLECTION_SCHEMAS = [
           values: ["whatsapp", "google_calendar", "google_sheets", "twilio_sms", "resend_email"],
         },
       },
-      { name: "status", type: "select", options: { values: ["connected", "disconnected", "error"] } },
+      {
+        name: "status",
+        type: "select",
+        options: { values: ["connected", "disconnected", "error"] },
+      },
       { name: "display_name", type: "text" },
       { name: "last_tested_at", type: "date" },
       { name: "error_message", type: "text" },

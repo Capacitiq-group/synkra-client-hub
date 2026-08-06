@@ -90,13 +90,7 @@ const COLLECTIONS: CollectionDef[] = [
         type: "select",
         required: true,
         options: {
-          values: [
-            "whatsapp",
-            "google_calendar",
-            "google_sheets",
-            "twilio_sms",
-            "resend_email",
-          ],
+          values: ["whatsapp", "google_calendar", "google_sheets", "twilio_sms", "resend_email"],
         },
       },
       {
@@ -144,8 +138,9 @@ async function authenticateAdmin(pb: PocketBase, email: string, password: string
   try {
     await pb.collection("_superusers").authWithPassword(email, password);
   } catch (err) {
-    const legacy = (pb as unknown as { admins?: { authWithPassword: (e: string, p: string) => Promise<unknown> } })
-      .admins;
+    const legacy = (
+      pb as unknown as { admins?: { authWithPassword: (e: string, p: string) => Promise<unknown> } }
+    ).admins;
     if (!legacy) throw err;
     await legacy.authWithPassword(email, password);
   }
@@ -162,7 +157,6 @@ function normalizeField(field: FieldDef): FieldDef {
   if (!options) return rest;
   return { ...rest, ...options, maxSelect: (options["maxSelect"] as number) ?? 1 };
 }
-
 
 export async function runFirstTimeSetup(
   pbUrl: string,
@@ -192,13 +186,14 @@ export async function runFirstTimeSetup(
       });
     }
 
-
     progress.onStep("Extending the users collection");
     const usersCollection = existingCollections.find((c) => c.name === "users");
     if (usersCollection) {
       const current = fieldsOf(usersCollection);
       const existingFieldNames = new Set(current.map((f) => f["name"] as string));
-      const newFields = USER_FIELDS.filter((f) => !existingFieldNames.has(f["name"] as string)).map(normalizeField);
+      const newFields = USER_FIELDS.filter((f) => !existingFieldNames.has(f["name"] as string)).map(
+        normalizeField,
+      );
       if (newFields.length > 0) {
         const updated = [...current, ...newFields];
         await pb.collections.update(usersCollection.id, {

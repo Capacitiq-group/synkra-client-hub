@@ -1,26 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  CheckCircle,
-  Clock,
-  List,
-  MoreHorizontal,
-  Pause,
-  Pencil,
-  Play,
-  Zap,
-} from "lucide-react";
+import { CheckCircle, Clock, List, MoreHorizontal, Pause, Pencil, Play, Zap } from "lucide-react";
 import { StatusBadge } from "@/components/dashboard/primitives";
 import { relativeTime } from "@/lib/utils/time";
 import type { PortalWorkflow } from "@/hooks/useWorkflows";
 
-function GhostButton({
-  children,
-  onClick,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
+function GhostButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -93,7 +78,9 @@ export function WorkflowCard({
         backgroundColor: "var(--bg-card)",
         border: "1px solid",
         borderColor:
-          workflow.status === "error" ? "color-mix(in srgb, var(--state-error) 40%, transparent)" : "var(--border-default)",
+          workflow.status === "error"
+            ? "color-mix(in srgb, var(--state-error) 40%, transparent)"
+            : "var(--border-default)",
         borderRadius: "var(--radius-lg)",
         padding: 20,
       }}
@@ -143,7 +130,11 @@ export function WorkflowCard({
           Edit
         </GhostButton>
         <GhostButton onClick={onToggleStatus}>
-          {isPublished ? <Pause size={13} aria-hidden="true" /> : <Play size={13} aria-hidden="true" />}
+          {isPublished ? (
+            <Pause size={13} aria-hidden="true" />
+          ) : (
+            <Play size={13} aria-hidden="true" />
+          )}
           {isPublished ? "Pause" : "Resume"}
         </GhostButton>
         <GhostButton

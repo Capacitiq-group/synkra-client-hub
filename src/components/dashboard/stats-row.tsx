@@ -23,7 +23,14 @@ function Card({ children }: { children: React.ReactNode }) {
 
 function BigNumber({ value, color }: { value: string; color?: string | undefined }) {
   return (
-    <div style={{ fontSize: 44, fontWeight: 800, color: color ?? "var(--text-primary)", lineHeight: 1.1 }}>
+    <div
+      style={{
+        fontSize: 44,
+        fontWeight: 800,
+        color: color ?? "var(--text-primary)",
+        lineHeight: 1.1,
+      }}
+    >
       {value}
     </div>
   );
@@ -147,7 +154,10 @@ export function StatsRow({
           </>
         ) : (
           <>
-            <BigNumber value={stats.daysRemaining === null ? "0" : String(stats.daysRemaining)} color={daysColor} />
+            <BigNumber
+              value={stats.daysRemaining === null ? "0" : String(stats.daysRemaining)}
+              color={daysColor}
+            />
             <Label>Days remaining</Label>
             <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
               Free trial

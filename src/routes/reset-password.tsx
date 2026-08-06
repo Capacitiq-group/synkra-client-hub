@@ -71,7 +71,13 @@ function ResetPasswordPage() {
       <div style={{ width: "100%", maxWidth: 440 }}>
         <Link
           to="/login"
-          style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--accent-green)" }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 13,
+            color: "var(--accent-green)",
+          }}
         >
           <ArrowLeft size={14} />
           Back to sign in
@@ -100,7 +106,9 @@ function ResetPasswordPage() {
             >
               Account recovery
             </div>
-            <h1 style={{ marginTop: 8, fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>
+            <h1
+              style={{ marginTop: 8, fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}
+            >
               Reset your password
             </h1>
             <p style={{ marginTop: 12, fontSize: 15, color: "var(--text-secondary)" }}>
@@ -110,7 +118,10 @@ function ResetPasswordPage() {
 
             <form onSubmit={handleSubmit} style={{ marginTop: 32 }}>
               <div style={{ display: "grid", gap: 6 }}>
-                <label htmlFor="reset-email" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+                <label
+                  htmlFor="reset-email"
+                  style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}
+                >
                   Email address
                 </label>
                 <input

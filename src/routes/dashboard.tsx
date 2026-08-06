@@ -134,7 +134,6 @@ function DashboardLayout() {
     };
   }, [user]);
 
-
   const closeWizard = () => {
     setWizardOpen(false);
     navigate({ to: "/dashboard", search: {}, replace: true });
@@ -153,7 +152,10 @@ function DashboardLayout() {
 
   if (!isReady || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm" style={{ color: "var(--text-muted)" }}>
+      <div
+        className="flex min-h-screen items-center justify-center text-sm"
+        style={{ color: "var(--text-muted)" }}
+      >
         Loading…
       </div>
     );

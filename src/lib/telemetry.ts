@@ -89,12 +89,10 @@ export function summarizeTelemetry(events: TelemetryEvent[]): TelemetryCounts {
   return {
     total: events.length,
     errors: events.filter((e) => e.level === "error").length,
-    notificationsSent: events.filter(
-      (e) => e.category === "notification" && e.level === "info",
-    ).length,
-    notificationsFailed: events.filter(
-      (e) => e.category === "notification" && e.level === "error",
-    ).length,
+    notificationsSent: events.filter((e) => e.category === "notification" && e.level === "info")
+      .length,
+    notificationsFailed: events.filter((e) => e.category === "notification" && e.level === "error")
+      .length,
     realtimeErrors: events.filter((e) => e.category === "realtime" && e.level === "error").length,
   };
 }

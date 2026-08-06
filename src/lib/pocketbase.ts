@@ -13,9 +13,10 @@ export const DEFAULT_POCKETBASE_URL = "http://167.86.106.152:8093";
 
 const configured = (import.meta.env["VITE_POCKETBASE_URL"] as string | undefined)?.trim();
 
-export const POCKETBASE_URL = configured && /^https?:\/\//.test(configured)
-  ? configured.replace(/\/+$/, "")
-  : DEFAULT_POCKETBASE_URL;
+export const POCKETBASE_URL =
+  configured && /^https?:\/\//.test(configured)
+    ? configured.replace(/\/+$/, "")
+    : DEFAULT_POCKETBASE_URL;
 
 if (!configured) {
   console.warn(
@@ -34,9 +35,7 @@ export async function safeSubscribe(
   callback: (event: { action: string; record: Record<string, unknown> }) => void,
 ): Promise<() => void> {
   try {
-    await pb
-      .collection(collection)
-      .subscribe(topic, callback as never);
+    await pb.collection(collection).subscribe(topic, callback as never);
     logTelemetry("realtime", "info", `Subscribed to ${collection}`, { topic });
   } catch (err) {
     logTelemetry("realtime", "error", `Subscription to ${collection} failed`, {

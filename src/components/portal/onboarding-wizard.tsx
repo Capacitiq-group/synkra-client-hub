@@ -43,8 +43,7 @@ function formatDate(value?: string | null) {
 export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user) as
-    | (Record<string, unknown> & { id: string; name?: string; email: string })
-    | null;
+    (Record<string, unknown> & { id: string; name?: string; email: string }) | null;
 
   const [step, setStep] = useState(1);
   const [businessName, setBusinessName] = useState("");
@@ -64,7 +63,11 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
   const save = (data: Record<string, unknown>) => saveUserFields(user.id, data);
 
   const closeWizard = (completed: boolean) => {
-    save(completed ? { onboarding_completed: true, onboarding_step: TOTAL_STEPS } : { onboarding_step: step });
+    save(
+      completed
+        ? { onboarding_completed: true, onboarding_step: TOTAL_STEPS }
+        : { onboarding_step: step },
+    );
     onClose();
   };
 
@@ -163,16 +166,23 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
         {step === 1 && (
           <div>
             <div
-              style={{ color: "var(--accent-green)", fontSize: 16, fontWeight: 800, letterSpacing: "0.1em" }}
+              style={{
+                color: "var(--accent-green)",
+                fontSize: 16,
+                fontWeight: 800,
+                letterSpacing: "0.1em",
+              }}
             >
               SYNKRA
             </div>
-            <h2 style={{ marginTop: 24, fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>
+            <h2
+              style={{ marginTop: 24, fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}
+            >
               {user.name ? `Welcome, ${user.name}` : "Welcome to Synkra"}
             </h2>
             <p style={{ marginTop: 12, fontSize: 15, color: "var(--text-secondary)" }}>
-              You are here because your business deserves to run more smoothly. This short guide will
-              help you activate your first automation in under 5 minutes.
+              You are here because your business deserves to run more smoothly. This short guide
+              will help you activate your first automation in under 5 minutes.
             </p>
             {String(user["user_type"] ?? "beta") === "beta" && (
               <div
@@ -206,7 +216,10 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
             </p>
             <div style={{ marginTop: 24, display: "grid", gap: 20 }}>
               <div style={{ display: "grid", gap: 6 }}>
-                <label htmlFor="ob-business" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+                <label
+                  htmlFor="ob-business"
+                  style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}
+                >
                   Business name
                 </label>
                 <input
@@ -218,7 +231,10 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
                 />
               </div>
               <div style={{ display: "grid", gap: 6 }}>
-                <label htmlFor="ob-industry" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+                <label
+                  htmlFor="ob-industry"
+                  style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}
+                >
                   Industry
                 </label>
                 <select
@@ -310,7 +326,9 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
                     onClick={() => setSelectedTemplate(template.template_id)}
                     className="text-left transition-colors"
                     style={{
-                      backgroundColor: selected ? "var(--accent-green-subtle)" : "var(--bg-elevated)",
+                      backgroundColor: selected
+                        ? "var(--accent-green-subtle)"
+                        : "var(--bg-elevated)",
                       border: `1px solid ${selected ? "var(--accent-green)" : "var(--border-default)"}`,
                       borderRadius: "var(--radius-md)",
                       padding: 14,
@@ -326,7 +344,14 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
                     >
                       {template.category}
                     </div>
-                    <div style={{ marginTop: 4, fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>
+                    <div
+                      style={{
+                        marginTop: 4,
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: "var(--text-primary)",
+                      }}
+                    >
                       {template.name}
                     </div>
                     <div style={{ marginTop: 4, fontSize: 13, color: "var(--text-secondary)" }}>
@@ -363,7 +388,9 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
                   className="flex items-center gap-3 rounded-sm px-2 py-3 text-left transition-colors"
                 >
                   <Icon size={18} style={{ color: "var(--accent-green)" }} />
-                  <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>
+                  <span
+                    style={{ flex: 1, fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}
+                  >
                     {label}
                   </span>
                   <ChevronRight size={16} style={{ color: "var(--text-muted)" }} />
@@ -375,10 +402,7 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
       </div>
 
       {/* Footer */}
-      <div
-        className="border-t px-5 py-4"
-        style={{ borderColor: "var(--border-default)" }}
-      >
+      <div className="border-t px-5 py-4" style={{ borderColor: "var(--border-default)" }}>
         <div className="flex items-center gap-3">
           {step > 1 && (
             <button
