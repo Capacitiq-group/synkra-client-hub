@@ -1,6 +1,6 @@
 // SECURITY: Always use pb.filter() for user-supplied values. Never interpolate strings.
 import { useQuery } from "@tanstack/react-query";
-import pb from "@/lib/pocketbase";
+import pb, { getFullListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface TemplateBlock {
@@ -44,12 +44,12 @@ export function useTemplates() {
     queryFn: async () => {
       if (!user) throw new Error("Not authenticated");
 
-      const templates = await pb.collection("workflow_templates").getFullList({
+      const templates = await getFullListSafe<Record<string, unknown> & { id: string }>("workflow_templates", {
         filter: "is_active = true",
         sort: "sort_order",
       });
 
-      const userWorkflows = await pb.collection("workflows").getFullList({
+      const userWorkflows = await getFullListSafe<Record<string, unknown> & { id: string }>("workflows", {
         filter: pb.filter("user_id = {:userId}", { userId: user.id }),
         fields: "id,template_id",
       });

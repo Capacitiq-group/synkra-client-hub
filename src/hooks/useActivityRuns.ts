@@ -1,6 +1,6 @@
 // SECURITY: Always use pb.filter() for user-supplied values. Never interpolate strings.
 import { useQuery } from "@tanstack/react-query";
-import pb from "@/lib/pocketbase";
+import pb, { getFullListSafe, getListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface StepLog {
@@ -117,7 +117,7 @@ export function useActivityRuns(filters: RunFilters = {}, page = 1) {
       });
 
 
-      const countsList = await pb.collection("workflow_runs").getFullList({
+      const countsList = await getFullListSafe<Record<string, unknown>>("workflow_runs", {
         filter,
         fields: "status",
       });

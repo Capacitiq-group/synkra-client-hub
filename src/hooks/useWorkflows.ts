@@ -1,6 +1,6 @@
 // SECURITY: Always use pb.filter() for user-supplied values. Never interpolate strings.
 import { useQuery } from "@tanstack/react-query";
-import pb from "@/lib/pocketbase";
+import pb, { getFullListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseJson, type WorkflowRecordShape } from "@/lib/workflow/types";
 import type { WorkflowBlock } from "@/lib/workflow/types";
@@ -38,13 +38,13 @@ export function useWorkflows() {
     queryFn: async () => {
       if (!user) throw new Error("Not authenticated");
 
-      const records = await pb.collection("workflows").getFullList({
+      const records = await getFullListSafe<Record<string, unknown> & { id: string }>("workflows", {
         filter: pb.filter("user_id = {:userId}", { userId: user.id }),
         sort: "-created",
       });
       const workflows = records.map((r) => mapRecord(r as unknown as Record<string, unknown>));
 
-      const runs = await pb.collection("workflow_runs").getFullList({
+      const runs = await getFullListSafe<Record<string, unknown>>("workflow_runs", {
         filter: pb.filter("user_id = {:userId} && status = 'success'", { userId: user.id }),
         fields: "workflow_id",
       });

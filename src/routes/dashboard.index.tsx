@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import pb from "@/lib/pocketbase";
+import pb, { getFullListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useTemplates } from "@/hooks/useTemplates";
@@ -40,7 +40,7 @@ function DashboardHome() {
     enabled: Boolean(user?.id),
     queryFn: async () => {
       if (!user) throw new Error("Not authenticated");
-      const records = await pb.collection("workflows").getFullList({
+      const records = await getFullListSafe<Record<string, unknown>>("workflows", {
         filter: pb.filter("user_id = {:userId}", { userId: user.id }),
         sort: "-updated",
       });

@@ -86,11 +86,13 @@ export async function getListSafe<T = Record<string, unknown>>(
   page: number,
   perPage: number,
   options: ListOptions = {},
-): Promise<{ items: T[]; totalItems: number }> {
+): Promise<{ items: T[]; totalItems: number; totalPages: number; page: number }> {
   try {
     return (await pb.collection(collection).getList(page, perPage, options)) as unknown as {
       items: T[];
       totalItems: number;
+      totalPages: number;
+      page: number;
     };
   } catch (err) {
     if (!isBadRequest(err) || !options["sort"]) throw err;
@@ -99,6 +101,8 @@ export async function getListSafe<T = Record<string, unknown>>(
     return (await pb.collection(collection).getList(page, perPage, rest)) as unknown as {
       items: T[];
       totalItems: number;
+      totalPages: number;
+      page: number;
     };
   }
 }
