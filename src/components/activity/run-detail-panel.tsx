@@ -138,7 +138,7 @@ function StepRow({
             {needsReconnect(step.error) && (
               <button
                 type="button"
-                onClick={() => navigate({ to: "/dashboard/settings" })}
+                onClick={() => navigate({ to: "/dashboard/settings", search: { tab: "integrations" } })}
                 className="synkra-focus inline-flex items-center gap-1.5 rounded-md border"
                 style={{
                   borderColor: "var(--border-default)",
