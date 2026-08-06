@@ -16,6 +16,12 @@ interface CollectionDef {
   schema: FieldDef[];
 }
 
+/** Collections created through the API do not get created/updated unless asked. */
+const AUTODATE_FIELDS: FieldDef[] = [
+  { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+  { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
+];
+
 const COLLECTIONS: CollectionDef[] = [
   {
     name: "workflow_templates",
@@ -177,13 +183,27 @@ export async function runFirstTimeSetup(
     progress.onStep("Creating collections");
     for (const collection of COLLECTIONS) {
       if (existingNames.has(collection.name)) continue;
-      const fields = collection.schema.map(normalizeField);
+      const fields = [...collection.schema.map(normalizeField), ...AUTODATE_FIELDS];
       await pb.collections.create({
         name: collection.name,
         type: collection.type,
         fields,
         schema: fields,
       });
+    }
+
+    progress.onStep("Adding any missing fields to existing collections");
+    for (const collection of COLLECTIONS) {
+      const existing = existingCollections.find((c) => c.name === collection.name);
+      if (!existing) continue;
+      const current = fieldsOf(existing);
+      const names = new Set(current.map((f) => f["name"] as string));
+      const missing = [...collection.schema.map(normalizeField), ...AUTODATE_FIELDS].filter(
+        (f) => !names.has(f["name"] as string),
+      );
+      if (missing.length === 0) continue;
+      const updated = [...current, ...missing];
+      await pb.collections.update(existing.id, { fields: updated, schema: updated });
     }
 
     progress.onStep("Extending the users collection");
