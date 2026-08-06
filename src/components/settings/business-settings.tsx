@@ -43,17 +43,15 @@ export function BusinessSettings() {
   const save = async () => {
     if (!form.business_name.trim()) return;
     try {
-      await pb
-        .collection("users")
-        .update(user.id, {
-          ...form,
-          business_name: sanitizeInput(form.business_name),
-          business_industry: sanitizeInput(form.business_industry),
-          business_address: sanitizeInput(form.business_address),
-          whatsapp_number: sanitizeInput(form.whatsapp_number),
-          review_link: sanitizeInput(form.review_link),
-          notification_email: sanitizeEmail(form.notification_email),
-        });
+      await pb.collection("users").update(user.id, {
+        ...form,
+        business_name: sanitizeInput(form.business_name),
+        business_industry: sanitizeInput(form.business_industry),
+        business_address: sanitizeInput(form.business_address),
+        whatsapp_number: sanitizeInput(form.whatsapp_number),
+        review_link: sanitizeInput(form.review_link),
+        notification_email: sanitizeEmail(form.notification_email),
+      });
       await refreshUser();
       toast.success("Business details saved");
     } catch {
