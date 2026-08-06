@@ -27,7 +27,6 @@ if (typeof globalThis.EventSource === "undefined") {
   }
 }
 
-
 const url = process.env.POCKETBASE_URL || "http://167.86.106.152:8093";
 const appUrl = (process.env.APP_URL || "").replace(/\/+$/, "");
 const email = process.env.SEED_OWNER_EMAIL || "rmolapisi@capacitiqgroup.co.za";

@@ -108,4 +108,3 @@ export async function getListSafe<T = Record<string, unknown>>(
 }
 
 export default pb;
-

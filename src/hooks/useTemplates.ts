@@ -44,15 +44,21 @@ export function useTemplates() {
     queryFn: async () => {
       if (!user) throw new Error("Not authenticated");
 
-      const templates = await getFullListSafe<Record<string, unknown> & { id: string }>("workflow_templates", {
-        filter: "is_active = true",
-        sort: "sort_order",
-      });
+      const templates = await getFullListSafe<Record<string, unknown> & { id: string }>(
+        "workflow_templates",
+        {
+          filter: "is_active = true",
+          sort: "sort_order",
+        },
+      );
 
-      const userWorkflows = await getFullListSafe<Record<string, unknown> & { id: string }>("workflows", {
-        filter: pb.filter("user_id = {:userId}", { userId: user.id }),
-        fields: "id,template_id",
-      });
+      const userWorkflows = await getFullListSafe<Record<string, unknown> & { id: string }>(
+        "workflows",
+        {
+          filter: pb.filter("user_id = {:userId}", { userId: user.id }),
+          fields: "id,template_id",
+        },
+      );
 
       const activated = new Map<string, string>();
       for (const w of userWorkflows) {

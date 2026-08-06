@@ -116,7 +116,6 @@ export function useActivityRuns(filters: RunFilters = {}, page = 1) {
         expand: "workflow_id",
       });
 
-
       const countsList = await getFullListSafe<Record<string, unknown>>("workflow_runs", {
         filter,
         fields: "status",
