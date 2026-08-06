@@ -99,24 +99,40 @@ function DashboardLayout() {
     if (onboarding) setWizardOpen(true);
   }, [onboarding]);
 
-  // Email the user when one of their workflow runs fails.
+  // Email the user when one of their workflow runs fails. Realtime can deliver
+  // several updates for the same run, so each run id is claimed once.
   useEffect(() => {
     if (!user || !user["notify_on_failure"]) return;
     const notificationEmail = String(user["notification_email"] || user.email || "");
-    void pb.collection("workflow_runs").subscribe("*", (event) => {
-      const record = event.record as unknown as Record<string, string>;
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+
+    void safeSubscribe("workflow_runs", "*", (event) => {
+      const record = event.record as Record<string, string>;
       if (event.action !== "update") return;
       if (record["user_id"] !== user.id || record["status"] !== "failed") return;
+      if (!claimNotification(`failure-${record["id"]}`)) {
+        logTelemetry("notification", "info", "Duplicate failure alert suppressed", {
+          run: record["id"],
+        });
+        return;
+      }
       void sendNotificationEmail({
         to: notificationEmail,
         subject: "A Synkra workflow has failed",
         body: `Hi,\n\nOne of your automations encountered an error.\n\nWorkflow run: ${record["id"]}\nError: ${record["error_message"] || "Unknown error"}\n\nGo to your Activity page to see the full details and retry the run.\n\nhttps://client.synkra.co.za/dashboard/activity\n\nSynkra`,
       });
+    }).then((unsub) => {
+      if (cancelled) unsub();
+      else cleanup = unsub;
     });
+
     return () => {
-      void pb.collection("workflow_runs").unsubscribe("*");
+      cancelled = true;
+      cleanup?.();
     };
   }, [user]);
+
 
   const closeWizard = () => {
     setWizardOpen(false);
