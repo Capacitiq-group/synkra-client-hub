@@ -250,6 +250,10 @@ function HelpPage() {
           </div>
         </Section>
 
+        <Section title="Diagnostics">
+          <DiagnosticsPanel />
+        </Section>
+
         <div
           className="flex flex-wrap gap-2 border-t pt-6"
           style={{ borderColor: "var(--border-default)", fontSize: 14, color: "var(--text-muted)" }}
