@@ -103,13 +103,7 @@ export function ProgressBar({ used, total }: { used: number; total: number }) {
   );
 }
 
-export function SectionHeading({
-  title,
-  action,
-}: {
-  title: string;
-  action?: React.ReactNode;
-}) {
+export function SectionHeading({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
     <div className="mb-4 flex items-end justify-between gap-4">
       <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{title}</h2>

@@ -1,6 +1,7 @@
 import type { WorkflowBlock } from "./types";
 
-const API_BASE = (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.synkra.co.za";
+const API_BASE =
+  (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.synkra.co.za";
 
 export interface TestStepLog {
   block_id?: string;
@@ -82,4 +83,3 @@ export async function retryRun(
   const response = await post(`/workflows/webhooks/run/${workflowId}`, inputData);
   if (!response.ok) throw new Error(`Retry failed with status ${response.status}`);
 }
-

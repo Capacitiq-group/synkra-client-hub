@@ -41,7 +41,14 @@ const inputStyle: React.CSSProperties = {
 
 function Wordmark() {
   return (
-    <div style={{ color: "var(--accent-green)", fontSize: 20, fontWeight: 800, letterSpacing: "0.1em" }}>
+    <div
+      style={{
+        color: "var(--accent-green)",
+        fontSize: 20,
+        fontWeight: 800,
+        letterSpacing: "0.1em",
+      }}
+    >
       SYNKRA
     </div>
   );
@@ -146,7 +153,12 @@ function LoginPage() {
           {PROOF.map((item, i) => (
             <div
               key={item}
-              style={{ display: "flex", alignItems: "center", gap: 12, marginTop: i === 0 ? 0 : 16 }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginTop: i === 0 ? 0 : 16,
+              }}
             >
               <Check size={14} style={{ color: "var(--accent-green)", flexShrink: 0 }} />
               <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>{item}</span>
@@ -156,10 +168,7 @@ function LoginPage() {
       </div>
 
       {/* Form column */}
-      <div
-        className="flex w-full flex-col justify-center p-8 md:p-16"
-        style={{ flexBasis: "45%" }}
-      >
+      <div className="flex w-full flex-col justify-center p-8 md:p-16" style={{ flexBasis: "45%" }}>
         <div className="w-full max-w-sm">
           <div className="md:hidden" style={{ marginBottom: 40 }}>
             <Wordmark />
@@ -197,7 +206,10 @@ function LoginPage() {
 
           <form onSubmit={handleSubmit} style={{ marginTop: 32 }}>
             <div style={{ display: "grid", gap: 6 }}>
-              <label htmlFor="email" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+              <label
+                htmlFor="email"
+                style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}
+              >
                 Email address
               </label>
               <input
@@ -220,7 +232,10 @@ function LoginPage() {
             </div>
 
             <div style={{ display: "grid", gap: 6, marginTop: 20 }}>
-              <label htmlFor="password" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+              <label
+                htmlFor="password"
+                style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}
+              >
                 Password
               </label>
               <div style={{ position: "relative" }}>

@@ -156,7 +156,9 @@ export function TemplatesSection({
                           backgroundColor: activated
                             ? "var(--accent-green-subtle)"
                             : "var(--accent-green)",
-                          color: activated ? "var(--accent-green)" : "var(--accent-green-foreground)",
+                          color: activated
+                            ? "var(--accent-green)"
+                            : "var(--accent-green-foreground)",
                           fontSize: 13,
                           padding: "6px 14px",
                         }}

@@ -45,10 +45,7 @@ export function resolveValue<T>(value: T, context: Record<string, unknown>): T {
 }
 
 /** Placeholders in a string that the given context cannot fill. */
-export function unresolvedPlaceholders(
-  value: unknown,
-  context: Record<string, unknown>,
-): string[] {
+export function unresolvedPlaceholders(value: unknown, context: Record<string, unknown>): string[] {
   const missing: string[] = [];
   const walk = (item: unknown) => {
     if (typeof item === "string") {

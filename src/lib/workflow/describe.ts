@@ -59,11 +59,17 @@ export function summariseConfig(block: WorkflowBlock): string | null {
     case "generate_pdf":
       return config["template"] ? `Uses the ${String(config["template"])} template` : null;
     case "summarise_ai":
-      return config["input"] ? `Summarises into {{${String(config["output_variable"] ?? "ai_summary")}}}` : null;
+      return config["input"]
+        ? `Summarises into {{${String(config["output_variable"] ?? "ai_summary")}}}`
+        : null;
     case "generate_reply_ai":
-      return config["message"] ? `Writes a ${String(config["tone"] ?? "Professional").toLowerCase()} reply` : null;
+      return config["message"]
+        ? `Writes a ${String(config["tone"] ?? "Professional").toLowerCase()} reply`
+        : null;
     case "extract_information_ai":
-      return config["input"] ? `Extracts into {{${String(config["output_variable"] ?? "extracted")}}}` : null;
+      return config["input"]
+        ? `Extracts into {{${String(config["output_variable"] ?? "extracted")}}}`
+        : null;
     case "send_whatsapp":
     case "send_sms":
       return config["to"] ? `Sends to ${String(config["to"])}` : null;
@@ -148,11 +154,7 @@ export function validateWorkflow(blocks: WorkflowBlock[]): ValidationResult {
 
 /** Variables available to a block, based on the blocks that run before it. */
 export function availableVariables(blocks: WorkflowBlock[], upToIndex: number): string[] {
-  const variables = new Set<string>([
-    "{{user.email}}",
-    "{{user.name}}",
-    "{{user.business_name}}",
-  ]);
+  const variables = new Set<string>(["{{user.email}}", "{{user.name}}", "{{user.business_name}}"]);
 
   blocks.slice(0, Math.max(upToIndex, 0)).forEach((block) => {
     if (block.type === "trigger") {

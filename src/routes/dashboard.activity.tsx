@@ -99,9 +99,7 @@ function ActivityPage() {
   const runs = data?.items ?? [];
   const counts = data?.counts ?? { total: 0, success: 0, failed: 0, running: 0 };
   const filtered =
-    Boolean(filters.workflowId) ||
-    filters.status !== "all" ||
-    filters.dateRange !== "7days";
+    Boolean(filters.workflowId) || filters.status !== "all" || filters.dateRange !== "7days";
 
   return (
     <div className="p-4 sm:p-6" style={{ paddingRight: !isMobile && detail ? 500 : undefined }}>

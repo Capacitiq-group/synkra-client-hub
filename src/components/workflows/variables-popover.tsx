@@ -80,9 +80,7 @@ export function VariablesPopover({
                   color: "var(--text-secondary)",
                   padding: "6px 8px",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "var(--bg-elevated)")
-                }
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-elevated)")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
                 {variable}
@@ -166,9 +164,7 @@ export function VariableField({
           style={fieldStyle}
         />
       )}
-      {hint && (
-        <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{hint}</p>
-      )}
+      {hint && <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{hint}</p>}
     </div>
   );
 }

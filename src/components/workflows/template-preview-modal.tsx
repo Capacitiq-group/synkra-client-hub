@@ -90,7 +90,9 @@ export function TemplatePreviewModal({
                 </span>
                 <span className="min-w-0">
                   <span className="flex items-center gap-2">
-                    {Icon && <Icon size={14} style={{ color: definition?.color }} aria-hidden="true" />}
+                    {Icon && (
+                      <Icon size={14} style={{ color: definition?.color }} aria-hidden="true" />
+                    )}
                     <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
                       {block.label}
                     </span>
@@ -124,7 +126,10 @@ export function TemplatePreviewModal({
               A connected Twilio account for WhatsApp or SMS sending
             </li>
           ) : (
-            <li className="flex items-center gap-2" style={{ fontSize: 14, color: "var(--text-secondary)" }}>
+            <li
+              className="flex items-center gap-2"
+              style={{ fontSize: 14, color: "var(--text-secondary)" }}
+            >
               <Check size={15} style={{ color: "var(--state-success)" }} aria-hidden="true" />
               Email sending configured. This is already set up for you.
             </li>

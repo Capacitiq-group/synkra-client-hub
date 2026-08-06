@@ -1,6 +1,6 @@
 // SECURITY: Always use pb.filter() for user-supplied values. Never interpolate strings.
 import { useQuery } from "@tanstack/react-query";
-import pb from "@/lib/pocketbase";
+import pb, { getListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface RecentRun {
@@ -23,11 +23,16 @@ export function useRecentRuns() {
     queryFn: async () => {
       if (!user) throw new Error("Not authenticated");
 
-      const runs = await pb.collection("workflow_runs").getList(1, 5, {
-        filter: pb.filter("user_id = {:userId}", { userId: user.id }),
-        sort: "-triggered_at",
-        expand: "workflow_id",
-      });
+      const runs = await getListSafe<Record<string, unknown> & { id: string; expand?: unknown }>(
+        "workflow_runs",
+        1,
+        5,
+        {
+          filter: pb.filter("user_id = {:userId}", { userId: user.id }),
+          sort: "-triggered_at",
+          expand: "workflow_id",
+        },
+      );
 
       return runs.items.map((run) => {
         const expanded = (run.expand as { workflow_id?: { name?: string } } | undefined)?.[

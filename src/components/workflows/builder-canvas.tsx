@@ -53,10 +53,7 @@ export function BuilderCanvas({
       style={{
         height: overIndex === index ? 40 : 20,
         borderRadius: 8,
-        border:
-          overIndex === index
-            ? "1px dashed var(--accent-green)"
-            : "1px dashed transparent",
+        border: overIndex === index ? "1px dashed var(--accent-green)" : "1px dashed transparent",
         backgroundColor: overIndex === index ? "var(--accent-green-subtle)" : "transparent",
         transition: "height 120ms ease",
       }}
@@ -78,8 +75,7 @@ export function BuilderCanvas({
             border: "1px dashed var(--border-strong)",
             borderRadius: "var(--radius-lg)",
             padding: "48px 24px",
-            backgroundColor:
-              overIndex === 0 ? "var(--accent-green-subtle)" : "transparent",
+            backgroundColor: overIndex === 0 ? "var(--accent-green-subtle)" : "transparent",
           }}
         >
           <p style={{ fontSize: 15, color: "var(--text-secondary)" }}>

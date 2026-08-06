@@ -16,6 +16,12 @@ interface CollectionDef {
   schema: FieldDef[];
 }
 
+/** Collections created through the API do not get created/updated unless asked. */
+const AUTODATE_FIELDS: FieldDef[] = [
+  { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+  { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
+];
+
 const COLLECTIONS: CollectionDef[] = [
   {
     name: "workflow_templates",
@@ -90,13 +96,7 @@ const COLLECTIONS: CollectionDef[] = [
         type: "select",
         required: true,
         options: {
-          values: [
-            "whatsapp",
-            "google_calendar",
-            "google_sheets",
-            "twilio_sms",
-            "resend_email",
-          ],
+          values: ["whatsapp", "google_calendar", "google_sheets", "twilio_sms", "resend_email"],
         },
       },
       {
@@ -144,8 +144,9 @@ async function authenticateAdmin(pb: PocketBase, email: string, password: string
   try {
     await pb.collection("_superusers").authWithPassword(email, password);
   } catch (err) {
-    const legacy = (pb as unknown as { admins?: { authWithPassword: (e: string, p: string) => Promise<unknown> } })
-      .admins;
+    const legacy = (
+      pb as unknown as { admins?: { authWithPassword: (e: string, p: string) => Promise<unknown> } }
+    ).admins;
     if (!legacy) throw err;
     await legacy.authWithPassword(email, password);
   }
@@ -162,7 +163,6 @@ function normalizeField(field: FieldDef): FieldDef {
   if (!options) return rest;
   return { ...rest, ...options, maxSelect: (options["maxSelect"] as number) ?? 1 };
 }
-
 
 export async function runFirstTimeSetup(
   pbUrl: string,
@@ -183,7 +183,7 @@ export async function runFirstTimeSetup(
     progress.onStep("Creating collections");
     for (const collection of COLLECTIONS) {
       if (existingNames.has(collection.name)) continue;
-      const fields = collection.schema.map(normalizeField);
+      const fields = [...collection.schema.map(normalizeField), ...AUTODATE_FIELDS];
       await pb.collections.create({
         name: collection.name,
         type: collection.type,
@@ -192,13 +192,28 @@ export async function runFirstTimeSetup(
       });
     }
 
+    progress.onStep("Adding any missing fields to existing collections");
+    for (const collection of COLLECTIONS) {
+      const existing = existingCollections.find((c) => c.name === collection.name);
+      if (!existing) continue;
+      const current = fieldsOf(existing);
+      const names = new Set(current.map((f) => f["name"] as string));
+      const missing = [...collection.schema.map(normalizeField), ...AUTODATE_FIELDS].filter(
+        (f) => !names.has(f["name"] as string),
+      );
+      if (missing.length === 0) continue;
+      const updated = [...current, ...missing];
+      await pb.collections.update(existing.id, { fields: updated, schema: updated });
+    }
 
     progress.onStep("Extending the users collection");
     const usersCollection = existingCollections.find((c) => c.name === "users");
     if (usersCollection) {
       const current = fieldsOf(usersCollection);
       const existingFieldNames = new Set(current.map((f) => f["name"] as string));
-      const newFields = USER_FIELDS.filter((f) => !existingFieldNames.has(f["name"] as string)).map(normalizeField);
+      const newFields = USER_FIELDS.filter((f) => !existingFieldNames.has(f["name"] as string)).map(
+        normalizeField,
+      );
       if (newFields.length > 0) {
         const updated = [...current, ...newFields];
         await pb.collections.update(usersCollection.id, {

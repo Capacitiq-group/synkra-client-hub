@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Mail, PlayCircle } from "lucide-react";
+import { DiagnosticsPanel } from "@/components/portal/diagnostics-panel";
 
 export const Route = createFileRoute("/dashboard/help")({
   head: () => ({
@@ -86,7 +87,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function VideoCard({ title, description, url }: { title: string; description: string; url?: string }) {
+function VideoCard({
+  title,
+  description,
+  url,
+}: {
+  title: string;
+  description: string;
+  url?: string;
+}) {
   const [hover, setHover] = useState(false);
   const thumb = (
     <div
@@ -95,11 +104,12 @@ function VideoCard({ title, description, url }: { title: string; description: st
     >
       <PlayCircle
         size={44}
-        style={{ color: url && hover ? "var(--accent-green)" : "var(--text-muted)", transition: "color 150ms ease" }}
+        style={{
+          color: url && hover ? "var(--accent-green)" : "var(--text-muted)",
+          transition: "color 150ms ease",
+        }}
       />
-      {!url && (
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Coming soon</span>
-      )}
+      {!url && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Coming soon</span>}
     </div>
   );
   return (
@@ -160,7 +170,9 @@ function FaqItem({
         className="flex w-full items-center justify-between gap-4 py-4 text-left"
         aria-expanded={open}
       >
-        <span style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>{question}</span>
+        <span style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>
+          {question}
+        </span>
         <ChevronDown
           size={18}
           className="shrink-0"
@@ -202,7 +214,12 @@ function HelpPage() {
         <Section title="Getting started">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {VIDEOS.map(([title, description, url]) => (
-              <VideoCard key={title} title={title} description={description} url={url || undefined} />
+              <VideoCard
+                key={title}
+                title={title}
+                description={description}
+                url={url || undefined}
+              />
             ))}
           </div>
         </Section>
@@ -248,6 +265,10 @@ function HelpPage() {
               </a>
             </div>
           </div>
+        </Section>
+
+        <Section title="Diagnostics">
+          <DiagnosticsPanel />
         </Section>
 
         <div

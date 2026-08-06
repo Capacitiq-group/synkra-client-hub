@@ -1,6 +1,6 @@
 // SECURITY: Always use pb.filter() for user-supplied values. Never interpolate strings.
 import { useQuery } from "@tanstack/react-query";
-import pb from "@/lib/pocketbase";
+import pb, { getFullListSafe, getListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface StepLog {
@@ -110,13 +110,13 @@ export function useActivityRuns(filters: RunFilters = {}, page = 1) {
       }
       const filter = parts.join(" && ");
 
-      const runs = await pb.collection("workflow_runs").getList(page, 20, {
+      const runs = await getListSafe<Record<string, unknown>>("workflow_runs", page, 20, {
         filter,
         sort: "-triggered_at",
         expand: "workflow_id",
       });
 
-      const countsList = await pb.collection("workflow_runs").getFullList({
+      const countsList = await getFullListSafe<Record<string, unknown>>("workflow_runs", {
         filter,
         fields: "status",
       });
@@ -148,9 +148,7 @@ export function useRunDetail(runId: string | null) {
     enabled: Boolean(runId) && Boolean(user?.id),
     queryFn: async () => {
       if (!runId) return null;
-      const record = await pb
-        .collection("workflow_runs")
-        .getOne(runId, { expand: "workflow_id" });
+      const record = await pb.collection("workflow_runs").getOne(runId, { expand: "workflow_id" });
       return mapRun(record as unknown as Record<string, unknown>);
     },
     staleTime: 0,

@@ -126,9 +126,7 @@ function StepRow({
             padding: "12px 16px",
           }}
         >
-          <p style={{ fontSize: 13, fontWeight: 500, color: "var(--state-error)" }}>
-            {step.error}
-          </p>
+          <p style={{ fontSize: 13, fontWeight: 500, color: "var(--state-error)" }}>{step.error}</p>
           {explanation && (
             <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
               {explanation}
@@ -138,7 +136,9 @@ function StepRow({
             {needsReconnect(step.error) && (
               <button
                 type="button"
-                onClick={() => navigate({ to: "/dashboard/settings" })}
+                onClick={() =>
+                  navigate({ to: "/dashboard/settings", search: { tab: "integrations" } })
+                }
                 className="synkra-focus inline-flex items-center gap-1.5 rounded-md border"
                 style={{
                   borderColor: "var(--border-default)",
@@ -255,7 +255,12 @@ export function RunDetailPanel({
           >
             <ExternalLink size={15} style={{ color: "var(--text-muted)" }} />
           </button>
-          <button type="button" aria-label="Close" className="synkra-focus rounded-sm" onClick={onClose}>
+          <button
+            type="button"
+            aria-label="Close"
+            className="synkra-focus rounded-sm"
+            onClick={onClose}
+          >
             <X size={16} style={{ color: "var(--text-muted)" }} />
           </button>
         </div>
@@ -265,12 +270,20 @@ export function RunDetailPanel({
         <div className="flex flex-wrap items-center gap-4" style={{ fontSize: 13 }}>
           <RunStatusBadge status={run.status} />
           <span
-            style={{ color: "var(--text-secondary)", borderLeft: "1px solid var(--border-subtle)", paddingLeft: 16 }}
+            style={{
+              color: "var(--text-secondary)",
+              borderLeft: "1px solid var(--border-subtle)",
+              paddingLeft: 16,
+            }}
           >
             {fullDateTime(run.triggeredAt)}
           </span>
           <span
-            style={{ color: "var(--text-secondary)", borderLeft: "1px solid var(--border-subtle)", paddingLeft: 16 }}
+            style={{
+              color: "var(--text-secondary)",
+              borderLeft: "1px solid var(--border-subtle)",
+              paddingLeft: 16,
+            }}
           >
             {run.status === "running" ? (
               <LiveTimer from={run.triggeredAt} />

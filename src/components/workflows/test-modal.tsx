@@ -84,10 +84,13 @@ export function TestModal({
           className="flex items-center justify-between p-4"
           style={{ borderBottom: "1px solid var(--border-default)" }}
         >
-          <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
-            Test run
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="synkra-focus rounded-sm">
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>Test run</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="synkra-focus rounded-sm"
+          >
             <X size={16} style={{ color: "var(--text-muted)" }} />
           </button>
         </div>
@@ -142,13 +145,15 @@ export function TestModal({
                       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                         Step {index + 1}
                       </span>
-                      <span
-                        style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}
-                      >
+                      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
                         {step.block.label}
                       </span>
                       {running && !log && (
-                        <Loader2 size={14} className="animate-spin" style={{ color: "var(--state-info)" }} />
+                        <Loader2
+                          size={14}
+                          className="animate-spin"
+                          style={{ color: "var(--state-info)" }}
+                        />
                       )}
                       {log?.success === true && (
                         <CheckCircle size={14} style={{ color: "var(--state-success)" }} />

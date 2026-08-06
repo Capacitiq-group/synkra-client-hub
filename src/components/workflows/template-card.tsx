@@ -5,7 +5,11 @@ import type { PortalTemplate } from "@/hooks/useTemplates";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 
 const dotColor = (kind: string) =>
-  kind === "trigger" ? "var(--accent-green)" : kind === "logic" ? "var(--state-warning)" : "var(--state-info)";
+  kind === "trigger"
+    ? "var(--accent-green)"
+    : kind === "logic"
+      ? "var(--state-warning)"
+      : "var(--state-info)";
 
 export function TemplateCard({
   template,
@@ -122,7 +126,10 @@ export function TemplateCard({
       <div className="mt-4 flex items-center gap-1.5" style={{ fontSize: 11 }}>
         <span style={{ color: "var(--text-muted)" }}>Needs:</span>
         {needsWhatsApp ? (
-          <span className="inline-flex items-center gap-1" style={{ color: "var(--state-warning)" }}>
+          <span
+            className="inline-flex items-center gap-1"
+            style={{ color: "var(--state-warning)" }}
+          >
             WhatsApp
             <span title="Available when Twilio is connected">
               <Info size={12} aria-hidden="true" />
@@ -134,7 +141,10 @@ export function TemplateCard({
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3">
-        <span className="flex items-center gap-1.5" style={{ fontSize: 12, color: "var(--text-muted)" }}>
+        <span
+          className="flex items-center gap-1.5"
+          style={{ fontSize: 12, color: "var(--text-muted)" }}
+        >
           <Clock size={12} aria-hidden="true" />
           Takes about 2 minutes to activate
         </span>
