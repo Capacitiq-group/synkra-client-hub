@@ -16,6 +16,18 @@
  */
 import PocketBase from "pocketbase";
 
+// PocketBase realtime needs EventSource. Node exposes it only behind a flag on
+// some releases, so fall back to undici's implementation when it is missing.
+if (typeof globalThis.EventSource === "undefined") {
+  try {
+    const undici = await import("undici");
+    if (undici.EventSource) globalThis.EventSource = undici.EventSource;
+  } catch {
+    console.warn("[smoke] EventSource unavailable, run node with --experimental-eventsource");
+  }
+}
+
+
 const url = process.env.POCKETBASE_URL || "http://167.86.106.152:8093";
 const appUrl = (process.env.APP_URL || "").replace(/\/+$/, "");
 const email = process.env.SEED_OWNER_EMAIL || "rmolapisi@capacitiqgroup.co.za";
