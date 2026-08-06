@@ -6,8 +6,9 @@ import { ThemeToggle } from "@/components/portal/theme-toggle";
 import { SessionWarningModal } from "@/components/portal/session-warning-modal";
 import { OnboardingWizard } from "@/components/portal/onboarding-wizard";
 import { PWAInstallPrompt } from "@/components/portal/pwa-install-prompt";
-import pb from "@/lib/pocketbase";
-import { sendNotificationEmail } from "@/lib/notifications";
+import pb, { safeSubscribe } from "@/lib/pocketbase";
+import { claimNotification, sendNotificationEmail } from "@/lib/notifications";
+import { logTelemetry } from "@/lib/telemetry";
 import { getLastActivity, initSession, isSessionExpired, teardownSession } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth";
 
