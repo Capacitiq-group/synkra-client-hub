@@ -3,8 +3,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies (copy .npmrc FIRST so npm sees legacy-peer-deps)
 COPY package*.json ./
+COPY .npmrc ./
 RUN npm install
 
 # Copy source and build
