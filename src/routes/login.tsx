@@ -327,9 +327,27 @@ function LoginPage() {
                 Too many attempts will temporarily lock this email.
               </p>
             )}
+
+            {/* NEW: Sign up link */}
+            <div
+              style={{
+                marginTop: 20,
+                textAlign: "center",
+                fontSize: 13,
+                color: "var(--text-secondary)",
+              }}
+            >
+              Don't have an account?{" "}
+              <Link
+                to="/signup"
+                style={{ color: "var(--accent-green)", textDecoration: "none", fontWeight: 600 }}
+              >
+                Create one
+              </Link>
+            </div>
           </form>
         </div>
       </div>
     </div>
   );
-}
+                }
