@@ -21,10 +21,11 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/server-runtime ./server-runtime
 
 # For TanStack Start / Nitro
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["node", "./dist/server/index.mjs"]
+CMD ["node", "./server-runtime/node-entry.mjs"]
