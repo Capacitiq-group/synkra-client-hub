@@ -57,6 +57,64 @@ export async function signIn(
   }
 }
 
+export async function signUp(
+  email: string,
+  password: string,
+  userData: {
+    name: string;
+    business_name?: string;
+    business_industry?: string;
+    user_type?: "beta" | "paid";
+  }
+): Promise<{ success: boolean; error?: string; user?: AuthUser }> {
+  const cleanEmail = sanitizeEmail(email);
+
+  const rl = checkRateLimit(`signup-${cleanEmail}`, 3, 15 * 60 * 1000);
+  if (!rl.allowed) {
+    const minutes = Math.ceil(rl.remainingMs / 60000);
+    return { success: false, error: `rate_limited:${minutes}` };
+  }
+
+  try {
+    const result = await pb.collection("users").create({
+      email: cleanEmail,
+      password: password,
+      passwordConfirm: password,
+      name: userData.name,
+      business_name: userData.business_name || "",
+      business_industry: userData.business_industry || "",
+      user_type: userData.user_type || "beta",
+      credit_emails: 100,
+      credit_emails_used: 0,
+      credit_workflows: 2000,
+      credit_workflows_used: 0,
+      notify_on_failure: true,
+      notify_weekly_summary: true,
+      notify_on_success: false,
+      notify_credit_low: true,
+      notify_platform_updates: false,
+    });
+
+    // Auto-login after successful registration
+    await pb.collection("users").authWithPassword(cleanEmail, password);
+    clearRateLimit(`signup-${cleanEmail}`);
+
+    return { success: true, user: result as unknown as AuthUser };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (/already exists/i.test(message)) {
+      return { success: false, error: "email_exists" };
+    }
+    if (/password.*match|passwordConfirm/i.test(message)) {
+      return { success: false, error: "password_mismatch" };
+    }
+    if (/required/i.test(message)) {
+      return { success: false, error: "missing_fields" };
+    }
+    return { success: false, error: "unknown" };
+  }
+}
+
 export async function signOut(): Promise<void> {
   pb.authStore.clear();
 }
