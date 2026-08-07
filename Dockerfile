@@ -1,33 +1,29 @@
+# syntax=docker/dockerfile:1
 FROM node:22-alpine AS builder
+
 WORKDIR /app
+
+# Install dependencies
 COPY package*.json ./
 RUN npm install
+
+# Copy source and build
 COPY . .
-
-# Vite reads these at build time and embeds them in the browser bundle.
-ARG VITE_POCKETBASE_URL
-ARG VITE_APP_URL
-ARG VITE_APP_NAME
-ARG VITE_API_URL
-ARG VITE_LOOM_VIDEO_TEMPLATES
-ARG VITE_LOOM_VIDEO_BUILDER
-ARG VITE_LOOM_VIDEO_LOGS
-
-ENV VITE_POCKETBASE_URL=$VITE_POCKETBASE_URL
-ENV VITE_APP_URL=$VITE_APP_URL
-ENV VITE_APP_NAME=$VITE_APP_NAME
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_LOOM_VIDEO_TEMPLATES=$VITE_LOOM_VIDEO_TEMPLATES
-ENV VITE_LOOM_VIDEO_BUILDER=$VITE_LOOM_VIDEO_BUILDER
-ENV VITE_LOOM_VIDEO_LOGS=$VITE_LOOM_VIDEO_LOGS
-
 RUN npm run build
 
+# Production stage
 FROM node:22-alpine AS runner
+
 WORKDIR /app
+
+# Copy built app and node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+# For TanStack Start / Nitro
 ENV NODE_ENV=production
-COPY --from=builder /app/.output ./.output
-EXPOSE 3000
 ENV PORT=3000
-ENV HOST=0.0.0.0
-CMD ["node", ".output/server/index.mjs"]
+EXPOSE 3000
+
+CMD ["node", "./dist/server/index.mjs"]
