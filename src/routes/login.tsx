@@ -122,10 +122,10 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen text-left" style={{ backgroundColor: "var(--bg-primary)" }}>
-      {/* Left editorial column */}
+    <div className="flex min-h-screen flex-col md:flex-row text-left" style={{ backgroundColor: "var(--bg-primary)" }}>
+      {/* Left editorial column - hidden on mobile */}
       <div
-        className="hidden flex-col justify-center border-r md:flex"
+        className="hidden md:flex flex-col justify-center border-r"
         style={{
           width: "55%",
           backgroundColor: "var(--bg-card)",
@@ -167,9 +167,9 @@ function LoginPage() {
         </div>
       </div>
 
-      {/* Form column */}
-      <div className="flex w-full flex-col justify-center p-8 md:p-16" style={{ flexBasis: "45%" }}>
-        <div className="w-full max-w-sm">
+      {/* Form column - full width on mobile */}
+      <div className="flex w-full flex-col justify-center p-8 md:p-16 md:w-[45%]">
+        <div className="w-full max-w-sm mx-auto">
           <div className="md:hidden" style={{ marginBottom: 40 }}>
             <Wordmark />
           </div>
@@ -328,7 +328,7 @@ function LoginPage() {
               </p>
             )}
 
-            {/* NEW: Sign up link */}
+            {/* Sign up link */}
             <div
               style={{
                 marginTop: 20,
@@ -350,4 +350,4 @@ function LoginPage() {
       </div>
     </div>
   );
-                }
+}
