@@ -6,6 +6,13 @@ WORKDIR /app
 # Install dependencies (copy .npmrc FIRST so npm sees legacy-peer-deps)
 COPY package*.json ./
 COPY .npmrc ./
+# Remove any committed lockfile before installing. Rollup ships
+# platform-specific optional native binaries (e.g. @rollup/rollup-linux-x64-musl),
+# and a lockfile generated on a different OS/architecture can cause npm to
+# skip installing the correct one for this Alpine/musl build container
+# (see https://github.com/npm/cli/issues/4828). Deleting it forces a fresh,
+# platform-correct resolution.
+RUN rm -f package-lock.json
 RUN npm install
 
 # Copy source and build
