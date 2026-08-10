@@ -335,7 +335,7 @@ function WorkflowsPage() {
             <div className="mt-6">
               <SectionError label="templates" onRetry={() => templatesQuery.refetch()} />
             </div>
-          ) : templatesQuery.isLoading ? (
+          ) : templatesQuery.isPending ? (
             <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
               {[0, 1, 2].map((i) => (
                 <div
@@ -524,4 +524,5 @@ function WorkflowsPage() {
       )}
     </div>
   );
-}
+                 }
+  
