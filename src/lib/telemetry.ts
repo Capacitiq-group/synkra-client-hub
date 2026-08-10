@@ -35,7 +35,7 @@ export function logTelemetry(
     category,
     level,
     message,
-    meta,
+    ...(meta ? { meta } : {}),
   };
   events = [event, ...events].slice(0, MAX_EVENTS);
   notify();
@@ -90,4 +90,4 @@ export function summarizeTelemetry(list: TelemetryEvent[]): {
 // Kept for any legacy call sites; no-op passthrough onto the log.
 export function trackEvent(name: string, props?: Record<string, unknown>): void {
   logTelemetry("event", "info", name, props);
-           }
+}
