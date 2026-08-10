@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth";
 import { sanitizeEmail, isValidEmail, sanitizeInput } from "@/lib/sanitize";
+import { connectionProblemMessage } from "@/lib/auth";
+import { isNetworkFailure } from "@/lib/pocketbase";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -55,13 +57,11 @@ function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rawError, setRawError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setRawError(null);
 
     const cleanEmail = sanitizeEmail(sanitizeInput(email));
     if (!isValidEmail(cleanEmail)) {
@@ -89,10 +89,10 @@ function SignUpPage() {
       });
       navigate({ to: "/dashboard", replace: true });
     } catch (err) {
-      // Show the EXACT raw error for debugging
-      const raw = err instanceof Error ? err.message : JSON.stringify(err);
-      setRawError(raw);
-      
+      if (isNetworkFailure(err)) {
+        setError(connectionProblemMessage());
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Could not create account.";
       if (/already exists/i.test(msg)) {
         setError("An account with this email already exists.");
@@ -352,26 +352,6 @@ function SignUpPage() {
               </div>
             )}
 
-            {/* DEBUG: Show raw error for troubleshooting */}
-            {rawError && (
-              <div
-                style={{
-                  marginTop: 12,
-                  backgroundColor: "#1a1a1a",
-                  border: "1px solid #333",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "10px 14px",
-                  fontSize: 12,
-                  color: "#ff6b6b",
-                  fontFamily: "monospace",
-                  wordBreak: "break-all",
-                }}
-              >
-                <strong>Debug info:</strong><br/>
-                {rawError}
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={busy}
@@ -416,4 +396,4 @@ function SignUpPage() {
       </div>
     </div>
   );
-}
+                }
