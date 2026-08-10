@@ -9,7 +9,7 @@ import { logTelemetry } from "./telemetry";
  * localhost, so a misconfigured build still authenticates rather than failing
  * with a confusing "email or password is not correct" message.
  */
-export const DEFAULT_POCKETBASE_URL = "http://167.86.106.152:8093";
+export const DEFAULT_POCKETBASE_URL = "http://127.0.0.1:8090";
 
 const configured = (import.meta.env["VITE_POCKETBASE_URL"] as string | undefined)?.trim();
 
@@ -18,11 +18,46 @@ export const POCKETBASE_URL =
     ? configured.replace(/\/+$/, "")
     : DEFAULT_POCKETBASE_URL;
 
+/**
+ * True when the page is served over TLS but PocketBase is configured over
+ * plain HTTP. The browser blocks these requests outright (mixed content), so
+ * every call fails before it leaves the tab. This is a deployment problem:
+ * PocketBase must sit behind a reverse proxy with its own certificate.
+ */
+export function isMixedContentConfig(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.protocol === "https:" && POCKETBASE_URL.startsWith("http://");
+}
+
+/** True when the failure never reached PocketBase (DNS, TLS, CORS, offline). */
+export function isNetworkFailure(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { status?: number; isAbort?: boolean; originalError?: unknown; message?: string };
+  if (e.isAbort) return false;
+  // PocketBase's ClientResponseError uses status 0 for transport-level failures.
+  if (e.status === 0) return true;
+  return /failed to fetch|networkerror|load failed|fetch failed/i.test(e.message ?? "");
+}
+
+/** A user-facing message that names the actual problem instead of "something went wrong". */
+export function describeConnectionProblem(): string {
+  if (isMixedContentConfig()) {
+    return `Cannot reach the Synkra server: this site is served over HTTPS but the API is configured as ${POCKETBASE_URL} (plain HTTP), so the browser blocks the request. The API must be served over HTTPS.`;
+  }
+  return `Cannot reach the Synkra server at ${POCKETBASE_URL}. It may be offline, unreachable over HTTPS, or not allowing requests from ${
+    typeof window === "undefined" ? "this site" : window.location.origin
+  } (CORS).`;
+}
+
 if (!configured) {
   console.warn(
     `[Synkra] VITE_POCKETBASE_URL is not set. Falling back to ${DEFAULT_POCKETBASE_URL}. ` +
       "Set it as a build argument in Coolify.",
   );
+}
+
+if (isMixedContentConfig()) {
+  console.error(`[Synkra] ${describeConnectionProblem()}`);
 }
 
 const pb = new PocketBase(POCKETBASE_URL);
