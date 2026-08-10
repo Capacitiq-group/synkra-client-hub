@@ -2,7 +2,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
-import { signIn } from "@/lib/auth";
+import { connectionProblemMessage, signIn } from "@/lib/auth";
 import { isValidEmail, sanitizeEmail, sanitizeInput } from "@/lib/sanitize";
 import { resetActivity } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth";
@@ -112,6 +112,8 @@ function LoginPage() {
     if (code.startsWith("rate_limited:")) {
       setLockMinutes(Number(code.split(":")[1]) || 15);
       setError("Too many failed attempts. Please wait 15 minutes before trying again.");
+    } else if (code === "unreachable") {
+      setError(connectionProblemMessage());
     } else if (code === "not_verified") {
       setError("Please verify your email address before signing in. Check your inbox.");
     } else if (code === "suspended") {
@@ -350,4 +352,5 @@ function LoginPage() {
       </div>
     </div>
   );
-}
+                                                           }
+                           
