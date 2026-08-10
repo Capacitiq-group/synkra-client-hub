@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import pb from "@/lib/pocketbase";
 import { getCurrentUser, type AuthUser } from "@/lib/auth";
+import { useAuthStore } from "@/stores/auth";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -8,37 +9,37 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isLoading: true,
-  refreshUser: async () => {},
-});
-
+/**
+ * The portal keeps its single source of auth truth in the zustand store
+ * (hydrated from the persisted PocketBase auth store in the root route).
+ * `useAuth` reads from that store directly, so it works everywhere without a
+ * provider having to be mounted — previously this hook fell back to an empty
+ * default context, which silently disabled every `enabled: Boolean(user?.id)`
+ * query (templates, stats, activity) and rendered them as "no data".
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    if (!useAuthStore.getState().isReady) useAuthStore.getState().hydrate();
+  }, []);
+  return <>{children}</>;
+}
 
-  const refreshUser = async () => {
+export function useAuth(): AuthContextType {
+  const storeUser = useAuthStore((state) => state.user);
+  const isReady = useAuthStore((state) => state.isReady);
+
+  const refreshUser = useCallback(async () => {
     if (!pb.authStore.isValid) return;
     try {
       await pb.collection("users").authRefresh();
-      setUser(getCurrentUser());
     } catch {
       pb.authStore.clear();
-      setUser(null);
     }
-  };
-
-  useEffect(() => {
-    setUser(getCurrentUser());
-    setIsLoading(false);
-    const unsubscribe = pb.authStore.onChange(() => setUser(getCurrentUser()));
-    return () => unsubscribe();
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, refreshUser }}>{children}</AuthContext.Provider>
-  );
+  return {
+    user: (storeUser as unknown as AuthUser | null) ?? (isReady ? getCurrentUser() : null),
+    isLoading: !isReady,
+    refreshUser,
+  };
 }
-
-export const useAuth = () => useContext(AuthContext);
