@@ -1,5 +1,5 @@
 // SECURITY: Always use pb.filter() for user-supplied values. Never interpolate strings.
-import pb from "./pocketbase";
+import pb, { describeConnectionProblem, isNetworkFailure } from "./pocketbase";
 import { sanitizeEmail } from "./sanitize";
 import { checkRateLimit, clearRateLimit } from "./rateLimit";
 
@@ -47,6 +47,7 @@ export async function signIn(
     clearRateLimit(`login-${cleanEmail}`);
     return { success: true, user: result.record as unknown as AuthUser };
   } catch (err) {
+    if (isNetworkFailure(err)) return { success: false, error: "unreachable" };
     const message = err instanceof Error ? err.message : "";
     if (/not verified|verify/i.test(message)) return { success: false, error: "not_verified" };
     if (/suspend|disabled|banned/i.test(message)) return { success: false, error: "suspended" };
@@ -101,6 +102,7 @@ export async function signUp(
 
     return { success: true, user: result as unknown as AuthUser };
   } catch (err) {
+    if (isNetworkFailure(err)) return { success: false, error: "unreachable" };
     const message = err instanceof Error ? err.message : "";
     if (/already exists/i.test(message)) {
       return { success: false, error: "email_exists" };
@@ -113,6 +115,10 @@ export async function signUp(
     }
     return { success: false, error: "unknown" };
   }
+}
+
+export function connectionProblemMessage(): string {
+  return describeConnectionProblem();
 }
 
 export async function signOut(): Promise<void> {
