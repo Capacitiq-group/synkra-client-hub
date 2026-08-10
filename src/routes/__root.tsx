@@ -1,80 +1,88 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Link,
+  Outlet,
+  Scripts,
+} from "@tanstack/react-router";
+import { useEffect, useState, type ReactNode } from "react";
+
+import appCss from "../styles.css?url";
 import { useAuthStore } from "@/stores/auth";
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Synkra Client Portal" },
+      { name: "description", content: "Manage your Synkra automation workflows." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+    ],
+  }),
+  shellComponent: RootShell,
   component: RootComponent,
+  notFoundComponent: NotFound,
 });
 
+function RootShell({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+function NotFound() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 text-center">
+      <h1 className="text-3xl font-bold">Page not found</h1>
+      <Link to="/" className="underline">
+        Go home
+      </Link>
+    </div>
+  );
+}
+
 function RootComponent() {
-  // TEMPORARY DIAGNOSTIC OVERLAY — remove once the blank/stuck-loading
-  // issue is confirmed fixed. Surfaces otherwise-invisible client errors
-  // directly on screen since devtools aren't available on mobile.
-  const [caughtError, setCaughtError] = useState<string | null>(null);
+  const { queryClient } = Route.useRouteContext();
+  // Hydration-safe: the store starts with isReady=false on the server and is
+  // hydrated from the persisted PocketBase auth store after mount.
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const onError = (event: ErrorEvent) => {
-      setCaughtError(`${event.message}\n${event.error?.stack ?? ""}`);
-    };
-    const onRejection = (event: PromiseRejectionEvent) => {
-      const reason = event.reason;
-      const message =
-        reason instanceof Error ? `${reason.message}\n${reason.stack ?? ""}` : String(reason);
-      setCaughtError(message);
-    };
-    window.addEventListener("error", onError);
-    window.addEventListener("unhandledrejection", onRejection);
+    setMounted(true);
+    useAuthStore.getState().hydrate();
 
-    try {
-      useAuthStore.getState().hydrate();
-    } catch (err) {
-      setCaughtError(err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err));
-    }
-
-    // Theme initialization
     try {
       const theme = localStorage.getItem("synkra-theme");
-      if (theme === "dark" || theme === "light") {
-        document.documentElement.setAttribute("data-theme", theme);
-      } else {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
-      }
-    } catch (err) {
-      setCaughtError(err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err));
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.setAttribute(
+        "data-theme",
+        theme === "dark" || theme === "light" ? theme : prefersDark ? "dark" : "light",
+      );
+    } catch {
+      document.documentElement.setAttribute("data-theme", "light");
     }
-
-    return () => {
-      window.removeEventListener("error", onError);
-      window.removeEventListener("unhandledrejection", onRejection);
-    };
   }, []);
 
+  void mounted;
+
   return (
-    <>
-      {caughtError && (
-        <pre
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 99999,
-            background: "#450a0a",
-            color: "#fecaca",
-            fontSize: "11px",
-            padding: "12px",
-            margin: 0,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            maxHeight: "50vh",
-            overflow: "auto",
-          }}
-        >
-          {caughtError}
-        </pre>
-      )}
+    <QueryClientProvider client={queryClient}>
       <Outlet />
-    </>
+    </QueryClientProvider>
   );
 }
