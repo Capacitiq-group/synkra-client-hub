@@ -47,6 +47,11 @@
   --shadow-focus: 0 0 0 3px rgba(86, 215, 34, 0.2);
 
   --radius: 10px;
+  --radius-full: 9999px;
+
+  /* Base surface alias used by full-screen overlays / modals.
+     Must always resolve to a fully opaque colour. */
+  --bg-base: #0a0a0a;
 }
 
 [data-theme="light"] {
@@ -55,6 +60,7 @@
   --bg-card: #ffffff;
   --bg-elevated: #ffffff;
   --bg-input: #ffffff;
+  --bg-base: #f8f8f6;
 
   --border-default: rgba(0, 0, 0, 0.08);
   --border-subtle: rgba(0, 0, 0, 0.04);
@@ -303,3 +309,4 @@
   }
 }
 
+        
