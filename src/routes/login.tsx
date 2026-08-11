@@ -6,6 +6,7 @@ import { connectionProblemMessage, signIn } from "@/lib/auth";
 import { isValidEmail, sanitizeEmail, sanitizeInput } from "@/lib/sanitize";
 import { resetActivity } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth";
+import { APPLY_URL } from "./signup";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): { reason?: string } =>
@@ -330,22 +331,39 @@ function LoginPage() {
               </p>
             )}
 
-            {/* Sign up link */}
+            {/* Pre-launch: no public registration. Prospective users apply. */}
             <div
               style={{
-                marginTop: 20,
+                marginTop: 24,
+                paddingTop: 20,
+                borderTop: "1px solid var(--border-default)",
                 textAlign: "center",
-                fontSize: 13,
-                color: "var(--text-secondary)",
               }}
             >
-              Don't have an account?{" "}
-              <Link
-                to="/signup"
-                style={{ color: "var(--accent-green)", textDecoration: "none", fontWeight: 600 }}
+              <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                Don&apos;t have an account yet?
+              </p>
+              <a
+                href={APPLY_URL}
+                className="synkra-focus transition-opacity hover:opacity-90"
+                style={{
+                  marginTop: 12,
+                  width: "100%",
+                  height: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "1px solid var(--accent-green-border)",
+                  backgroundColor: "var(--accent-green-subtle)",
+                  color: "var(--accent-green)",
+                  borderRadius: "var(--radius-md)",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
               >
-                Create one
-              </Link>
+                Apply for Early Access
+              </a>
             </div>
           </form>
         </div>
@@ -353,4 +371,4 @@ function LoginPage() {
     </div>
   );
                                                            }
-                           
+
