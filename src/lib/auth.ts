@@ -2,6 +2,7 @@
 import pb, { describeConnectionProblem, isNetworkFailure } from "./pocketbase";
 import { sanitizeEmail } from "./sanitize";
 import { checkRateLimit, clearRateLimit } from "./rateLimit";
+import { sendNotificationEmail } from "./notifications";
 
 export interface AuthUser {
   id: string;
@@ -67,7 +68,7 @@ export async function signUp(
     business_industry?: string;
     user_type?: "beta" | "paid";
   }
-): Promise<{ success: boolean; error?: string; user?: AuthUser }> {
+): Promise<{ success: boolean; error?: string; emailSent?: boolean; user?: AuthUser }> {
   const cleanEmail = sanitizeEmail(email);
 
   const rl = checkRateLimit(`signup-${cleanEmail}`, 3, 15 * 60 * 1000);
@@ -100,7 +101,18 @@ export async function signUp(
     await pb.collection("users").authWithPassword(cleanEmail, password);
     clearRateLimit(`signup-${cleanEmail}`);
 
-    return { success: true, user: result as unknown as AuthUser };
+    // Welcome email goes out through the existing server-side email proxy
+    // (Resend behind synkra-core). The shared secret stays on the server; the
+    // browser only ever calls the server function. Delivery failure is
+    // reported back to the caller instead of being swallowed, so account
+    // creation is never presented as fully successful when the email failed.
+    const emailSent = await sendNotificationEmail({
+      to: cleanEmail,
+      subject: "Welcome to Synkra",
+      body: `Hi ${userData.name || "there"},\n\nYour Synkra client portal account is ready.\n\nSign in here: https://client.synkra.co.za/login\n\nInside the portal you can activate ready-to-run automation templates, connect your business details, and watch every workflow run in the activity log.\n\nSynkra`,
+    });
+
+    return { success: true, emailSent, user: result as unknown as AuthUser };
   } catch (err) {
     if (isNetworkFailure(err)) return { success: false, error: "unreachable" };
     const message = err instanceof Error ? err.message : "";
