@@ -1,136 +1,249 @@
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSaveAction } from "@/hooks/useSaveAction";
 import pb from "@/lib/pocketbase";
-import { sanitizeEmail, sanitizeInput } from "@/lib/sanitize";
+import { sanitizeInput } from "@/lib/sanitize";
 import { Field, fieldStyle, SettingsSection } from "./settings-primitives";
 
-const INDUSTRIES = [
-  "Retail",
-  "Beauty and Wellness",
-  "Food and Hospitality",
-  "Professional Services",
-  "Education and Coaching",
-  "Healthcare",
-  "Trades and Construction",
-  "Other",
-];
-type Form = {
-  business_name: string;
-  business_industry: string;
-  business_address: string;
-  whatsapp_number: string;
-  review_link: string;
-  notification_email: string;
-};
-export function BusinessSettings() {
-  const { user, refreshUser } = useAuth();
-  const fromUser = (): Form => ({
-    business_name: user?.business_name ?? "",
-    business_industry: user?.business_industry ?? "",
-    business_address: user?.business_address ?? "",
-    whatsapp_number: user?.whatsapp_number ?? "",
-    review_link: user?.review_link ?? "",
-    notification_email: user?.notification_email || user?.email || "",
-  });
-  const [form, setForm] = useState<Form>(fromUser);
-  useEffect(() => setForm(fromUser()), [user]);
-  if (!user) return null;
-  const changed = JSON.stringify(form) !== JSON.stringify(fromUser());
-  const set = (key: keyof Form, value: string) =>
-    setForm((current) => ({ ...current, [key]: value }));
-  const save = async () => {
-    if (!form.business_name.trim()) return;
-    try {
-      await pb.collection("users").update(user.id, {
-        ...form,
-        business_name: sanitizeInput(form.business_name),
-        business_industry: sanitizeInput(form.business_industry),
-        business_address: sanitizeInput(form.business_address),
-        whatsapp_number: sanitizeInput(form.whatsapp_number),
-        review_link: sanitizeInput(form.review_link),
-        notification_email: sanitizeEmail(form.notification_email),
-      });
-      await refreshUser();
-      toast.success("Business details saved");
-    } catch {
-      toast.error("Could not save business details");
-    }
-  };
+function PasswordInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [shown, setShown] = useState(false);
   return (
-    <div className="max-w-[560px]">
-      <SettingsSection title="Business details">
+    <Field label={label}>
+      <div className="relative">
+        <input
+          type={shown ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          style={{ ...fieldStyle, paddingRight: 44 }}
+        />
+        <button
+          type="button"
+          onClick={() => setShown((value) => !value)}
+          className="absolute right-3 top-1/2 -translate-y-1/2"
+          aria-label={shown ? "Hide password" : "Show password"}
+        >
+          {shown ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>
+      </div>
+    </Field>
+  );
+}
+
+export function ProfileSettings() {
+  const { user, refreshUser } = useAuth();
+  const [name, setName] = useState("");
+  const [oldPassword, setOldPassword] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [confirmTouched, setConfirmTouched] = useState(false);
+  const [oldError, setOldError] = useState("");
+  useEffect(() => setName(user?.name ?? ""), [user?.name]);
+  const requirements = {
+    length: password.length >= 8,
+    number: /\d/.test(password),
+    uppercase: /[A-Z]/.test(password),
+  };
+  const strength =
+    Object.values(requirements).filter(Boolean).length + (password.length >= 12 ? 1 : 0);
+  const strengthColor =
+    strength <= 1
+      ? "var(--state-error)"
+      : strength === 2
+        ? "var(--state-warning)"
+        : strength === 3
+          ? "var(--accent-green)"
+          : "var(--state-success)";
+  const mismatch = confirmTouched && password !== confirm;
+  const accountDate = useMemo(
+    () =>
+      user?.created
+        ? new Date(user.created).toLocaleDateString("en-ZA", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })
+        : "Not available",
+    [user?.created],
+  );
+  const { run: saveName, saving: savingName } = useSaveAction(
+    async (userId: string, value: string) => {
+      await pb.collection("users").update(userId, { name: sanitizeInput(value) });
+      await refreshUser();
+    },
+    { success: "Saved successfully" },
+  );
+  const { run: submitPassword, saving: savingPassword } = useSaveAction(
+    async (userId: string, current: string, next: string, nextConfirm: string) => {
+      try {
+        await pb
+          .collection("users")
+          .update(userId, { oldPassword: current, password: next, passwordConfirm: nextConfirm });
+      } catch {
+        setOldError("The current password is not correct");
+        throw new Error("The current password is not correct");
+      }
+      setOldPassword("");
+      setPassword("");
+      setConfirm("");
+      setConfirmTouched(false);
+    },
+    { pending: "Updating password…", success: "Password updated successfully" },
+  );
+  if (!user) return null;
+  const changePassword = () => {
+    setOldError("");
+    setConfirmTouched(true);
+    if (
+      password !== confirm ||
+      !requirements.length ||
+      !requirements.number ||
+      !requirements.uppercase
+    )
+      return;
+    void submitPassword(user.id, oldPassword, password, confirm);
+  };
+  const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
+  const days = trialEnd ? Math.ceil((trialEnd.getTime() - Date.now()) / 86400000) : null;
+  return (
+    <div className="flex max-w-[560px] flex-col gap-10">
+      <SettingsSection title="Personal information">
         <div className="flex flex-col gap-5">
-          <Field label="Business name">
-            <input
-              required
-              value={form.business_name}
-              onChange={(e) => set("business_name", e.target.value)}
-              style={fieldStyle}
-            />
-          </Field>
-          <Field label="Industry">
-            <select
-              value={form.business_industry}
-              onChange={(e) => set("business_industry", e.target.value)}
-              style={fieldStyle}
-            >
-              <option value="">Select an industry</option>
-              {INDUSTRIES.map((industry) => (
-                <option key={industry}>{industry}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Business address">
-            <input
-              value={form.business_address}
-              onChange={(e) => set("business_address", e.target.value)}
-              placeholder="Street address, city, province"
-              style={fieldStyle}
-            />
+          <Field label="Full name">
+            <input value={name} onChange={(e) => setName(e.target.value)} style={fieldStyle} />
           </Field>
           <Field
-            label="WhatsApp Business number"
-            note="This number is used when WhatsApp automation is connected."
+            label="Email address"
+            note="Your email address cannot be changed. Contact hello@synkra.co.za if you need to update it."
           >
             <input
-              type="tel"
-              value={form.whatsapp_number}
-              onChange={(e) => set("whatsapp_number", e.target.value)}
-              placeholder="+27 or 0XX XXX XXXX"
-              style={fieldStyle}
-            />
-          </Field>
-          <Field
-            label="Review link"
-            note="This link is used in review request automations. Paste your Google Maps review URL here."
-          >
-            <input
-              value={form.review_link}
-              onChange={(e) => set("review_link", e.target.value)}
-              placeholder="https://g.page/r/your-google-review-link"
-              style={fieldStyle}
-            />
-          </Field>
-          <Field
-            label="Notification email"
-            note="Workflow notifications are sent to this address. It can be different from your login email."
-          >
-            <input
-              type="email"
-              value={form.notification_email}
-              onChange={(e) => set("notification_email", e.target.value)}
-              style={fieldStyle}
+              value={user.email}
+              readOnly
+              style={{
+                ...fieldStyle,
+                backgroundColor: "var(--bg-elevated)",
+                color: "var(--text-muted)",
+                cursor: "not-allowed",
+                borderColor: "var(--border-subtle)",
+              }}
             />
           </Field>
           <Button
-            className="h-10 w-fit"
-            disabled={!changed || !form.business_name.trim()}
-            onClick={() => void save()}
+            className="h-10 w-full sm:w-fit"
+            disabled={savingName || name.trim() === (user.name ?? "").trim()}
+            onClick={() => void saveName(user.id, name)}
           >
-            Save business details
+            {savingName ? "Saving…" : "Save changes"}
           </Button>
+        </div>
+      </SettingsSection>
+      <SettingsSection title="Change password">
+        <div className="flex flex-col gap-5">
+          <div>
+            <PasswordInput label="Current password" value={oldPassword} onChange={setOldPassword} />
+            {oldError && (
+              <p className="mt-1 text-xs" style={{ color: "var(--state-error)" }}>
+                {oldError}
+              </p>
+            )}
+          </div>
+          <div>
+            <PasswordInput label="New password" value={password} onChange={setPassword} />
+            <div className="mt-2 grid grid-cols-4 gap-1">
+              {[0, 1, 2, 3].map((segment) => (
+                <span
+                  key={segment}
+                  className="h-1"
+                  style={{
+                    backgroundColor: segment < strength ? strengthColor : "var(--border-default)",
+                  }}
+                />
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {[
+                [requirements.length, "At least 8 characters"],
+                [requirements.number, "one number"],
+                [requirements.uppercase, "one uppercase letter"],
+              ].map(([met, label]) => (
+                <span
+                  key={String(label)}
+                  className="flex items-center gap-1 text-xs"
+                  style={{ color: met ? "var(--state-success)" : "var(--text-muted)" }}
+                >
+                  <Check size={12} />
+                  {String(label)}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div onBlur={() => setConfirmTouched(true)}>
+            <PasswordInput label="Confirm new password" value={confirm} onChange={setConfirm} />
+            {mismatch && (
+              <p className="mt-1 text-xs" style={{ color: "var(--state-error)" }}>
+                Passwords do not match
+              </p>
+            )}
+          </div>
+          <Button
+            variant="secondary"
+            className="h-10 w-full sm:w-fit"
+            disabled={savingPassword}
+            onClick={changePassword}
+          >
+            {savingPassword ? "Saving…" : "Change password"}
+          </Button>
+        </div>
+      </SettingsSection>
+      <SettingsSection title="Account information">
+        <div>
+          {[
+            [
+              "Account type",
+              user.is_tester ? "TESTER" : user.user_type === "paid" ? "PRO" : "BETA",
+            ],
+            [
+              "Trial status",
+              user.is_tester
+                ? "Unlimited tester access"
+                : days === null
+                  ? "Not available"
+                  : days < 0
+                    ? "Trial ended"
+                    : `Trial active until ${trialEnd?.toLocaleDateString("en-ZA")}`,
+            ],
+            ["Member since", accountDate],
+          ].map(([label, value], index) => (
+            <div
+              key={label}
+              className="flex h-12 items-center justify-between border-b"
+              style={{ borderColor: index === 2 ? "transparent" : "var(--border-subtle)" }}
+            >
+              <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+                {label}
+              </span>
+              <span
+                className="text-sm font-medium"
+                style={{
+                  color:
+                    label === "Trial status" && !user.is_tester && days !== null && days < 0
+                      ? "var(--state-error)"
+                      : "var(--text-primary)",
+                }}
+              >
+                {value}
+              </span>
+            </div>
+          ))}
         </div>
       </SettingsSection>
     </div>
