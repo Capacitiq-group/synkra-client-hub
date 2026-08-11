@@ -1,17 +1,78 @@
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
+import { webhookUrlFor } from "@/lib/workflow/api";
 import { OPERATORS, blockSubtype } from "@/lib/workflow/blocks";
 import { availableVariables } from "@/lib/workflow/describe";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { PlainField, VariableField } from "./variables-popover";
 
+function WebhookUrlField({ workflowId }: { workflowId?: string | undefined }) {
+  const [copied, setCopied] = useState(false);
+  const url = workflowId ? webhookUrlFor(workflowId) : null;
+
+  const copy = async () => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
+        Webhook URL
+      </span>
+      {url ? (
+        <div
+          className="flex items-center gap-2 rounded-md px-2 py-1.5"
+          style={{ border: "1px solid var(--border-default)" }}
+        >
+          <span
+            className="min-w-0 flex-1 truncate"
+            style={{ fontSize: 12, color: "var(--text-primary)" }}
+            title={url}
+          >
+            {url}
+          </span>
+          <button
+            type="button"
+            onClick={() => void copy()}
+            aria-label="Copy webhook URL"
+            className="synkra-focus inline-flex items-center gap-1 rounded-md"
+            style={{ fontSize: 12, color: "var(--accent-green)", padding: "2px 4px" }}
+          >
+            {copied ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      ) : (
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          Save the workflow first to get your webhook URL
+        </p>
+      )}
+      <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+        POST JSON data to this URL to trigger this workflow.
+      </p>
+    </div>
+  );
+}
+
 export function ConfigPanel({
   blocks,
   block,
   onChange,
+  workflowId,
 }: {
   blocks: WorkflowBlock[];
   block: WorkflowBlock | null;
   onChange: (blockId: string, config: Record<string, unknown>) => void;
+  workflowId?: string | undefined;
 }) {
+
   if (!block) {
     return (
       <div className="p-4">
@@ -36,7 +97,10 @@ export function ConfigPanel({
         </p>
       </div>
 
+      {subtype === "webhook" && <WebhookUrlField workflowId={workflowId} />}
+
       {subtype === "webhook" && (
+
         <VariableField
           label="Expected fields"
           value={((config["expected_fields"] as string[] | undefined) ?? []).join(", ")}
