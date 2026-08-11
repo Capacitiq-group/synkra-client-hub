@@ -47,7 +47,8 @@ const SERVICES: Service[] = [
     icon: Calendar,
     iconColor: "var(--state-info)",
     iconBg: "var(--text-primary)",
-    endpoint: "google-calendar",
+    comingSoon: true,
+    tooltip: "Google Calendar automation launches soon",
   },
   {
     key: "google_sheets",
@@ -56,7 +57,8 @@ const SERVICES: Service[] = [
     icon: Table2,
     iconColor: "var(--state-success)",
     iconBg: "var(--text-primary)",
-    endpoint: "google-sheets",
+    comingSoon: true,
+    tooltip: "Google Sheets automation launches soon",
   },
   {
     key: "twilio_sms",
@@ -168,7 +170,7 @@ export function IntegrationsSettings() {
                     )}
                     <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
                       {service.key === "email"
-                        ? `Emails are sent from ${(user.business_name || "your-business").toLowerCase().replace(/[^a-z0-9]+/g, "-")}@synkra-notifications.co.za on your behalf.`
+                        ? `Emails are sent from ${(user.business_name || "your-business").toLowerCase().replace(/[^a-z0-9]+/g, "-")}@synkra.co.za on your behalf.`
                         : service.description}
                     </p>
                   </div>
@@ -247,4 +249,4 @@ export function IntegrationsSettings() {
       )}
     </>
   );
-}
+    }
