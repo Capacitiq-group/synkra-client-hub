@@ -18,7 +18,7 @@ export function BlockLibrary({
     definition.description.toLowerCase().includes(query.toLowerCase());
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="p-3">
         <input
           value={query}
@@ -37,7 +37,7 @@ export function BlockLibrary({
         />
       </div>
 
-      <div className="flex-1 overflow-auto px-3 pb-4">
+      <div className="min-h-0 flex-1 overflow-auto px-3 pb-4">
         {SECTIONS.map((section) => {
           const items = BLOCK_DEFINITIONS.filter((d) => d.section === section && matches(d));
           if (!items.length) return null;
