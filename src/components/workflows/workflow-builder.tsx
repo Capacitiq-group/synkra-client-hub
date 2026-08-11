@@ -127,12 +127,25 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
       });
       setSavedId(record.id);
       const trigger = blocks.find((b) => b.type === "trigger");
-      await registerWorkflow({
+      const triggerType = trigger?.trigger_type ?? "webhook";
+      const registration = {
         workflowId: record.id,
         userId: user.id,
         blocks,
-        trigger: { type: trigger?.trigger_type ?? "webhook", config: trigger?.config ?? {} },
-      });
+        trigger: { type: triggerType, config: trigger?.config ?? {} },
+      };
+      if (triggerType === "webhook") {
+        // Webhook execution reads the workflow straight from PocketBase by ID,
+        // so registration is optional here: never block publishing on it.
+        try {
+          await registerWorkflow(registration);
+        } catch (error) {
+          console.warn("Webhook workflow registration skipped:", error);
+        }
+      } else {
+        await registerWorkflow(registration);
+      }
+
       dirty.current = false;
       return record;
     },
@@ -271,6 +284,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           <ConfigPanel
             blocks={blocks}
             block={selectedBlock}
+            workflowId={savedId}
             onChange={(id, config) =>
               mutate((current) => current.map((b) => (b.id === id ? { ...b, config } : b)))
             }
@@ -317,6 +331,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
             <ConfigPanel
               blocks={blocks}
               block={selectedBlock}
+              workflowId={savedId}
               onChange={(id, config) =>
                 mutate((current) => current.map((b) => (b.id === id ? { ...b, config } : b)))
               }
@@ -365,4 +380,4 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
       )}
     </div>
   );
-          }
+        }
