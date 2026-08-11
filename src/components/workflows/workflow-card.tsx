@@ -5,12 +5,21 @@ import { StatusBadge } from "@/components/dashboard/primitives";
 import { relativeTime } from "@/lib/utils/time";
 import type { PortalWorkflow } from "@/hooks/useWorkflows";
 
-function GhostButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+function GhostButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean | undefined;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="synkra-focus inline-flex items-center gap-1.5 rounded-md border transition-colors"
+      disabled={disabled}
+      className="synkra-focus inline-flex min-h-[38px] items-center gap-1.5 rounded-md border transition-colors disabled:opacity-60"
       style={{
         borderColor: "var(--border-default)",
         backgroundColor: "transparent",
@@ -49,6 +58,7 @@ export function WorkflowCard({
   onDuplicate,
   onRename,
   onDelete,
+  busy,
 }: {
   workflow: PortalWorkflow;
   templateName?: string | undefined;
@@ -56,6 +66,7 @@ export function WorkflowCard({
   onDuplicate: () => void;
   onRename: () => void;
   onDelete: () => void;
+  busy?: boolean | undefined;
 }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -82,14 +93,19 @@ export function WorkflowCard({
             ? "color-mix(in srgb, var(--state-error) 40%, transparent)"
             : "var(--border-default)",
         borderRadius: "var(--radius-lg)",
-        padding: 20,
+        padding: 16,
       }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <h3 style={{ fontSize: 17, fontWeight: 600, color: "var(--text-primary)" }}>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <h3
+          className="min-w-0 break-words"
+          style={{ fontSize: 17, fontWeight: 600, color: "var(--text-primary)" }}
+        >
           {workflow.name}
         </h3>
-        <StatusBadge status={workflow.status} />
+        <div className="shrink-0">
+          <StatusBadge status={workflow.status} />
+        </div>
       </div>
 
       {templateName && (
@@ -129,7 +145,7 @@ export function WorkflowCard({
           <Pencil size={13} aria-hidden="true" />
           Edit
         </GhostButton>
-        <GhostButton onClick={onToggleStatus}>
+        <GhostButton onClick={onToggleStatus} disabled={busy}>
           {isPublished ? (
             <Pause size={13} aria-hidden="true" />
           ) : (
@@ -176,11 +192,12 @@ export function WorkflowCard({
                 <button
                   key={item.label}
                   type="button"
+                  disabled={busy}
                   onClick={() => {
                     setMenuOpen(false);
                     item.action();
                   }}
-                  className="block w-full px-3 py-2 text-left"
+                  className="block w-full px-3 py-2.5 text-left disabled:opacity-60"
                   style={{
                     fontSize: 13,
                     color: item.danger ? "var(--state-error)" : "var(--text-secondary)",
