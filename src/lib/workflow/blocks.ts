@@ -77,7 +77,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     kind: "action",
     subtype: "send_email",
     label: "Send email",
-    description: "Sends an email via Resend",
+    description: "Sends an email",
     icon: Send,
     color: "var(--state-info)",
     section: "ACTIONS",
@@ -168,7 +168,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     kind: "action",
     subtype: "send_whatsapp",
     label: "Send WhatsApp",
-    description: "Sends a WhatsApp message via Twilio",
+    description: "Sends a WhatsApp message",
     icon: MessageCircle,
     color: "#25D366",
     section: "ACTIONS",
@@ -180,7 +180,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     kind: "action",
     subtype: "send_sms",
     label: "Send SMS",
-    description: "Sends an SMS via Twilio",
+    description: "Sends an SMS",
     icon: Smartphone,
     color: "#25D366",
     section: "ACTIONS",
@@ -259,4 +259,4 @@ export function createBlock(definition: BlockDefinition): WorkflowBlock {
   if (definition.kind === "action") block.action_type = definition.subtype;
   if (definition.kind === "logic") block.logic_type = definition.subtype;
   return block;
-}
+    }
