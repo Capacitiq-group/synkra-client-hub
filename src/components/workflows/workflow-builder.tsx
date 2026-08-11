@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Play, Save, Upload, Layers, Settings2 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { createBlock, type BlockDefinition } from "@/lib/workflow/blocks";
 import { validateWorkflow } from "@/lib/workflow/describe";
 import { saveWorkflowDraft, useWorkflow } from "@/hooks/useWorkflows";
+import { useSaveAction } from "@/hooks/useSaveAction";
 import { registerWorkflow } from "@/lib/workflow/api";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { BlockLibrary } from "./block-library";
@@ -65,48 +65,59 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
     setMobileTab("config");
   };
 
-  const save = useCallback(
-    async (silent = false) => {
-      if (!user) return;
-      if (!blocks.length) return;
-      setSaving(true);
-      try {
-        const record = await saveWorkflowDraft({
-          ...(savedId ? { workflowId: savedId } : {}),
-          userId: user.id,
-          name,
-          blocks,
-        });
-        setSavedId(record.id);
-        setLastSaved(new Date());
-        dirty.current = false;
-        if (!silent) toast.success("Workflow saved");
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not save workflow");
-      } finally {
-        setSaving(false);
-      }
+  const persistDraft = useCallback(
+    async (silent: boolean) => {
+      if (!user) throw new Error("You are signed out. Please sign in again.");
+      if (!blocks.length) throw new Error("Add at least one block before saving.");
+      const record = await saveWorkflowDraft({
+        ...(savedId ? { workflowId: savedId } : {}),
+        userId: user.id,
+        name,
+        blocks,
+      });
+      setSavedId(record.id);
+      setLastSaved(new Date());
+      dirty.current = false;
+      void silent;
+      return record;
     },
     [blocks, name, savedId, user],
   );
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (dirty.current) void save(true);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [save]);
+  const { run: runSave, saving: savingDraft } = useSaveAction(async () => persistDraft(false), {
+    pending: "Saving workflow…",
+    success: "Workflow saved",
+    error: "Could not save workflow. Please try again.",
+  });
 
-  const publish = async () => {
-    const validation = validateWorkflow(blocks);
-    if (!validation.ok) {
-      toast.error(validation.message ?? "Workflow is not ready");
-      if (validation.blockId) setSelectedId(validation.blockId);
-      return;
-    }
-    if (!user) return;
+  // Background autosave stays silent: no toast, no duplicate-submit guard noise.
+  const autosave = useCallback(async () => {
+    if (!user || !blocks.length) return;
     setSaving(true);
     try {
+      await persistDraft(true);
+    } catch {
+      /* autosave failures are surfaced on the next manual save */
+    } finally {
+      setSaving(false);
+    }
+  }, [blocks.length, persistDraft, user]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (dirty.current) void autosave();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [autosave]);
+
+  const { run: runPublish, saving: publishing } = useSaveAction(
+    async () => {
+      const validation = validateWorkflow(blocks);
+      if (!validation.ok) {
+        if (validation.blockId) setSelectedId(validation.blockId);
+        throw new Error(validation.message ?? "Workflow is not ready");
+      }
+      if (!user) throw new Error("You are signed out. Please sign in again.");
       const record = await saveWorkflowDraft({
         ...(savedId ? { workflowId: savedId } : {}),
         userId: user.id,
@@ -123,13 +134,18 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
         trigger: { type: trigger?.trigger_type ?? "webhook", config: trigger?.config ?? {} },
       });
       dirty.current = false;
-      toast.success("Workflow published");
-      void navigate({ to: "/dashboard/workflows" });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not publish workflow");
-    } finally {
-      setSaving(false);
-    }
+      return record;
+    },
+    {
+      pending: "Publishing workflow…",
+      success: "Workflow published",
+      error: "Could not publish workflow. Please try again.",
+    },
+  );
+
+  const publish = async () => {
+    const record = await runPublish();
+    if (record) void navigate({ to: "/dashboard/workflows" });
   };
 
   const panelBorder = "1px solid var(--border-default)";
@@ -140,7 +156,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
       style={{ backgroundColor: "var(--bg-base, #0a0a0a)" }}
     >
       <header
-        className="flex items-center gap-3 px-4"
+        className="flex items-center gap-2 px-3 sm:gap-3 sm:px-4"
         style={{ height: 56, borderBottom: panelBorder }}
       >
         <button
@@ -162,50 +178,59 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}
         />
         <span className="hidden sm:inline" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {saving ? "Saving" : lastSaved ? `Saved ${lastSaved.toLocaleTimeString("en-ZA")}` : ""}
+          {saving || savingDraft
+            ? "Saving"
+            : lastSaved
+              ? `Saved ${lastSaved.toLocaleTimeString("en-ZA")}`
+              : ""}
         </span>
         <button
           type="button"
-          onClick={() => void save()}
+          onClick={() => void runSave()}
+          disabled={savingDraft || publishing}
+          aria-label="Save workflow"
           className="synkra-focus inline-flex items-center gap-1.5 rounded-md border"
           style={{
             borderColor: "var(--border-default)",
             color: "var(--text-secondary)",
             fontSize: 13,
-            padding: "6px 12px",
+            padding: "8px 10px",
           }}
         >
           <Save size={13} aria-hidden="true" />
-          Save
+          <span className="hidden sm:inline">Save</span>
         </button>
         <button
           type="button"
           onClick={() => setTesting(true)}
+          aria-label="Test workflow"
           className="synkra-focus inline-flex items-center gap-1.5 rounded-md border"
           style={{
             borderColor: "var(--border-default)",
             color: "var(--text-secondary)",
             fontSize: 13,
-            padding: "6px 12px",
+            padding: "8px 10px",
           }}
         >
           <Play size={13} aria-hidden="true" />
-          Test
+          <span className="hidden sm:inline">Test</span>
         </button>
         <button
           type="button"
           onClick={() => void publish()}
+          disabled={publishing || savingDraft}
+          aria-label="Publish workflow"
           className="synkra-focus inline-flex items-center gap-1.5 rounded-md"
           style={{
             backgroundColor: "var(--accent-green)",
             color: "#04120B",
             fontSize: 13,
             fontWeight: 600,
-            padding: "6px 12px",
+            padding: "8px 10px",
           }}
         >
           <Upload size={13} aria-hidden="true" />
-          Publish
+          <span className="hidden sm:inline">Publish</span>
         </button>
       </header>
 
@@ -340,5 +365,4 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
       )}
     </div>
   );
-    }
-        
+          }
