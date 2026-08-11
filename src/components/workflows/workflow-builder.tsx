@@ -137,7 +137,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
   return (
     <div
       className="fixed inset-0 z-[60] flex flex-col"
-      style={{ backgroundColor: "var(--bg-base)" }}
+      style={{ backgroundColor: "var(--bg-base, #0a0a0a)" }}
     >
       <header
         className="flex items-center gap-3 px-4"
@@ -340,4 +340,5 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
       )}
     </div>
   );
-}
+    }
+        
