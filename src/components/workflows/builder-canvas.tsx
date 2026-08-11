@@ -62,7 +62,7 @@ export function BuilderCanvas({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[560px] px-4 py-6">
+    <div className="mx-auto w-full max-w-[560px] overflow-x-hidden px-3 py-6 sm:px-4">
       {blocks.length === 0 ? (
         <div
           onDragOver={(e) => {
