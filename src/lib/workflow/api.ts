@@ -80,6 +80,6 @@ export async function retryRun(
   workflowId: string,
   inputData: Record<string, unknown>,
 ): Promise<void> {
-  const response = await post(`/workflows/webhooks/run/${workflowId}`, inputData);
+  const response = await post(`/webhooks/run/${workflowId}`, inputData);
   if (!response.ok) throw new Error(`Retry failed with status ${response.status}`);
 }
