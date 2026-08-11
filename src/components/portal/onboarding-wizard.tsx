@@ -7,6 +7,7 @@ import { saveUserFields } from "@/lib/auth";
 import { sanitizeInput } from "@/lib/sanitize";
 import { TEMPLATES } from "@/lib/setup/seedTemplates";
 import { useAuthStore } from "@/stores/auth";
+import { useSaveAction } from "@/hooks/useSaveAction";
 
 const TOTAL_STEPS = 5;
 
@@ -58,33 +59,66 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
     setIndustry(String(user["business_industry"] ?? ""));
   }, [open, user]);
 
+  // Shared save-feedback: pending toast, duplicate-submit guard, success/error
+  // only after the backend confirms.
+  const { run: runContinue, saving: continuing } = useSaveAction(
+    async (data: Record<string, unknown>) => {
+      if (!user) throw new Error("You are signed out. Please sign in again.");
+      await saveUserFields(user.id, data);
+    },
+    {
+      pending: "Saving your progress…",
+      success: "Progress saved",
+      error: "Could not save your progress. Please try again.",
+    },
+  );
+
+  const { run: runFinish, saving: finishing } = useSaveAction(
+    async (data: Record<string, unknown>) => {
+      if (!user) throw new Error("You are signed out. Please sign in again.");
+      await saveUserFields(user.id, data);
+    },
+    {
+      pending: "Finishing setup…",
+      success: "Setup complete",
+      error: "Could not finish setup. Please try again.",
+    },
+  );
+
   if (!open || !user) return null;
 
-  const save = (data: Record<string, unknown>) => saveUserFields(user.id, data);
+  const busy = continuing || finishing;
 
-  const closeWizard = (completed: boolean) => {
-    save(
-      completed
-        ? { onboarding_completed: true, onboarding_step: TOTAL_STEPS }
-        : { onboarding_step: step },
-    );
+  const closeWizard = async (completed: boolean) => {
+    await (completed
+      ? runFinish({ onboarding_completed: true, onboarding_step: TOTAL_STEPS })
+      : runContinue({ onboarding_step: step }));
     onClose();
   };
 
-  const saveBusiness = () => {
-    const cleanName = sanitizeInput(businessName);
-    const cleanIndustry = sanitizeInput(industry);
-    save({ business_name: cleanName, business_industry: cleanIndustry, onboarding_step: 3 });
-    if (pb.authStore.record) {
-      pb.authStore.record["business_name"] = cleanName;
-      pb.authStore.record["business_industry"] = cleanIndustry;
-    }
-  };
+  const goNext = async () => {
+    if (busy) return;
 
-  const goNext = () => {
-    if (step === 2) saveBusiness();
+    if (step === 2) {
+      const cleanName = sanitizeInput(businessName);
+      const cleanIndustry = sanitizeInput(industry);
+      const saved = await runContinue({
+        business_name: cleanName,
+        business_industry: cleanIndustry,
+        onboarding_step: 3,
+      });
+      if (saved === undefined) return;
+      if (pb.authStore.record) {
+        pb.authStore.record["business_name"] = cleanName;
+        pb.authStore.record["business_industry"] = cleanIndustry;
+      }
+      setStep(3);
+      return;
+    }
+
     if (step === 4 && selectedTemplate) {
-      save({ onboarding_step: 5 });
+      const saved = await runContinue({ onboarding_step: 5 });
+      if (saved === undefined) return;
       onClose();
       navigate({
         to: "/dashboard/workflows/builder/new",
@@ -92,17 +126,20 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
       });
       return;
     }
+
     if (step === TOTAL_STEPS) {
-      closeWizard(true);
+      await closeWizard(true);
       return;
     }
+
     const next = step + 1;
-    save({ onboarding_step: next });
+    const saved = await runContinue({ onboarding_step: next });
+    if (saved === undefined) return;
     setStep(next);
   };
 
-  const goTo = (to: string) => {
-    closeWizard(true);
+  const goTo = async (to: string) => {
+    await closeWizard(true);
     navigate({ to });
   };
 
@@ -120,7 +157,7 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4">
+      <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
         <div className="flex items-center gap-2">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((dot) => (
             <span
@@ -143,7 +180,9 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
         <button
           type="button"
           aria-label="Close setup guide"
-          onClick={() => closeWizard(step === TOTAL_STEPS)}
+          onClick={() => void closeWizard(step === TOTAL_STEPS)}
+          disabled={busy}
+          className="shrink-0 disabled:opacity-60"
           style={{ color: "var(--text-muted)", lineHeight: 0 }}
         >
           <X size={18} />
@@ -162,7 +201,7 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 py-6">
+      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 break-words sm:px-5">
         {step === 1 && (
           <div>
             <div
@@ -176,7 +215,12 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
               SYNKRA
             </div>
             <h2
-              style={{ marginTop: 24, fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}
+              style={{
+                marginTop: 24,
+                fontSize: "clamp(22px, 6vw, 28px)",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+              }}
             >
               {user.name ? `Welcome, ${user.name}` : "Welcome to Synkra"}
             </h2>
@@ -208,7 +252,13 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
 
         {step === 2 && (
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)" }}>
+            <h2
+              style={{
+                fontSize: "clamp(20px, 5.5vw, 24px)",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+              }}
+            >
               Tell us about your business
             </h2>
             <p style={{ marginTop: 12, fontSize: 15, color: "var(--text-secondary)" }}>
@@ -257,7 +307,13 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
 
         {step === 3 && (
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)" }}>
+            <h2
+              style={{
+                fontSize: "clamp(20px, 5.5vw, 24px)",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+              }}
+            >
               How Synkra works
             </h2>
             <div style={{ marginTop: 24, display: "grid", gap: 24 }}>
@@ -310,7 +366,13 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
 
         {step === 4 && (
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)" }}>
+            <h2
+              style={{
+                fontSize: "clamp(20px, 5.5vw, 24px)",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+              }}
+            >
               Activate your first automation
             </h2>
             <p style={{ marginTop: 12, fontSize: 15, color: "var(--text-secondary)" }}>
@@ -324,7 +386,7 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
                     key={template.template_id}
                     type="button"
                     onClick={() => setSelectedTemplate(template.template_id)}
-                    className="text-left transition-colors"
+                    className="w-full min-w-0 text-left break-words transition-colors"
                     style={{
                       backgroundColor: selected
                         ? "var(--accent-green-subtle)"
@@ -369,7 +431,13 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
 
         {step === 5 && (
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)" }}>
+            <h2
+              style={{
+                fontSize: "clamp(20px, 5.5vw, 24px)",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+              }}
+            >
               You are all set
             </h2>
             <p style={{ marginTop: 12, fontSize: 15, color: "var(--text-secondary)" }}>
@@ -384,8 +452,9 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
                 <button
                   key={to}
                   type="button"
-                  onClick={() => goTo(to)}
-                  className="flex items-center gap-3 rounded-sm px-2 py-3 text-left transition-colors"
+                  onClick={() => void goTo(to)}
+                  disabled={busy}
+                  className="flex min-h-[44px] items-center gap-3 rounded-sm px-2 py-3 text-left transition-colors disabled:opacity-60"
                 >
                   <Icon size={18} style={{ color: "var(--accent-green)" }} />
                   <span
@@ -402,12 +471,14 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
       </div>
 
       {/* Footer */}
-      <div className="border-t px-5 py-4" style={{ borderColor: "var(--border-default)" }}>
+      <div className="border-t px-4 py-4 sm:px-5" style={{ borderColor: "var(--border-default)" }}>
         <div className="flex items-center gap-3">
           {step > 1 && (
             <button
               type="button"
               onClick={() => setStep(step - 1)}
+              disabled={busy}
+              className="shrink-0 disabled:opacity-60"
               style={{
                 height: 44,
                 paddingInline: 16,
@@ -421,8 +492,9 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
           )}
           <button
             type="button"
-            onClick={goNext}
-            className="flex-1 transition-opacity hover:opacity-90 active:scale-[0.97]"
+            onClick={() => void goNext()}
+            disabled={busy}
+            className="min-w-0 flex-1 transition-opacity hover:opacity-90 active:scale-[0.97] disabled:opacity-60"
             style={{
               height: 44,
               backgroundColor: "var(--accent-green)",
@@ -432,13 +504,14 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
               borderRadius: "var(--radius-md)",
             }}
           >
-            {step === TOTAL_STEPS ? "Finish" : "Next"}
+            {busy ? "Saving…" : step === TOTAL_STEPS ? "Finish" : "Next"}
           </button>
         </div>
         {step === 1 && (
           <button
             type="button"
-            onClick={() => closeWizard(true)}
+            onClick={() => void closeWizard(true)}
+            disabled={busy}
             style={{ marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}
           >
             I will figure it out myself
@@ -447,4 +520,5 @@ export function OnboardingWizard({ open, onClose }: { open: boolean; onClose: ()
       </div>
     </aside>
   );
-}
+            }
+                             
