@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Bell, Menu, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Bell, LogOut, Menu, X } from "lucide-react";
 import { NAV_ITEMS, NavLink, useIsActive } from "@/components/portal/nav-items";
 import { ThemeToggle } from "@/components/portal/theme-toggle";
 import { SessionWarningModal } from "@/components/portal/session-warning-modal";
@@ -35,7 +35,10 @@ function Wordmark() {
 }
 
 function UserFooter() {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const initials = (user?.name || user?.email || "S")
     .split(/[\s@.]+/)
     .filter(Boolean)
@@ -43,23 +46,43 @@ function UserFooter() {
     .map((p) => p[0]?.toUpperCase())
     .join("");
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  // Clears the PocketBase auth store and the idle-session timers.
+  const signOut = () => {
+    setMenuOpen(false);
+    useAuthStore.getState().logout();
+    navigate({ to: "/login", replace: true });
+  };
+
   return (
     <div className="space-y-3 border-t p-4" style={{ borderColor: "var(--border-default)" }}>
-      <div className="flex items-center gap-3">
-        <div
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+      <div className="relative flex items-center gap-3" ref={menuRef}>
+        <button
+          type="button"
+          aria-label="Account menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+          className="synkra-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
           style={{
             backgroundColor: "var(--accent-green-subtle)",
             color: "var(--accent-green)",
           }}
         >
           {initials}
-        </div>
+        </button>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm">{user?.name || user?.email || "Signed out"}</div>
         </div>
         <span
-          className="rounded-full px-2 py-0.5 text-xs font-semibold"
+          className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
           style={{
             backgroundColor: "var(--accent-green-subtle)",
             color: "var(--accent-green)",
@@ -68,8 +91,46 @@ function UserFooter() {
         >
           {user?.user_type === "paid" ? "PRO" : "BETA"}
         </span>
+
+        {menuOpen && (
+          <div
+            className="absolute bottom-full left-0 z-30 mb-2 w-44 overflow-hidden"
+            style={{
+              backgroundColor: "var(--bg-elevated)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-md)",
+              boxShadow: "var(--shadow-md)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={signOut}
+              className="synkra-focus flex w-full items-center gap-2 px-3 py-2.5 text-left"
+              style={{ fontSize: 13, color: "var(--text-secondary)" }}
+            >
+              <LogOut size={14} aria-hidden="true" />
+              Sign out
+            </button>
+          </div>
+        )}
       </div>
+
       <ThemeToggle />
+
+      <button
+        type="button"
+        onClick={signOut}
+        className="synkra-focus flex min-h-[40px] w-full items-center justify-center gap-2 rounded-md border"
+        style={{
+          borderColor: "var(--border-default)",
+          color: "var(--text-secondary)",
+          fontSize: 13,
+          fontWeight: 500,
+        }}
+      >
+        <LogOut size={14} aria-hidden="true" />
+        Sign out
+      </button>
     </div>
   );
 }
@@ -260,4 +321,4 @@ function DashboardLayout() {
       <PWAInstallPrompt />
     </div>
   );
-}
+            }
