@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSaveAction } from "@/hooks/useSaveAction";
 import pb from "@/lib/pocketbase";
 import { sanitizeInput } from "@/lib/sanitize";
 import { Field, fieldStyle, SettingsSection } from "./settings-primitives";
@@ -75,17 +75,32 @@ export function ProfileSettings() {
         : "Not available",
     [user?.created],
   );
-  if (!user) return null;
-  const saveName = async () => {
-    try {
-      await pb.collection("users").update(user.id, { name: sanitizeInput(name) });
+  const { run: saveName, saving: savingName } = useSaveAction(
+    async (userId: string, value: string) => {
+      await pb.collection("users").update(userId, { name: sanitizeInput(value) });
       await refreshUser();
-      toast.success("Profile updated");
-    } catch {
-      toast.error("Could not update profile");
-    }
-  };
-  const changePassword = async () => {
+    },
+    { success: "Saved successfully" },
+  );
+  const { run: submitPassword, saving: savingPassword } = useSaveAction(
+    async (userId: string, current: string, next: string, nextConfirm: string) => {
+      try {
+        await pb
+          .collection("users")
+          .update(userId, { oldPassword: current, password: next, passwordConfirm: nextConfirm });
+      } catch {
+        setOldError("The current password is not correct");
+        throw new Error("The current password is not correct");
+      }
+      setOldPassword("");
+      setPassword("");
+      setConfirm("");
+      setConfirmTouched(false);
+    },
+    { pending: "Updating password…", success: "Password updated successfully" },
+  );
+  if (!user) return null;
+  const changePassword = () => {
     setOldError("");
     setConfirmTouched(true);
     if (
@@ -95,18 +110,7 @@ export function ProfileSettings() {
       !requirements.uppercase
     )
       return;
-    try {
-      await pb
-        .collection("users")
-        .update(user.id, { oldPassword, password, passwordConfirm: confirm });
-      setOldPassword("");
-      setPassword("");
-      setConfirm("");
-      setConfirmTouched(false);
-      toast.success("Password updated");
-    } catch {
-      setOldError("The current password is not correct");
-    }
+    void submitPassword(user.id, oldPassword, password, confirm);
   };
   const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
   const days = trialEnd ? Math.ceil((trialEnd.getTime() - Date.now()) / 86400000) : null;
@@ -134,11 +138,11 @@ export function ProfileSettings() {
             />
           </Field>
           <Button
-            className="h-10 w-fit"
-            disabled={name.trim() === (user.name ?? "").trim()}
-            onClick={() => void saveName()}
+            className="h-10 w-full sm:w-fit"
+            disabled={savingName || name.trim() === (user.name ?? "").trim()}
+            onClick={() => void saveName(user.id, name)}
           >
-            Save changes
+            {savingName ? "Saving…" : "Save changes"}
           </Button>
         </div>
       </SettingsSection>
@@ -190,8 +194,13 @@ export function ProfileSettings() {
               </p>
             )}
           </div>
-          <Button variant="secondary" className="h-10 w-fit" onClick={() => void changePassword()}>
-            Change password
+          <Button
+            variant="secondary"
+            className="h-10 w-full sm:w-fit"
+            disabled={savingPassword}
+            onClick={changePassword}
+          >
+            {savingPassword ? "Saving…" : "Change password"}
           </Button>
         </div>
       </SettingsSection>
