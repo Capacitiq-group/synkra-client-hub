@@ -211,10 +211,14 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
 
       {/* Desktop three panel layout */}
       <div className="hidden min-h-0 flex-1 md:flex">
-        <aside style={{ width: 240, borderRight: panelBorder }} aria-label="Block library">
+        <aside
+          className="h-full min-h-0 shrink-0 overflow-hidden"
+          style={{ width: 240, borderRight: panelBorder }}
+          aria-label="Block library"
+        >
           <BlockLibrary onAdd={(definition) => addBlock(definition)} hasTrigger={hasTrigger} />
         </aside>
-        <main className="min-w-0 flex-1 overflow-auto">
+        <main className="h-full min-h-0 min-w-0 flex-1 overflow-auto">
           <BuilderCanvas
             blocks={blocks}
             selectedId={selectedId}
@@ -234,7 +238,11 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
             onDropDefinition={(definition, index) => addBlock(definition, index)}
           />
         </main>
-        <aside style={{ width: 320, borderLeft: panelBorder }} aria-label="Block configuration">
+        <aside
+          className="h-full min-h-0 shrink-0 overflow-hidden"
+          style={{ width: 320, borderLeft: panelBorder }}
+          aria-label="Block configuration"
+        >
           <ConfigPanel
             blocks={blocks}
             block={selectedBlock}
