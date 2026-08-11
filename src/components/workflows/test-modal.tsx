@@ -75,7 +75,7 @@ export function TestModal({
       <div
         className="mt-10 w-full max-w-[720px]"
         style={{
-          backgroundColor: "var(--bg-base)",
+          backgroundColor: "var(--bg-base, #0a0a0a)",
           border: "1px solid var(--border-default)",
           borderRadius: "var(--radius-lg)",
         }}
