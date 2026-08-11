@@ -224,7 +224,7 @@ export function RunDetailPanel({
   };
 
   const body = (
-    <div className="flex h-full flex-col" style={{ backgroundColor: "var(--bg-base)" }}>
+    <div className="flex h-full flex-col" style={{ backgroundColor: "var(--bg-base, #0a0a0a)" }}>
       <header
         className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4"
         style={{ height: 56, borderBottom: "1px solid var(--border-default)" }}
@@ -387,4 +387,5 @@ export function RunDetailPanel({
       {body}
     </div>
   );
-}
+         }
+    
