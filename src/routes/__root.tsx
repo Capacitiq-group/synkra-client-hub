@@ -9,6 +9,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { Toaster } from "@/components/ui/sonner";
 import { useAuthStore } from "@/stores/auth";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -86,6 +87,8 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      {/* Single global toast outlet — every save/update/delete reports here. */}
+      <Toaster position="top-center" closeButton />
     </QueryClientProvider>
   );
 }
