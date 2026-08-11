@@ -74,6 +74,86 @@ const FAQ = [
     "How do I get support?",
     "Email hello@synkra.co.za with your account email and a description of the issue. We respond on South African business days. Your Activity page shows the exact error message for any failed run which often has what you need to fix it yourself.",
   ],
+  [
+    "What is a webhook and how do I get my form to send data to Synkra?",
+    "A webhook is a URL that receives data when something happens in another system. When you activate a webhook trigger Synkra gives you a unique URL. You paste that URL into your form builder as the destination for form submissions. When someone submits your form the data is sent to Synkra and your workflow runs automatically. Most form builders including Typeform, Tally, and Google Forms support webhook destinations.",
+  ],
+  [
+    "My form field is called full_name but the template uses {{payload.name}}. Will it work?",
+    "No. The variable name must match the field name your form sends exactly. If your form sends full_name you must use {{payload.full_name}} in your workflow actions. Edit the action block and update the variable to match your form's field names. You can see what your form sends by adding your webhook URL to your form, submitting a test entry, and checking the Activity page for the incoming payload.",
+  ],
+  [
+    "What does {{payload.name}} mean?",
+    "It is a variable that gets replaced with real data when your workflow runs. If someone submits a form with the name Sarah Jones then {{payload.name}} becomes Sarah Jones everywhere it appears in your workflow. Variables use double curly braces and refer to fields from the trigger data or from earlier blocks in the workflow.",
+  ],
+  [
+    "Where do I see what data is coming into my webhook?",
+    "Go to Activity and click on any successful run. The Trigger input section shows exactly what data was received. This is how you confirm what field names your form is sending.",
+  ],
+  [
+    "What does a scheduled workflow use as its data if there is no form submission?",
+    "Scheduled workflows do not receive external data. They use your account information and anything stored in your saved collections. Use a Find information block to look up records before sending an email. For example find all leads added in the last 24 hours then include the count in your email body.",
+  ],
+  [
+    "Can I send emails to multiple people from one workflow?",
+    "Not with a single Send email block. The Send email block sends to one recipient per run. To email multiple people you need either separate workflows for each person or a scheduled workflow that loops through a list. A proper loop block for list processing is coming in a future update.",
+  ],
+  [
+    "What happens if a workflow fails halfway through?",
+    "The steps completed before the failure are not reversed. If step 1 saved a record and step 2 failed the record still exists. The failed run appears in Activity with a red status. You can click View to see exactly which step failed and why. You can then click Retry to run the workflow again from the beginning.",
+  ],
+  [
+    "How do I know if an email was actually sent?",
+    "Go to Activity and open the run. The Send email step shows Success if the email was submitted to our sending service. Whether it was delivered to the inbox depends on the recipient's email provider. If you are testing use your own email address as the recipient.",
+  ],
+  [
+    "What is the difference between draft and published?",
+    "A draft workflow is saved but not running. It does not respond to triggers and does not run on schedule. A published workflow is live and runs every time its trigger fires. You can switch between draft and published at any time.",
+  ],
+  [
+    "Can I duplicate a workflow?",
+    "Yes. Go to My Workflows, click the three-dot menu on any workflow card, and select Duplicate. A copy is created as a draft with a new name.",
+  ],
+  [
+    "What is a collection and why do I need to know this?",
+    "A collection is where Synkra stores your data. It is like a spreadsheet tab with rows and columns. The Save information and Find information blocks let your workflows read from and write to these collections. For basic email automations you do not need to know about collections at all. They become relevant when you want to store lead information, look up customer records, or build more complex automations.",
+  ],
+  [
+    "How do I connect my website form to Synkra?",
+    "Copy the webhook URL from the webhook trigger block in your workflow. In your form builder find the webhook or custom integration settings and paste that URL. Most form builders call this a webhook, custom destination, or integration URL. When your form is submitted the data goes to Synkra and your workflow starts.",
+  ],
+  [
+    "Can I use Synkra without a website?",
+    "Yes. You can trigger workflows manually using the Test button in the builder, set up scheduled workflows that run automatically without any external trigger, or use Synkra with any tool that can send a webhook including Typeform, Tally, and Google Forms which are free tools that do not require a website.",
+  ],
+  [
+    "Why is the {{variable}} in my email showing as blank?",
+    "The variable name does not match the field name in the incoming data. Check the Activity page and open the trigger input for a recent run to see the exact field names being sent. Update the variable in your action block to match.",
+  ],
+  [
+    "How many workflows can I have active at once?",
+    "During your free trial you can have unlimited workflows. Your only limit is 2000 total workflow runs per month and 100 emails per month.",
+  ],
+  [
+    "What is a workflow run?",
+    "One run is one complete execution of your workflow from trigger to finish. If your lead notification workflow fires 50 times in a month because 50 people submitted your form that counts as 50 runs.",
+  ],
+  [
+    "Can I use Synkra to send automated WhatsApp messages?",
+    "Not yet. WhatsApp automation is coming in September 2026 when we launch our full platform. Your current free trial includes email automation only.",
+  ],
+  [
+    "How do I cancel or pause a workflow?",
+    "Go to My Workflows and click Pause on any active workflow. The workflow stops responding to triggers immediately. Click Resume to reactivate it. Pausing does not delete any data or configuration.",
+  ],
+  [
+    "What does the Wait block do and when should I use it?",
+    "The Wait block pauses the workflow for a set time before continuing. For example in a review request workflow you might wait 24 hours after a job is completed before sending the review request email. Without the Wait block the email would send instantly. Use Wait whenever there should be a delay between a trigger and an action.",
+  ],
+  [
+    "Is my customer data safe?",
+    "Your data is stored on a private server. We do not sell or share your customer data with any third parties. You can request deletion of your data at any time by emailing hello@synkra.co.za.",
+  ],
 ] as const;
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -287,4 +367,4 @@ function HelpPage() {
       </div>
     </div>
   );
-}
+      }
