@@ -86,15 +86,19 @@ export function previewWorkflow(
     },
   };
 
-  const steps = blocks.map((block) => {
-    const resolvedConfig = resolveValue(block.config ?? {}, context);
-    const missing = unresolvedPlaceholders(block.config ?? {}, context);
-    const outputVariable = block.config?.["output_variable"];
-    if (typeof outputVariable === "string" && outputVariable) {
-      context[outputVariable] = `[${block.label} output]`;
-    }
-    return { block, resolvedConfig, missing };
-  });
+  // The backend execution engine never resolves or executes trigger blocks, so
+  // the preview skips them too — their config must not raise "Unresolved" warnings.
+  const steps = blocks
+    .filter((block) => block.type !== "trigger")
+    .map((block) => {
+      const resolvedConfig = resolveValue(block.config ?? {}, context);
+      const missing = unresolvedPlaceholders(block.config ?? {}, context);
+      const outputVariable = block.config?.["output_variable"];
+      if (typeof outputVariable === "string" && outputVariable) {
+        context[outputVariable] = `[${block.label} output]`;
+      }
+      return { block, resolvedConfig, missing };
+    });
 
   return { steps, context };
 }
