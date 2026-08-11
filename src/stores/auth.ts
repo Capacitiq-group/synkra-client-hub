@@ -18,11 +18,6 @@ interface AuthState {
   isReady: boolean;
   hydrate: () => void;
   login: (email: string, password: string) => Promise<void>;
-  register: (
-    email: string,
-    password: string,
-    userData: { name: string; business_name?: string; business_industry?: string }
-  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -45,38 +40,6 @@ export const useAuthStore = create<AuthState>((set) => ({
         `Too many attempts. Try again in ${Math.ceil(remainingMs / 1000 / 60)} minute(s).`,
       );
     }
-    await pb.collection("users").authWithPassword(cleanEmail, password);
-    clearRateLimit(limitKey);
-    set({ user: (pb.authStore.record as PortalUser | null) ?? null });
-  },
-  register: async (email, password, userData) => {
-    const cleanEmail = sanitizeEmail(email);
-    const limitKey = `register:${cleanEmail}`;
-    const { allowed, remainingMs } = checkRateLimit(limitKey, 3, 15 * 60 * 1000);
-    if (!allowed) {
-      throw new Error(
-        `Too many attempts. Try again in ${Math.ceil(remainingMs / 1000 / 60)} minute(s).`,
-      );
-    }
-    await pb.collection("users").create({
-      email: cleanEmail,
-      password: password,
-      passwordConfirm: password,
-      name: userData.name,
-      business_name: userData.business_name || "",
-      business_industry: userData.business_industry || "",
-      user_type: "beta",
-      credit_emails: 100,
-      credit_emails_used: 0,
-      credit_workflows: 2000,
-      credit_workflows_used: 0,
-      notify_on_failure: true,
-      notify_weekly_summary: true,
-      notify_on_success: false,
-      notify_credit_low: true,
-      notify_platform_updates: false,
-    });
-    // Auto-login after successful registration
     await pb.collection("users").authWithPassword(cleanEmail, password);
     clearRateLimit(limitKey);
     set({ user: (pb.authStore.record as PortalUser | null) ?? null });
