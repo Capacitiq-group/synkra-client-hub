@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { CheckCircle } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSaveAction } from "@/hooks/useSaveAction";
 import pb from "@/lib/pocketbase";
 import { sendNotificationEmail } from "@/lib/notifications";
 import { sanitizeEmail } from "@/lib/sanitize";
@@ -44,27 +43,20 @@ const ROWS = [
 export function NotificationsSettings() {
   const { user, refreshUser } = useAuth();
   const [email, setEmail] = useState("");
-  const [saved, setSaved] = useState<string | null>(null);
   useEffect(() => setEmail(user?.notification_email || user?.email || ""), [user]);
-  if (!user) return null;
-  const update = async (key: string, value: boolean) => {
-    try {
-      await pb.collection("users").update(user.id, { [key]: value });
+  const { run: update, saving: savingPreference } = useSaveAction(
+    async (userId: string, key: string, value: boolean) => {
+      await pb.collection("users").update(userId, { [key]: value });
       if (pb.authStore.record) pb.authStore.record[key] = value;
       await refreshUser();
-      setSaved(key);
-      window.setTimeout(() => setSaved((current) => (current === key ? null : current)), 1500);
-    } catch {
-      toast.error("Could not save preference");
-    }
-  };
-  const saveEmail = async () => {
-    const clean = sanitizeEmail(email);
-    const previous = user.notification_email || user.email || "";
-    try {
-      await pb.collection("users").update(user.id, { notification_email: clean });
+    },
+    { pending: "Saving preference…", success: "Saved successfully" },
+  );
+  const { run: saveEmail, saving: savingEmail } = useSaveAction(
+    async (userId: string, value: string, previous: string) => {
+      const clean = sanitizeEmail(value);
+      await pb.collection("users").update(userId, { notification_email: clean });
       await refreshUser();
-      toast.success("Notification address updated");
       if (clean && clean !== previous) {
         void sendNotificationEmail({
           to: clean,
@@ -72,10 +64,10 @@ export function NotificationsSettings() {
           body: `Hi,\n\nThis confirms that Synkra workflow notifications will be sent to this address.\n\nYou will receive an email when any of your automations encounter an error.\n\nSynkra`,
         });
       }
-    } catch {
-      toast.error("Could not update notification address");
-    }
-  };
+    },
+    { success: "Saved successfully" },
+  );
+  if (!user) return null;
   const preferences = user as unknown as Record<string, unknown>;
   return (
     <div className="max-w-[560px]">
@@ -90,15 +82,22 @@ export function NotificationsSettings() {
           >
             Notification email address
           </span>
-          <span className="flex gap-2">
+          <span className="flex flex-col gap-2 sm:flex-row">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={fieldStyle}
             />
-            <Button variant="secondary" className="h-9" onClick={() => void saveEmail()}>
-              Save
+            <Button
+              variant="secondary"
+              className="h-11 shrink-0"
+              disabled={savingEmail}
+              onClick={() =>
+                void saveEmail(user.id, email, user.notification_email || user.email || "")
+              }
+            >
+              {savingEmail ? "Saving…" : "Save"}
             </Button>
           </span>
         </label>
@@ -109,25 +108,17 @@ export function NotificationsSettings() {
               className="flex min-h-16 items-center justify-between gap-4 border-t px-1"
               style={{ borderColor: "var(--border-subtle)" }}
             >
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium">{name}</p>
                 <p className="text-[13px]" style={{ color: "var(--text-muted)" }}>
                   {description}
                 </p>
               </div>
-              <div className="flex min-w-24 items-center justify-end gap-2">
-                {saved === key && (
-                  <span
-                    className="flex items-center gap-1 text-xs"
-                    style={{ color: "var(--state-success)" }}
-                  >
-                    <CheckCircle size={14} />
-                    Saved
-                  </span>
-                )}
+              <div className="flex shrink-0 items-center justify-end">
                 <Switch
                   checked={Boolean(preferences[key] ?? defaultValue)}
-                  onCheckedChange={(value) => void update(key, value)}
+                  disabled={savingPreference}
+                  onCheckedChange={(value) => void update(user.id, key, value)}
                   aria-label={name}
                 />
               </div>
