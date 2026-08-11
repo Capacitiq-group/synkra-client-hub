@@ -99,11 +99,21 @@ function DashboardHome() {
   const isPaid = user?.user_type === "paid";
 
   return (
-    <div className="mx-auto w-full text-left" style={{ maxWidth: 1200, padding: 16 }}>
+    <div
+      className="mx-auto w-full overflow-x-hidden text-left"
+      style={{ maxWidth: 1200, padding: 16 }}
+    >
       <div className="md:hidden" />
       <div className="synkra-dashboard flex flex-col">
-        <header>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>
+        <header className="min-w-0">
+          <h1
+            className="break-words"
+            style={{
+              fontSize: "clamp(22px, 6vw, 28px)",
+              fontWeight: 800,
+              color: "var(--text-primary)",
+            }}
+          >
             {greeting}
           </h1>
           <p style={{ fontSize: 15, color: "var(--text-secondary)", marginTop: 8 }}>{context}</p>
@@ -149,4 +159,4 @@ function DashboardHome() {
       <QuickActions />
     </div>
   );
-}
+                                              }
