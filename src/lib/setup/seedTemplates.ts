@@ -20,7 +20,6 @@ export const TEMPLATES = [
         label: "Form submitted",
         description: "Fires when a contact form or lead form is submitted",
         config: {
-          path: "/webhooks/lead/{{workspace_id}}",
           description:
             "Paste this URL into your website form or Typeform as the submission destination",
           expected_fields: ["name", "email", "phone", "message"],
@@ -94,7 +93,6 @@ export const TEMPLATES = [
         description:
           "Fires when a new appointment is booked. Send this webhook from your booking system.",
         config: {
-          path: "/webhooks/appointment/{{workspace_id}}",
           description: "Fire this webhook when an appointment is booked",
           expected_fields: ["customer_name", "customer_email", "appointment_datetime"],
         },
@@ -141,7 +139,6 @@ export const TEMPLATES = [
         label: "Job completed",
         description: "Fires when a job or service is marked as complete",
         config: {
-          path: "/webhooks/job-complete/{{workspace_id}}",
           description: "Fire this when a job is done",
           expected_fields: ["customer_name", "customer_email", "review_link"],
         },
@@ -190,7 +187,6 @@ export const TEMPLATES = [
         label: "Invoice created",
         description: "Fires when an invoice is sent to a customer",
         config: {
-          path: "/webhooks/invoice/{{workspace_id}}",
           description: "Fire this when you send an invoice",
           expected_fields: [
             "customer_name",
@@ -264,4 +260,4 @@ export async function seedTemplates(pb: PocketBase): Promise<void> {
       integrations_required: JSON.stringify(template.integrations_required),
     });
   }
-}
+        }
