@@ -123,7 +123,7 @@ export function TemplatePreviewModal({
         <ul className="mt-3 space-y-2">
           {template.requires_paid_api ? (
             <li style={{ fontSize: 14, color: "var(--state-warning)" }}>
-              A connected Twilio account for WhatsApp or SMS sending
+              A connected messaging account for WhatsApp or SMS sending
             </li>
           ) : (
             <li
