@@ -131,7 +131,7 @@ export function TemplateCard({
             style={{ color: "var(--state-warning)" }}
           >
             WhatsApp
-            <span title="Available when Twilio is connected">
+            <span title="Available when messaging is connected">
               <Info size={12} aria-hidden="true" />
             </span>
           </span>
