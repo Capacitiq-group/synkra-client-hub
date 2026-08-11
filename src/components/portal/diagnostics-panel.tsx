@@ -7,7 +7,6 @@ import {
   summarizeTelemetry,
   type TelemetryEvent,
 } from "@/lib/telemetry";
-import { POCKETBASE_URL } from "@/lib/pocketbase";
 
 const levelColor: Record<string, string> = {
   info: "var(--text-secondary)",
@@ -39,9 +38,6 @@ export function DiagnosticsPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Diagnostics</div>
-          <p className="mt-1" style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            Backend: {POCKETBASE_URL}
-          </p>
         </div>
         <div className="flex gap-2">
           <button
