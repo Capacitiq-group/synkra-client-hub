@@ -19,6 +19,7 @@ import {
 } from "@/hooks/useWorkflows";
 import { useAuth } from "@/contexts/AuthContext";
 import { sanitizeInput } from "@/lib/sanitize";
+import { useSaveAction } from "@/hooks/useSaveAction";
 
 export const Route = createFileRoute("/dashboard/workflows/")({
   validateSearch: (search: Record<string, unknown>): { tab?: "mine" } =>
@@ -145,6 +146,26 @@ function WorkflowsPage() {
     return sorted;
   }, [workflows, statusFilter, query, sort]);
 
+  const refreshWorkflows = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["workflows"] });
+    await queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+  };
+
+  const { run: runActivate } = useSaveAction(
+    async (template: PortalTemplate) => {
+      if (!user?.id) throw new Error("You are signed out. Please sign in again.");
+      const workflow = await activateTemplate(template, user.id);
+      await queryClient.invalidateQueries({ queryKey: ["templates"] });
+      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
+      return workflow;
+    },
+    {
+      pending: "Activating workflow…",
+      success: "Workflow activated successfully",
+      error: "Could not activate workflow. Please try again.",
+    },
+  );
+
   const handleActivate = async (template: PortalTemplate) => {
     if (!user?.id) return;
     if (template.isActivated && template.workflowId) {
@@ -156,86 +177,104 @@ function WorkflowsPage() {
     }
     setPendingTemplate(template.template_id);
     try {
-      const workflow = await activateTemplate(template, user.id);
-      toast.success("Workflow activated successfully");
-      await queryClient.invalidateQueries({ queryKey: ["templates"] });
-      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
+      const workflow = await runActivate(template);
+      if (!workflow) return;
       navigate({
         to: "/dashboard/workflows/builder/$workflowId",
         params: { workflowId: workflow.id },
       });
-    } catch {
-      toast.error("Could not activate workflow. Please try again.");
     } finally {
       setPendingTemplate(null);
       setPreviewTemplate(null);
     }
   };
 
-  const refreshWorkflows = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["workflows"] });
-    await queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-  };
-
-  const handleToggleStatus = async (workflow: PortalWorkflow) => {
-    const next = workflow.status === "published" ? "paused" : "published";
-    try {
+  const { run: runToggleStatus, saving: togglingStatus } = useSaveAction(
+    async (workflow: PortalWorkflow) => {
+      const next = workflow.status === "published" ? "paused" : "published";
       await setWorkflowStatus(workflow.id, next);
       await refreshWorkflows();
-      toast.success(next === "paused" ? "Workflow paused" : "Workflow resumed");
-    } catch {
-      toast.error("Could not update the workflow status");
-    }
-  };
+      return next;
+    },
+    {
+      pending: "Updating workflow…",
+      success: "Workflow status updated",
+      error: "Could not update the workflow status",
+    },
+  );
+
+  const { run: runRename, saving: renaming } = useSaveAction(
+    async (workflowId: string, name: string) => {
+      await renameWorkflow(workflowId, name);
+      await refreshWorkflows();
+    },
+    {
+      pending: "Renaming workflow…",
+      success: "Workflow renamed",
+      error: "Could not rename the workflow",
+    },
+  );
+
+  const { run: runDuplicate, saving: duplicating } = useSaveAction(
+    async (workflow: PortalWorkflow) => {
+      await duplicateWorkflow(workflow);
+      await refreshWorkflows();
+    },
+    {
+      pending: "Duplicating workflow…",
+      success: "Workflow duplicated",
+      error: "Could not duplicate the workflow",
+    },
+  );
+
+  const { run: runDelete, saving: deleting } = useSaveAction(
+    async (workflowId: string) => {
+      await deleteWorkflow(workflowId);
+      await refreshWorkflows();
+      await queryClient.invalidateQueries({ queryKey: ["templates"] });
+    },
+    {
+      pending: "Deleting workflow…",
+      success: "Workflow deleted",
+      error: "Could not delete the workflow",
+    },
+  );
+
+  const workflowActionBusy = togglingStatus || renaming || duplicating || deleting;
 
   const handleRename = async (workflow: PortalWorkflow) => {
     const input = window.prompt("Rename workflow", workflow.name);
     if (input === null) return;
     const clean = sanitizeInput(input).slice(0, 120);
     if (!clean) return;
-    try {
-      await renameWorkflow(workflow.id, clean);
-      await refreshWorkflows();
-      toast.success("Workflow renamed");
-    } catch {
-      toast.error("Could not rename the workflow");
-    }
-  };
-
-  const handleDuplicate = async (workflow: PortalWorkflow) => {
-    try {
-      await duplicateWorkflow(workflow);
-      await refreshWorkflows();
-      toast.success("Workflow duplicated");
-    } catch {
-      toast.error("Could not duplicate the workflow");
-    }
+    await runRename(workflow.id, clean);
   };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    try {
-      await deleteWorkflow(deleteTarget.id);
-      await refreshWorkflows();
-      await queryClient.invalidateQueries({ queryKey: ["templates"] });
-      toast.success("Workflow deleted");
-    } catch {
-      toast.error("Could not delete the workflow");
-    } finally {
-      setDeleteTarget(null);
-    }
+    const target = deleteTarget;
+    await runDelete(target.id);
+    setDeleteTarget(null);
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-5 py-8 md:px-10">
-      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>Workflows</h1>
+    <div className="mx-auto w-full max-w-[1200px] overflow-x-hidden px-4 py-6 sm:px-5 md:px-10 md:py-8">
+      <header className="flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <h1
+            style={{
+              fontSize: "clamp(22px, 6vw, 28px)",
+              fontWeight: 800,
+              color: "var(--text-primary)",
+            }}
+          >
+            Workflows
+          </h1>
           <p style={{ fontSize: 15, color: "var(--text-secondary)", marginTop: 6 }}>
             Build automations that run on their own. Start with a template or build from scratch.
           </p>
         </div>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="flex w-full min-w-0 flex-col gap-3 md:w-auto md:flex-row md:items-center">
           <button
             type="button"
             onClick={() => navigate({ to: "/dashboard/workflows/builder/new", search: {} })}
@@ -252,7 +291,7 @@ function WorkflowsPage() {
             <Plus size={16} aria-hidden="true" />
             Build from scratch
           </button>
-          <div className="relative">
+          <div className="relative w-full md:w-auto">
             <Search
               size={16}
               aria-hidden="true"
@@ -285,7 +324,7 @@ function WorkflowsPage() {
       </header>
 
       <nav
-        className="mt-8 flex gap-8"
+        className="mt-8 flex gap-6 overflow-x-auto sm:gap-8"
         style={{ borderBottom: "1px solid var(--border-subtle)" }}
         aria-label="Workflow views"
       >
@@ -381,7 +420,7 @@ function WorkflowsPage() {
         </section>
       ) : (
         <section className="mt-6" aria-label="My workflows">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="synkra-scroll-x flex gap-2 overflow-x-auto pb-1">
               {STATUSES.map((item) => (
                 <FilterButton
@@ -491,10 +530,11 @@ function WorkflowsPage() {
                   templateName={
                     workflow.template_id ? templateNames.get(workflow.template_id) : undefined
                   }
-                  onToggleStatus={() => handleToggleStatus(workflow)}
-                  onDuplicate={() => handleDuplicate(workflow)}
-                  onRename={() => handleRename(workflow)}
+                  onToggleStatus={() => void runToggleStatus(workflow)}
+                  onDuplicate={() => void runDuplicate(workflow)}
+                  onRename={() => void handleRename(workflow)}
                   onDelete={() => setDeleteTarget(workflow)}
+                  busy={workflowActionBusy}
                 />
               ))}
             </div>
@@ -524,5 +564,4 @@ function WorkflowsPage() {
       )}
     </div>
   );
-                 }
-  
+}
