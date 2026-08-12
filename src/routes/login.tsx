@@ -9,8 +9,10 @@ import { useAuthStore } from "@/stores/auth";
 import { APPLY_URL } from "./signup";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>): { reason?: string } =>
-    typeof search["reason"] === "string" ? { reason: search["reason"] as string } : {},
+  validateSearch: (search: Record<string, unknown>): { reason?: string; reset?: string } => ({
+    ...(typeof search["reason"] === "string" ? { reason: search["reason"] as string } : {}),
+    ...(typeof search["reset"] === "string" ? { reset: search["reset"] as string } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — Synkra Client Portal" },
@@ -56,7 +58,7 @@ function Wordmark() {
 }
 
 function LoginPage() {
-  const { reason } = Route.useSearch();
+  const { reason, reset } = Route.useSearch();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const isReady = useAuthStore((s) => s.isReady);
@@ -177,6 +179,22 @@ function LoginPage() {
             <Wordmark />
           </div>
 
+          {reset === "success" && (
+            <div
+              style={{
+                marginBottom: 20,
+                backgroundColor: "var(--accent-green-subtle)",
+                border: "1px solid var(--accent-green-border)",
+                borderRadius: "var(--radius-sm)",
+                padding: "10px 14px",
+                fontSize: 14,
+                color: "var(--accent-green)",
+              }}
+            >
+              Your password has been reset. You can now sign in.
+            </div>
+          )}
+
           {reason === "expired" && (
             <div
               style={{
@@ -192,6 +210,9 @@ function LoginPage() {
               Your session ended due to inactivity. Please sign in again.
             </div>
           )}
+
+
+
 
           <div
             style={{
@@ -372,3 +393,4 @@ function LoginPage() {
   );
                                                            }
 
+                  
