@@ -1,10 +1,57 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { Check, Copy } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import pb from "@/lib/pocketbase";
 import { webhookUrlFor } from "@/lib/workflow/api";
 import { OPERATORS, blockSubtype } from "@/lib/workflow/blocks";
 import { availableVariables } from "@/lib/workflow/describe";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { PlainField, VariableField } from "./variables-popover";
+
+function GmailStatusLine() {
+  const { user } = useAuth();
+  const { data, isLoading } = useQuery({
+    queryKey: ["integrations", "gmail", user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      if (!user) return null;
+      const records = await pb.collection("integrations").getFullList({
+        filter: pb.filter('user_id = {:userId} && type = "gmail"', { userId: user.id }),
+      });
+      return (records[0] as Record<string, unknown> | undefined) ?? null;
+    },
+  });
+
+  const connected = data?.["status"] === "connected";
+  const email = String(data?.["connected_email"] ?? data?.["display_name"] ?? "your inbox");
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
+        Mailbox connection
+      </span>
+      {isLoading ? (
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Checking Gmail connection…</p>
+      ) : connected ? (
+        <p style={{ fontSize: 12, color: "var(--state-success)" }}>Watching: {email}</p>
+      ) : (
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          <Link
+            to="/dashboard/settings"
+            search={{ tab: "integrations" }}
+            style={{ color: "var(--accent-green)" }}
+          >
+            Connect your Gmail account in Settings → Integrations
+          </Link>{" "}
+          to use this trigger
+        </p>
+      )}
+    </div>
+  );
+}
+
 
 function WebhookUrlField({ workflowId }: { workflowId?: string | undefined }) {
   const [copied, setCopied] = useState(false);
@@ -141,13 +188,44 @@ export function ConfigPanel({
       )}
 
       {subtype === "email_received" && (
-        <PlainField
-          label="Monitored address"
-          value={text("address")}
-          onChange={(v) => set("address", v)}
-          placeholder="inbox@yourbusiness.co.za"
-        />
+        <>
+          <GmailStatusLine />
+          <div className="flex flex-col gap-3">
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
+              Only trigger if
+            </span>
+            <PlainField
+              label="Subject contains"
+              value={text("subject_filter")}
+              onChange={(v) => set("subject_filter", v)}
+              placeholder="e.g. quote request"
+            />
+            <PlainField
+              label="From address contains"
+              value={text("from_filter")}
+              onChange={(v) => set("from_filter", v)}
+              placeholder="e.g. @clientdomain.co.za"
+            />
+            {!text("subject_filter").trim() && !text("from_filter").trim() && (
+              <p
+                className="rounded-md px-2 py-1.5"
+                style={{
+                  fontSize: 12,
+                  color: "var(--state-warning)",
+                  border: "1px solid var(--state-warning)",
+                }}
+              >
+                No filter set — this will trigger on every email received, including newsletters,
+                notifications, and anything else that arrives.
+              </p>
+            )}
+            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              Matching is case-insensitive. Leave a field empty to ignore it.
+            </p>
+          </div>
+        </>
       )}
+
 
       {subtype === "send_email" && (
         <>
@@ -328,4 +406,5 @@ export function ConfigPanel({
       )}
     </div>
   );
-}
+          }
+    
