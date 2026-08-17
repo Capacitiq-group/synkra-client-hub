@@ -2,6 +2,8 @@
 import { useQuery } from "@tanstack/react-query";
 import pb, { getFullListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
+import { assertSaveAllowed } from "@/hooks/useWorkflows";
+import type { WorkflowBlock } from "@/lib/workflow/types";
 
 export interface TemplateBlock {
   id: string;
@@ -85,6 +87,12 @@ export function useTemplates() {
 
 export async function activateTemplate(template: PortalTemplate, userId: string) {
   const firstBlock = template.blocks[0];
+  // Activating a template creates a DRAFT workflow: it consumes a draft slot
+  // and must respect the plan's maximum steps per workflow.
+  await assertSaveAllowed({
+    blocks: template.blocks as unknown as WorkflowBlock[],
+    status: "draft",
+  });
   return pb.collection("workflows").create({
     user_id: userId,
     template_id: template.template_id,
