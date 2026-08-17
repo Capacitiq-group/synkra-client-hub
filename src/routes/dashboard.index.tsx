@@ -14,6 +14,7 @@ import { TemplatesSection } from "@/components/dashboard/templates-section";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { CreditsWidget } from "@/components/dashboard/credits-widget";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { UsageSummary } from "@/components/dashboard/usage-summary";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({
@@ -118,6 +119,8 @@ function DashboardHome() {
           </h1>
           <p style={{ fontSize: 15, color: "var(--text-secondary)", marginTop: 8 }}>{context}</p>
         </header>
+
+        <UsageSummary />
 
         <section aria-label="Account statistics">
           <StatsRow
