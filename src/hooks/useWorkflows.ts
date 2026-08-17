@@ -4,6 +4,10 @@ import pb, { getFullListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseJson, type WorkflowRecordShape } from "@/lib/workflow/types";
 import type { WorkflowBlock } from "@/lib/workflow/types";
+import {
+  activateWorkflowFn,
+  checkWorkflowSaveFn,
+} from "@/lib/usage/usage.functions";
 
 export interface PortalWorkflow extends WorkflowRecordShape {
   successful_runs: number;
@@ -75,7 +79,19 @@ export function useWorkflow(workflowId: string | undefined) {
   });
 }
 
+/**
+ * Status changes go through the server for activation, because the active
+ * workflow limit is a hard plan limit and must not be enforced in the browser.
+ * Pausing/erroring never consumes an active slot, so it stays a direct update.
+ */
 export async function setWorkflowStatus(workflowId: string, status: string) {
+  if (status === "published") {
+    const result = await activateWorkflowFn({
+      data: { token: pb.authStore.token, workflowId },
+    });
+    if (!result.ok) throw new Error(result.message ?? "Could not activate this workflow.");
+    return result;
+  }
   return pb.collection("workflows").update(workflowId, { status });
 }
 
@@ -88,6 +104,7 @@ export async function deleteWorkflow(workflowId: string) {
 }
 
 export async function duplicateWorkflow(workflow: PortalWorkflow) {
+  await assertSaveAllowed({ blocks: workflow.blocks, status: "draft" });
   return pb.collection("workflows").create({
     user_id: workflow.user_id,
     template_id: workflow.template_id ?? "",
@@ -102,6 +119,23 @@ export async function duplicateWorkflow(workflow: PortalWorkflow) {
   });
 }
 
+/** Server-side guard for step, draft and active workflow limits. */
+export async function assertSaveAllowed(params: {
+  workflowId?: string;
+  blocks: WorkflowBlock[];
+  status: "draft" | "published" | "paused" | "error";
+}) {
+  const result = await checkWorkflowSaveFn({
+    data: {
+      token: pb.authStore.token,
+      ...(params.workflowId ? { workflowId: params.workflowId } : {}),
+      blocks: params.blocks as unknown as Array<Record<string, unknown>>,
+      status: params.status,
+    },
+  });
+  if (!result.ok) throw new Error(result.message ?? "This change exceeds your plan limits.");
+}
+
 export async function saveWorkflowDraft(params: {
   workflowId?: string;
   userId: string;
@@ -111,11 +145,17 @@ export async function saveWorkflowDraft(params: {
   status?: string;
 }) {
   const trigger = params.blocks.find((b) => b.type === "trigger");
+  const status = (params.status ?? "draft") as "draft" | "published" | "paused" | "error";
+  await assertSaveAllowed({
+    ...(params.workflowId ? { workflowId: params.workflowId } : {}),
+    blocks: params.blocks,
+    status,
+  });
   const payload = {
     user_id: params.userId,
     template_id: params.templateId ?? "",
     name: params.name,
-    status: params.status ?? "draft",
+    status,
     blocks: JSON.stringify(params.blocks),
     trigger_type: trigger?.trigger_type ?? "webhook",
     trigger_config: JSON.stringify(trigger?.config ?? {}),
