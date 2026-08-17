@@ -1,13 +1,12 @@
 /**
- * Execution completion callback for the SYNKRA Flow execution engine
- * (synkra-core). Called once the run has finished, successfully or not.
+ * Execution completion callback for the SYNKRA Flow execution engine.
  *
- * This endpoint only finalises the run state and logs. It NEVER touches the
- * monthly execution counter: startExecution() already counted the run, and a
- * failure does not refund it.
+ * Finalises a run that was opened by /api/public/executions/start. It never
+ * touches the monthly execution counter: the execution was counted once at
+ * start, a failure does not refund it, and a retry reuses the same
+ * execution_id, so completion can be delivered more than once safely.
  *
- * Auth, request shape and error conventions mirror ./start.ts exactly so
- * synkra-core can call both endpoints the same way.
+ * Protected by the same shared API secret as the start route.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
@@ -18,7 +17,7 @@ const schema = z.object({
   step_logs: z.unknown().optional(),
   output_data: z.unknown().optional(),
   error_message: z.string().max(4000).optional(),
-  duration_ms: z.number().int().nonnegative().optional(),
+  duration_ms: z.number().int().nonnegative().max(86_400_000).optional(),
 });
 
 export const Route = createFileRoute("/api/public/executions/complete")({
@@ -49,15 +48,7 @@ export const Route = createFileRoute("/api/public/executions/complete")({
               ? { durationMs: parsed.data.duration_ms }
               : {}),
           });
-          // The run was never started (or its execution_id is unknown), so
-          // there is nothing to finalise: 404, not a server error.
-          if (!result.ok) {
-            return Response.json(
-              { ok: false, error: result.error ?? "unknown_execution" },
-              { status: 404 },
-            );
-          }
-          return Response.json({ ok: true, execution_id: parsed.data.execution_id });
+          return Response.json(result, { status: result.ok ? 200 : 404 });
         } catch (err) {
           return Response.json(
             { ok: false, error: err instanceof Error ? err.message : "complete_failed" },
