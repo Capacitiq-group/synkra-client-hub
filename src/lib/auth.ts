@@ -23,6 +23,13 @@ export interface AuthUser {
   credit_emails_used: number;
   credit_workflows: number;
   credit_workflows_used: number;
+  /** Subscription tier — see src/lib/plans.ts for the limits attached to it. */
+  tier?: "free" | "basic" | "pro";
+  executions_used_this_month?: number;
+  ai_ops_used_this_month?: number;
+  storage_used_mb?: number;
+  emails_used_this_month?: number;
+  billing_period_start?: string | null;
   notify_on_failure?: boolean;
   notify_weekly_summary?: boolean;
   notify_on_success?: boolean;
