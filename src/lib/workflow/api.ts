@@ -61,7 +61,10 @@ export function webhookUrlFor(workflowId: string): string {
   return `${API_BASE}/webhooks/run/${workflowId}`;
 }
 
-export function integrationConnectUrl(type: "google-calendar" | "google-sheets", userId: string) {
+export function integrationConnectUrl(
+  type: "google-calendar" | "google-sheets" | "gmail",
+  userId: string,
+) {
   return `${API_BASE}/integrations/${type}/connect?user_id=${encodeURIComponent(userId)}`;
 }
 
