@@ -38,6 +38,14 @@ export const COLLECTION_SCHEMAS = [
       { name: "credit_emails_used", type: "number", options: { default: 0 } },
       { name: "credit_workflows", type: "number", options: { default: 2000 } },
       { name: "credit_workflows_used", type: "number", options: { default: 0 } },
+      // Plan + usage accounting. Mirrors src/lib/setup/createCollections.ts
+      // (the authoritative schema); server-owned, never written by the browser.
+      { name: "tier", type: "select", options: { values: ["free", "basic", "pro"] } },
+      { name: "billing_period_start", type: "date" },
+      { name: "executions_used_this_month", type: "number" },
+      { name: "ai_ops_used_this_month", type: "number" },
+      { name: "emails_used_this_month", type: "number" },
+      { name: "storage_used_mb", type: "number" },
     ],
   },
   {
@@ -96,8 +104,15 @@ export const COLLECTION_SCHEMAS = [
         name: "status",
         type: "select",
         required: true,
-        options: { values: ["running", "success", "failed"] },
+        options: { values: ["running", "success", "failed", "blocked"] },
       },
+      // Execution accounting. execution_id identifies ONE run; retries reuse
+      // it so they never count twice.
+      { name: "execution_id", type: "text" },
+      { name: "trigger_type", type: "text" },
+      { name: "attempt_count", type: "number" },
+      { name: "counted", type: "bool" },
+      { name: "blocked_reason", type: "text" },
       { name: "triggered_at", type: "date" },
       { name: "completed_at", type: "date" },
       { name: "duration_ms", type: "number" },
@@ -106,7 +121,11 @@ export const COLLECTION_SCHEMAS = [
       { name: "step_logs", type: "json" },
       { name: "error_message", type: "text" },
     ],
+    indexes: [
+      "CREATE UNIQUE INDEX `idx_unique_workflow_runs_execution_id` ON `workflow_runs` (`execution_id`) WHERE `execution_id` != ''",
+    ],
   },
+
   {
     name: "integrations",
     type: "base",
@@ -130,6 +149,67 @@ export const COLLECTION_SCHEMAS = [
       { name: "error_message", type: "text" },
     ],
   },
+  {
+    // One workspace per plan on every current tier. Seats are separate.
+    name: "workspaces",
+    type: "base",
+    schema: [
+      { name: "owner_id", type: "text", required: true },
+      { name: "name", type: "text", required: true },
+      { name: "is_default", type: "bool" },
+    ],
+  },
+  {
+    // Seats. Field names match src/lib/team/team.server.ts exactly.
+    name: "workspace_members",
+    type: "base",
+    schema: [
+      { name: "workspace_id", type: "text", required: true },
+      { name: "user_id", type: "text", required: true },
+      { name: "email", type: "text" },
+      { name: "name", type: "text" },
+      {
+        name: "role",
+        type: "select",
+        required: true,
+        options: { values: ["owner", "admin", "member"] },
+      },
+      {
+        name: "status",
+        type: "select",
+        required: true,
+        options: { values: ["active", "removed"] },
+      },
+      { name: "invited_by", type: "text" },
+      { name: "joined_at", type: "date" },
+    ],
+    indexes: [
+      "CREATE UNIQUE INDEX `idx_unique_workspace_members` ON `workspace_members` (`workspace_id`, `user_id`)",
+    ],
+  },
+  {
+    // Pending invitations reserve a seat until accepted/cancelled/expired.
+    name: "workspace_invitations",
+    type: "base",
+    schema: [
+      { name: "workspace_id", type: "text", required: true },
+      { name: "email", type: "text", required: true },
+      { name: "role", type: "select", required: true, options: { values: ["admin", "member"] } },
+      {
+        name: "status",
+        type: "select",
+        required: true,
+        options: { values: ["pending", "accepted", "cancelled", "expired"] },
+      },
+      { name: "token", type: "text", required: true },
+      { name: "invited_by", type: "text" },
+      { name: "expires_at", type: "date" },
+      { name: "accepted_at", type: "date" },
+    ],
+    indexes: [
+      "CREATE UNIQUE INDEX `idx_unique_workspace_invitations_token` ON `workspace_invitations` (`token`)",
+    ],
+  },
 ] as const;
 
 /**
@@ -148,10 +228,12 @@ export async function setupCollections(adminEmail: string, adminPassword: string
 
   for (const definition of COLLECTION_SCHEMAS) {
     if (existingNames.has(definition.name)) continue;
+    const indexes = (definition as { indexes?: readonly string[] }).indexes;
     await pb.collections.create({
       name: definition.name,
       type: definition.type,
       fields: definition.schema,
+      ...(indexes ? { indexes: [...indexes] } : {}),
     });
     created.push(definition.name);
   }
