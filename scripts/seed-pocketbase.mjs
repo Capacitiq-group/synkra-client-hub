@@ -46,6 +46,13 @@ const USER_FIELDS = [
   { name: "credit_workflows_used", type: "number" },
   { name: "onboarding_completed", type: "bool" },
   { name: "onboarding_step", type: "number" },
+  // Plan + usage accounting. Mirrors src/lib/setup/createCollections.ts.
+  { name: "tier", type: "select", values: ["free", "basic", "pro"], maxSelect: 1 },
+  { name: "billing_period_start", type: "date" },
+  { name: "executions_used_this_month", type: "number" },
+  { name: "ai_ops_used_this_month", type: "number" },
+  { name: "emails_used_this_month", type: "number" },
+  { name: "storage_used_mb", type: "number" },
 ];
 
 function log(step, detail = "") {
