@@ -1,0 +1,229 @@
+{
+  "$comment": "PocketBase schema export for synkra-client-hub. Mirrors the authoritative definitions in src/lib/setup/createCollections.ts (COLLECTIONS + USER_FIELDS). Field names here MUST match what src/lib/team/team.server.ts and src/lib/usage/executions.server.ts read and write. Import via the PocketBase admin UI (Settings > Import collections) or apply with npm run seed / the in-app /setup flow. The 'users' entry lists only the fields this app adds on top of PocketBase's built-in auth fields (id, email, password, verified, created, updated).",
+  "collections": [
+    {
+      "name": "users",
+      "type": "auth",
+      "fields": [
+        { "name": "name", "type": "text" },
+        { "name": "business_name", "type": "text" },
+        { "name": "business_industry", "type": "text" },
+        { "name": "business_address", "type": "text" },
+        { "name": "whatsapp_number", "type": "text" },
+        { "name": "review_link", "type": "text" },
+        { "name": "is_tester", "type": "bool" },
+        { "name": "user_type", "type": "select", "maxSelect": 1, "values": ["beta", "paid"] },
+        { "name": "trial_ends_at", "type": "date" },
+        {
+          "name": "theme_preference",
+          "type": "select",
+          "maxSelect": 1,
+          "values": ["dark", "light", "system"]
+        },
+        { "name": "notify_on_failure", "type": "bool" },
+        { "name": "notify_weekly_summary", "type": "bool" },
+        { "name": "notify_on_success", "type": "bool" },
+        { "name": "notify_credit_low", "type": "bool" },
+        { "name": "notify_platform_updates", "type": "bool" },
+        { "name": "notification_email", "type": "email" },
+        { "name": "credit_emails", "type": "number" },
+        { "name": "credit_emails_used", "type": "number" },
+        { "name": "credit_workflows", "type": "number" },
+        { "name": "credit_workflows_used", "type": "number" },
+        { "name": "onboarding_completed", "type": "bool" },
+        { "name": "onboarding_step", "type": "number" },
+        { "name": "tier", "type": "select", "maxSelect": 1, "values": ["free", "basic", "pro"] },
+        { "name": "billing_period_start", "type": "date" },
+        { "name": "executions_used_this_month", "type": "number" },
+        { "name": "ai_ops_used_this_month", "type": "number" },
+        { "name": "emails_used_this_month", "type": "number" },
+        { "name": "storage_used_mb", "type": "number" }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "workspaces",
+      "type": "base",
+      "fields": [
+        { "name": "owner_id", "type": "text", "required": true },
+        { "name": "name", "type": "text", "required": true },
+        { "name": "is_default", "type": "bool" },
+        { "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+        { "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true }
+      ],
+      "indexes": ["CREATE INDEX `idx_workspaces_owner_id` ON `workspaces` (`owner_id`)"]
+    },
+    {
+      "name": "workspace_members",
+      "type": "base",
+      "fields": [
+        { "name": "workspace_id", "type": "text", "required": true },
+        { "name": "user_id", "type": "text", "required": true },
+        { "name": "email", "type": "text" },
+        { "name": "name", "type": "text" },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "maxSelect": 1,
+          "values": ["owner", "admin", "member"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "maxSelect": 1,
+          "values": ["active", "removed"]
+        },
+        { "name": "invited_by", "type": "text" },
+        { "name": "joined_at", "type": "date" },
+        { "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+        { "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_unique_workspace_members` ON `workspace_members` (`workspace_id`, `user_id`)"
+      ]
+    },
+    {
+      "name": "workspace_invitations",
+      "type": "base",
+      "fields": [
+        { "name": "workspace_id", "type": "text", "required": true },
+        { "name": "email", "type": "text", "required": true },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "maxSelect": 1,
+          "values": ["admin", "member"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "maxSelect": 1,
+          "values": ["pending", "accepted", "cancelled", "expired"]
+        },
+        { "name": "token", "type": "text", "required": true },
+        { "name": "invited_by", "type": "text" },
+        { "name": "expires_at", "type": "date" },
+        { "name": "accepted_at", "type": "date" },
+        { "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+        { "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_unique_workspace_invitations_token` ON `workspace_invitations` (`token`)",
+        "CREATE INDEX `idx_workspace_invitations_workspace_id` ON `workspace_invitations` (`workspace_id`)"
+      ]
+    },
+    {
+      "name": "workflow_runs",
+      "type": "base",
+      "fields": [
+        { "name": "workflow_id", "type": "text", "required": true },
+        { "name": "user_id", "type": "text", "required": true },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "maxSelect": 1,
+          "values": ["running", "success", "failed", "blocked"]
+        },
+        { "name": "execution_id", "type": "text" },
+        { "name": "trigger_type", "type": "text" },
+        { "name": "attempt_count", "type": "number" },
+        { "name": "counted", "type": "bool" },
+        { "name": "blocked_reason", "type": "text" },
+        { "name": "triggered_at", "type": "date" },
+        { "name": "completed_at", "type": "date" },
+        { "name": "duration_ms", "type": "number" },
+        { "name": "input_data", "type": "json" },
+        { "name": "output_data", "type": "json" },
+        { "name": "step_logs", "type": "json" },
+        { "name": "error_message", "type": "text" },
+        { "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+        { "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_unique_workflow_runs_execution_id` ON `workflow_runs` (`execution_id`) WHERE `execution_id` != ''",
+        "CREATE INDEX `idx_workflow_runs_user_id` ON `workflow_runs` (`user_id`)"
+      ]
+    },
+    {
+      "name": "workflows",
+      "type": "base",
+      "fields": [
+        { "name": "user_id", "type": "text", "required": true },
+        { "name": "template_id", "type": "text" },
+        { "name": "name", "type": "text", "required": true },
+        { "name": "description", "type": "text" },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "maxSelect": 1,
+          "values": ["draft", "published", "paused", "error"]
+        },
+        { "name": "blocks", "type": "json", "required": true },
+        { "name": "trigger_type", "type": "text" },
+        { "name": "trigger_config", "type": "json" },
+        { "name": "integrations_required", "type": "json" },
+        { "name": "run_count", "type": "number" },
+        { "name": "last_run_at", "type": "date" },
+        {
+          "name": "last_run_status",
+          "type": "select",
+          "maxSelect": 1,
+          "values": ["success", "failed", "running"]
+        },
+        { "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+        { "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "workflow_templates",
+      "type": "base",
+      "fields": [
+        { "name": "template_id", "type": "text", "required": true },
+        { "name": "name", "type": "text", "required": true },
+        { "name": "description", "type": "text" },
+        { "name": "category", "type": "text" },
+        { "name": "requires_paid_api", "type": "bool" },
+        { "name": "integrations_required", "type": "json" },
+        { "name": "blocks", "type": "json", "required": true },
+        { "name": "is_active", "type": "bool" },
+        { "name": "sort_order", "type": "number" },
+        { "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+        { "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "integrations",
+      "type": "base",
+      "fields": [
+        { "name": "user_id", "type": "text", "required": true },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "maxSelect": 1,
+          "values": ["whatsapp", "google_calendar", "google_sheets", "twilio_sms", "resend_email"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "maxSelect": 1,
+          "values": ["connected", "disconnected", "error"]
+        },
+        { "name": "display_name", "type": "text" },
+        { "name": "last_tested_at", "type": "date" },
+        { "name": "error_message", "type": "text" },
+        { "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+        { "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true }
+      ],
+      "indexes": []
+    }
+  ]
+}
