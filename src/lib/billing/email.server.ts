@@ -1,130 +1,123 @@
 /**
- * Paystack HTTP integration — SERVER ONLY.
+ * Transactional email (server only).
  *
- * Paystack was not previously implemented in this platform; this module is the
- * only place that talks to Paystack. No SDK is installed: the REST API is
- * called directly with fetch, which the existing server runtime already
- * supports.
- *
- * PAYSTACK_SECRET_KEY is read inside the functions (never at module scope) and
- * never reaches the browser bundle.
+ * Primary path is Resend. When RESEND_API_KEY is absent the message is handed
+ * to the existing synkra-core notification endpoint instead, so a deploy
+ * without Resend still delivers rather than silently dropping the email.
  */
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-
-const PAYSTACK_BASE = "https://api.paystack.co";
-
-export class PaystackError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "PaystackError";
-  }
-}
-
-function secretKey(): string {
-  const key = process.env["PAYSTACK_SECRET_KEY"] || "";
-  if (!key) throw new PaystackError("Payments are not configured on the server.");
-  return key;
-}
-
-export function paystackConfigured(): boolean {
-  return Boolean(process.env["PAYSTACK_SECRET_KEY"]);
-}
-
-/** True when the configured key is a Paystack test-mode key. */
-export function paystackTestMode(): boolean {
-  return (process.env["PAYSTACK_SECRET_KEY"] || "").startsWith("sk_test_");
-}
-
-async function paystackRequest<T>(
-  path: string,
-  init: { method: "GET" | "POST"; body?: unknown },
-): Promise<T> {
-  const response = await fetch(`${PAYSTACK_BASE}${path}`, {
-    method: init.method,
-    headers: {
-      Authorization: `Bearer ${secretKey()}`,
-      "Content-Type": "application/json",
-    },
-    ...(init.body ? { body: JSON.stringify(init.body) } : {}),
-  });
-  const json = (await response.json().catch(() => null)) as
-    | { status?: boolean; message?: string; data?: unknown }
-    | null;
-  if (!response.ok || !json || json.status !== true) {
-    throw new PaystackError(json?.message || `Paystack request failed (${response.status})`);
-  }
-  return json.data as T;
-}
-
-/** Unpredictable, non-sensitive transaction reference. */
-export function generateReference(): string {
-  return `SYN-${Date.now().toString(36).toUpperCase()}-${randomBytes(12).toString("hex")}`;
-}
-
-export interface InitializeInput {
-  email: string;
-  /** Amount in the minor unit (cents). Always resolved server-side. */
-  amountMinor: number;
-  currency: string;
-  reference: string;
-  callbackUrl: string;
-  metadata: Record<string, unknown>;
-}
-
-export interface InitializeResult {
-  authorization_url: string;
-  access_code: string;
-  reference: string;
-}
-
-export function initializeTransaction(input: InitializeInput): Promise<InitializeResult> {
-  return paystackRequest<InitializeResult>("/transaction/initialize", {
-    method: "POST",
-    body: {
-      email: input.email,
-      amount: input.amountMinor,
-      currency: input.currency,
-      reference: input.reference,
-      callback_url: input.callbackUrl,
-      metadata: input.metadata,
-    },
-  });
-}
-
-export interface VerifyResult {
-  id: number;
-  status: string;
-  reference: string;
-  amount: number;
-  currency: string;
-  paid_at?: string | null;
-  channel?: string;
-  gateway_response?: string;
-  customer?: { id?: number; email?: string; customer_code?: string };
-  metadata?: Record<string, unknown> | string | null;
-}
-
-export function verifyTransaction(reference: string): Promise<VerifyResult> {
-  return paystackRequest<VerifyResult>(
-    `/transaction/verify/${encodeURIComponent(reference)}`,
-    { method: "GET" },
+export function appUrl(): string {
+  return (process.env["APP_URL"] || process.env["VITE_APP_URL"] || "http://localhost:3000").replace(
+    /\/+$/,
+    "",
   );
 }
 
-/**
- * Paystack signs webhooks with HMAC-SHA512 of the raw body using the secret
- * key. Compared in constant time; an unsigned or mismatched body is rejected.
- */
-export function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
-  if (!signature) return false;
-  let expected: string;
-  try {
-    expected = createHmac("sha512", secretKey()).update(rawBody, "utf8").digest("hex");
-  } catch {
-    return false;
+export interface EmailInput {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}
+
+async function sendViaResend(input: EmailInput, apiKey: string) {
+  const from = process.env["RESEND_FROM"] || "Synkra <noreply@synkra.co.za>";
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: [input.to],
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Resend rejected the email (${response.status}): ${detail.slice(0, 200)}`);
   }
-  const a = Buffer.from(expected, "utf8");
-  const b = Buffer.from(signature, "utf8");
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+}
+
+async function sendViaCore(input: EmailInput) {
+  const secret = process.env["API_SECRET"] || "";
+  const api = process.env["API_URL"] || "";
+  if (!secret || !api) throw new Error("No email provider is configured on the server.");
+  const response = await fetch(`${api.replace(/\/+$/, "")}/workflows/notifications/email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Synkra-Secret": secret },
+    body: JSON.stringify({
+      to: input.to,
+      subject: input.subject,
+      body: input.text,
+      from_name: "Synkra",
+    }),
+  });
+  if (!response.ok) throw new Error(`Email delivery failed (${response.status}).`);
+}
+
+export async function sendEmail(input: EmailInput): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env["RESEND_API_KEY"] || "";
+  try {
+    if (apiKey) await sendViaResend(input, apiKey);
+    else await sendViaCore(input);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "email_failed" };
+  }
+}
+
+function shell(title: string, bodyHtml: string): string {
+  return `<!doctype html><html><body style="margin:0;background:#0b0f0d;padding:32px;font-family:system-ui,-apple-system,Segoe UI,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+  <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;background:#121815;border:1px solid #1f2b25;border-radius:14px;padding:32px">
+    <tr><td style="color:#eaf3ee;font-size:20px;font-weight:700;padding-bottom:12px">${title}</td></tr>
+    <tr><td style="color:#a9bab1;font-size:15px;line-height:1.6">${bodyHtml}</td></tr>
+    <tr><td style="color:#6d7f76;font-size:12px;padding-top:28px">Synkra — automation for small business.</td></tr>
+  </table></td></tr></table></body></html>`;
+}
+
+function button(href: string, label: string): string {
+  return `<p style="margin:24px 0"><a href="${href}" style="background:#25d07a;color:#07130d;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px;display:inline-block">${label}</a></p>`;
+}
+
+export function magicLinkEmail(link: string, minutes: number): Omit<EmailInput, "to"> {
+  return {
+    subject: "Your Synkra sign-in link",
+    html: shell(
+      "Sign in to Synkra",
+      `<p>Use the button below to sign in. The link works once and expires in ${minutes} minutes.</p>${button(
+        link,
+        "Sign in to Synkra",
+      )}<p style="font-size:13px;color:#6d7f76">If you did not request this, you can ignore this email.</p>`,
+    ),
+    text: `Sign in to Synkra: ${link}\nThis link works once and expires in ${minutes} minutes.`,
+  };
+}
+
+export function welcomeEmail(link: string, planName: string): Omit<EmailInput, "to"> {
+  return {
+    subject: `Your Synkra ${planName} plan is active`,
+    html: shell(
+      `Your ${planName} plan is active`,
+      `<p>Payment received. Your workspace is ready — use the button below to sign in. The link works once and expires in 30 minutes.</p>${button(
+        link,
+        "Open my workspace",
+      )}`,
+    ),
+    text: `Your Synkra ${planName} plan is active. Sign in: ${link}`,
+  };
+}
+
+export function invitationEmail(link: string, workspace: string): Omit<EmailInput, "to"> {
+  return {
+    subject: `You have been invited to ${workspace} on Synkra`,
+    html: shell(
+      `Join ${workspace}`,
+      `<p>You have been invited to collaborate in the ${workspace} workspace on Synkra.</p>${button(
+        link,
+        "Accept invitation",
+      )}`,
+    ),
+    text: `You have been invited to ${workspace} on Synkra. Accept: ${link}`,
+  };
 }
