@@ -4,6 +4,8 @@ import { ArrowLeft, Play, Save, Upload, Layers, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { createBlock, type BlockDefinition } from "@/lib/workflow/blocks";
+import { usePlanUsage } from "@/hooks/usePlanUsage";
+import { countWorkflowSteps, checkStepsAllowed } from "@/lib/usage/limits";
 import { validateWorkflow } from "@/lib/workflow/describe";
 import { saveWorkflowDraft, useWorkflow } from "@/hooks/useWorkflows";
 import { registerWorkflow } from "@/lib/workflow/api";
@@ -19,6 +21,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: existing } = useWorkflow(workflowId);
+  const { data: planUsage } = usePlanUsage();
 
   const [name, setName] = useState("Untitled workflow");
   const [blocks, setBlocks] = useState<WorkflowBlock[]>([]);
@@ -55,6 +58,15 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
 
   const addBlock = (definition: BlockDefinition, index?: number) => {
     const block = createBlock(definition);
+    // Client-side guard for immediate feedback only. The authoritative step
+    // limit is enforced again on the server when the workflow is saved.
+    if (definition.kind !== "trigger") {
+      const decision = checkStepsAllowed(planUsage?.tier, countWorkflowSteps(blocks) + 1);
+      if (!decision.allowed) {
+        toast.error(decision.message ?? "Step limit reached for your plan.");
+        return;
+      }
+    }
     mutate((current) => {
       const position = index ?? current.length;
       const next = [...current];
