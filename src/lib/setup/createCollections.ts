@@ -75,8 +75,16 @@ const COLLECTIONS: CollectionDef[] = [
         name: "status",
         type: "select",
         required: true,
-        options: { values: ["running", "success", "failed"] },
+        options: { values: ["running", "success", "failed", "blocked"] },
       },
+      // Execution accounting. execution_id identifies ONE workflow run; retries
+      // reuse it so they never count twice. counted records whether this run
+      // consumed one of the account's monthly executions.
+      { name: "execution_id", type: "text" },
+      { name: "trigger_type", type: "text" },
+      { name: "attempt_count", type: "number" },
+      { name: "counted", type: "bool" },
+      { name: "blocked_reason", type: "text" },
       { name: "triggered_at", type: "date" },
       { name: "completed_at", type: "date" },
       { name: "duration_ms", type: "number" },
@@ -109,6 +117,16 @@ const COLLECTIONS: CollectionDef[] = [
       { name: "error_message", type: "text" },
     ],
   },
+  {
+    // One workspace per plan on every current tier. Separate from seats.
+    name: "workspaces",
+    type: "base",
+    schema: [
+      { name: "owner_id", type: "text", required: true },
+      { name: "name", type: "text", required: true },
+      { name: "is_default", type: "bool" },
+    ],
+  },
 ];
 
 const USER_FIELDS: FieldDef[] = [
@@ -137,6 +155,13 @@ const USER_FIELDS: FieldDef[] = [
   { name: "credit_workflows_used", type: "number" },
   { name: "onboarding_completed", type: "bool" },
   { name: "onboarding_step", type: "number" },
+  // Plan + usage accounting (server-owned; never written by the browser).
+  { name: "tier", type: "select", options: { values: ["free", "basic", "pro"] } },
+  { name: "billing_period_start", type: "date" },
+  { name: "executions_used_this_month", type: "number" },
+  { name: "ai_ops_used_this_month", type: "number" },
+  { name: "emails_used_this_month", type: "number" },
+  { name: "storage_used_mb", type: "number" },
 ];
 
 /** PocketBase 0.23 renamed the admins collection to _superusers. Support both. */
