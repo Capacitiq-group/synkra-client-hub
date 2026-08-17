@@ -14,6 +14,8 @@ interface CollectionDef {
   name: string;
   type: string;
   schema: FieldDef[];
+  /** Raw SQLite index statements applied after the collection exists. */
+  indexes?: string[];
 }
 
 /** Collections created through the API do not get created/updated unless asked. */
@@ -93,7 +95,15 @@ const COLLECTIONS: CollectionDef[] = [
       { name: "step_logs", type: "json" },
       { name: "error_message", type: "text" },
     ],
+    // execution_id identifies ONE run. A partial unique index keeps retries
+    // from creating a second row while still allowing legacy/blank values
+    // (SQLite treats '' as a real value, so it must be excluded explicitly).
+    indexes: [
+      "CREATE UNIQUE INDEX `idx_unique_workflow_runs_execution_id` ON `workflow_runs` (`execution_id`) WHERE `execution_id` != ''",
+      "CREATE INDEX `idx_workflow_runs_user_id` ON `workflow_runs` (`user_id`)",
+    ],
   },
+
   {
     name: "integrations",
     type: "base",
@@ -125,6 +135,65 @@ const COLLECTIONS: CollectionDef[] = [
       { name: "owner_id", type: "text", required: true },
       { name: "name", type: "text", required: true },
       { name: "is_default", type: "bool" },
+    ],
+    indexes: ["CREATE INDEX `idx_workspaces_owner_id` ON `workspaces` (`owner_id`)"],
+  },
+  {
+    // Seats. Field names match src/lib/team/team.server.ts exactly.
+    name: "workspace_members",
+    type: "base",
+    schema: [
+      { name: "workspace_id", type: "text", required: true },
+      { name: "user_id", type: "text", required: true },
+      { name: "email", type: "text" },
+      { name: "name", type: "text" },
+      {
+        name: "role",
+        type: "select",
+        required: true,
+        options: { values: ["owner", "admin", "member"] },
+      },
+      // "removed" keeps the row for history while releasing the seat.
+      {
+        name: "status",
+        type: "select",
+        required: true,
+        options: { values: ["active", "removed"] },
+      },
+      { name: "invited_by", type: "text" },
+      { name: "joined_at", type: "date" },
+    ],
+    indexes: [
+      "CREATE UNIQUE INDEX `idx_unique_workspace_members` ON `workspace_members` (`workspace_id`, `user_id`)",
+    ],
+  },
+  {
+    // Pending invitations reserve a seat until accepted/cancelled/expired.
+    name: "workspace_invitations",
+    type: "base",
+    schema: [
+      { name: "workspace_id", type: "text", required: true },
+      { name: "email", type: "text", required: true },
+      {
+        name: "role",
+        type: "select",
+        required: true,
+        options: { values: ["admin", "member"] },
+      },
+      {
+        name: "status",
+        type: "select",
+        required: true,
+        options: { values: ["pending", "accepted", "cancelled", "expired"] },
+      },
+      { name: "token", type: "text", required: true },
+      { name: "invited_by", type: "text" },
+      { name: "expires_at", type: "date" },
+      { name: "accepted_at", type: "date" },
+    ],
+    indexes: [
+      "CREATE UNIQUE INDEX `idx_unique_workspace_invitations_token` ON `workspace_invitations` (`token`)",
+      "CREATE INDEX `idx_workspace_invitations_workspace_id` ON `workspace_invitations` (`workspace_id`)",
     ],
   },
 ];
@@ -189,6 +258,48 @@ function normalizeField(field: FieldDef): FieldDef {
   return { ...rest, ...options, maxSelect: (options["maxSelect"] as number) ?? 1 };
 }
 
+/**
+ * Widens an existing select field with any values the desired schema adds
+ * (e.g. workflow_runs.status gaining "blocked"). Returns the same object when
+ * nothing changes so callers can skip needless updates.
+ */
+function mergeSelectValues(field: FieldDef, wanted: FieldDef[]): FieldDef {
+  if (field["type"] !== "select") return field;
+  const target = wanted.find((f) => f["name"] === field["name"]);
+  if (!target) return field;
+  const current = Array.isArray(field["values"]) ? (field["values"] as string[]) : [];
+  const desired = Array.isArray(target["values"]) ? (target["values"] as string[]) : [];
+  const missing = desired.filter((value) => !current.includes(value));
+  if (missing.length === 0) return field;
+  return { ...field, values: [...current, ...missing] };
+}
+
+/**
+ * Applies any index this schema declares that the live collection is missing.
+ * Failures are reported, not thrown: a unique index cannot be created while
+ * duplicate rows exist, and that must not abort the rest of the setup.
+ */
+async function ensureIndexes(
+  pb: PocketBase,
+  collectionId: string,
+  definition: CollectionDef,
+  progress: SetupProgress,
+) {
+  if (!definition.indexes || definition.indexes.length === 0) return;
+  const live = await pb.collections.getOne(collectionId);
+  const current = (live as unknown as { indexes?: string[] }).indexes ?? [];
+  const indexName = (sql: string) => sql.match(/INDEX\s+[`"]?([\w]+)[`"]?/i)?.[1] ?? sql;
+  const existingNames = new Set(current.map(indexName));
+  const missing = definition.indexes.filter((sql) => !existingNames.has(indexName(sql)));
+  if (missing.length === 0) return;
+  try {
+    await pb.collections.update(collectionId, { indexes: [...current, ...missing] });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    progress.onStep(`Could not create indexes on ${definition.name}: ${message}`);
+  }
+}
+
 export async function runFirstTimeSetup(
   pbUrl: string,
   adminEmail: string,
@@ -214,6 +325,7 @@ export async function runFirstTimeSetup(
         type: collection.type,
         fields,
         schema: fields,
+        ...(collection.indexes ? { indexes: collection.indexes } : {}),
       });
     }
 
@@ -221,14 +333,20 @@ export async function runFirstTimeSetup(
     for (const collection of COLLECTIONS) {
       const existing = existingCollections.find((c) => c.name === collection.name);
       if (!existing) continue;
+      const wanted = [...collection.schema.map(normalizeField), ...AUTODATE_FIELDS];
       const current = fieldsOf(existing);
       const names = new Set(current.map((f) => f["name"] as string));
-      const missing = [...collection.schema.map(normalizeField), ...AUTODATE_FIELDS].filter(
-        (f) => !names.has(f["name"] as string),
-      );
-      if (missing.length === 0) continue;
-      const updated = [...current, ...missing];
-      await pb.collections.update(existing.id, { fields: updated, schema: updated });
+      const missing = wanted.filter((f) => !names.has(f["name"] as string));
+      // A pre-existing select field can be missing newer values (e.g.
+      // workflow_runs.status gained "blocked"), so widen it in place.
+      const merged = current.map((field) => mergeSelectValues(field, wanted));
+      const changed =
+        missing.length > 0 || merged.some((field, i) => field !== (current[i] as FieldDef));
+      if (changed) {
+        const updated = [...merged, ...missing];
+        await pb.collections.update(existing.id, { fields: updated, schema: updated });
+      }
+      await ensureIndexes(pb, existing.id, collection, progress);
     }
 
     progress.onStep("Extending the users collection");
