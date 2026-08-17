@@ -17,6 +17,13 @@
  *   SEED_OWNER_PASSWORD     default from SEED_OWNER_PASSWORD, required in prod
  */
 import PocketBase from "pocketbase";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const here = dirname(fileURLToPath(import.meta.url));
+/** Canonical schema, shared with src/lib/setup/createCollections.ts. */
+const SCHEMA = JSON.parse(readFileSync(join(here, "..", "pb_schema.json"), "utf8"));
 
 const url = process.env.POCKETBASE_URL || "http://167.86.106.152:8093";
 const adminEmail = process.env.PB_ADMIN_EMAIL || "";
@@ -24,36 +31,67 @@ const adminPassword = process.env.PB_ADMIN_PASSWORD || "";
 const ownerEmail = process.env.SEED_OWNER_EMAIL || "rmolapisi@capacitiqgroup.co.za";
 const ownerPassword = process.env.SEED_OWNER_PASSWORD || "";
 
-const USER_FIELDS = [
-  { name: "business_name", type: "text" },
-  { name: "business_industry", type: "text" },
-  { name: "business_address", type: "text" },
-  { name: "whatsapp_number", type: "text" },
-  { name: "review_link", type: "text" },
-  { name: "is_tester", type: "bool" },
-  { name: "user_type", type: "select", values: ["beta", "paid"], maxSelect: 1 },
-  { name: "trial_ends_at", type: "date" },
-  { name: "theme_preference", type: "select", values: ["dark", "light", "system"], maxSelect: 1 },
-  { name: "notify_on_failure", type: "bool" },
-  { name: "notify_weekly_summary", type: "bool" },
-  { name: "notify_on_success", type: "bool" },
-  { name: "notify_credit_low", type: "bool" },
-  { name: "notify_platform_updates", type: "bool" },
-  { name: "notification_email", type: "email" },
-  { name: "credit_emails", type: "number" },
-  { name: "credit_emails_used", type: "number" },
-  { name: "credit_workflows", type: "number" },
-  { name: "credit_workflows_used", type: "number" },
-  { name: "onboarding_completed", type: "bool" },
-  { name: "onboarding_step", type: "number" },
-  // Plan + usage accounting. Mirrors src/lib/setup/createCollections.ts.
-  { name: "tier", type: "select", values: ["free", "basic", "pro"], maxSelect: 1 },
-  { name: "billing_period_start", type: "date" },
-  { name: "executions_used_this_month", type: "number" },
-  { name: "ai_ops_used_this_month", type: "number" },
-  { name: "emails_used_this_month", type: "number" },
-  { name: "storage_used_mb", type: "number" },
+const USER_FIELDS = SCHEMA.userFields;
+
+const AUTODATE_FIELDS = [
+  { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+  { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
 ];
+
+function normalizeField(field) {
+  const { options, ...rest } = field;
+  const base = options ? { ...rest, ...options } : rest;
+  return base.type === "select" ? { maxSelect: 1, ...base } : base;
+}
+
+function indexName(sql) {
+  const match = /INDEX\s+`?([A-Za-z0-9_]+)`?/i.exec(sql);
+  return match ? match[1] : sql;
+}
+
+/** Creates missing collections, adds missing fields and missing indexes. */
+async function provisionCollections(pb) {
+  const existing = await pb.collections.getFullList();
+  const byName = new Map(existing.map((c) => [c.name, c]));
+
+  for (const def of SCHEMA.collections) {
+    const fields = [...def.fields.map(normalizeField), ...AUTODATE_FIELDS];
+    let live = byName.get(def.name);
+    if (!live) {
+      const rules = def.serverOnly
+        ? { listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null }
+        : {};
+      live = await pb.collections.create({
+        name: def.name,
+        type: def.type,
+        fields,
+        schema: fields,
+        ...rules,
+      });
+      log("collection created", def.name);
+    } else {
+      const current = live.fields ?? live.schema ?? [];
+      const known = new Set(current.map((f) => f.name));
+      const missing = fields.filter((f) => !known.has(f.name));
+      if (missing.length > 0) {
+        const merged = [...current, ...missing];
+        live = await pb.collections.update(live.id, { fields: merged, schema: merged });
+        log("collection fields added", `${def.name}: ${missing.map((f) => f.name).join(", ")}`);
+      }
+    }
+
+    const wanted = def.indexes ?? [];
+    if (wanted.length > 0) {
+      const currentIndexes = live.indexes ?? [];
+      const have = new Set(currentIndexes.map(indexName));
+      const missingIndexes = wanted.filter((sql) => !have.has(indexName(sql)));
+      if (missingIndexes.length > 0) {
+        await pb.collections.update(live.id, { indexes: [...currentIndexes, ...missingIndexes] });
+        log("indexes added", `${def.name}: ${missingIndexes.map(indexName).join(", ")}`);
+      }
+    }
+  }
+}
 
 function log(step, detail = "") {
   console.log(`[seed] ${step}${detail ? ` - ${detail}` : ""}`);
@@ -98,6 +136,9 @@ async function main() {
     });
     log("superuser created", ownerEmail);
   }
+
+  // 1b. Provision every collection in the canonical schema (idempotent).
+  await provisionCollections(pb);
 
   // 2. Make sure the users collection has every portal field.
   const users = await pb.collections.getFirstListItem('name = "users"');
