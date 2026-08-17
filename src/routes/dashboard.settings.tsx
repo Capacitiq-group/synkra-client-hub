@@ -7,7 +7,12 @@ import { UsageSettings } from "@/components/settings/usage-settings";
 import { WorkspaceSettings } from "@/components/settings/workspace-settings";
 
 type SettingsTab =
-  "profile" | "business" | "workspace" | "usage" | "integrations" | "notifications";
+  | "profile"
+  | "business"
+  | "workspace"
+  | "usage"
+  | "integrations"
+  | "notifications";
 
 export const Route = createFileRoute("/dashboard/settings")({
   validateSearch: (search: Record<string, unknown>): { tab: SettingsTab; connected?: string } => ({
