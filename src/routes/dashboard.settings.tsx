@@ -7,10 +7,11 @@ import { NotificationsSettings } from "@/components/settings/notifications-setti
 type SettingsTab = "profile" | "business" | "integrations" | "notifications";
 
 export const Route = createFileRoute("/dashboard/settings")({
-  validateSearch: (search: Record<string, unknown>): { tab: SettingsTab } => ({
+  validateSearch: (search: Record<string, unknown>): { tab: SettingsTab; connected?: string } => ({
     tab: ["profile", "business", "integrations", "notifications"].includes(String(search["tab"]))
       ? (search["tab"] as SettingsTab)
       : "profile",
+    ...(search["connected"] ? { connected: String(search["connected"]) } : {}),
   }),
   head: () => ({
     meta: [
