@@ -4,6 +4,7 @@ import { BusinessSettings } from "@/components/settings/business-settings";
 import { IntegrationsSettings } from "@/components/settings/integrations-settings";
 import { NotificationsSettings } from "@/components/settings/notifications-settings";
 import { UsageSettings } from "@/components/settings/usage-settings";
+import { BillingSettings } from "@/components/settings/billing-settings";
 import { WorkspaceSettings } from "@/components/settings/workspace-settings";
 
 type SettingsTab =
@@ -11,12 +12,13 @@ type SettingsTab =
   | "business"
   | "workspace"
   | "usage"
+  | "billing"
   | "integrations"
   | "notifications";
 
 export const Route = createFileRoute("/dashboard/settings")({
   validateSearch: (search: Record<string, unknown>): { tab: SettingsTab; connected?: string } => ({
-    tab: ["profile", "business", "workspace", "usage", "integrations", "notifications"].includes(
+    tab: ["profile", "business", "workspace", "usage", "billing", "integrations", "notifications"].includes(
       String(search["tab"]),
     )
       ? (search["tab"] as SettingsTab)
@@ -47,6 +49,7 @@ function SettingsPage() {
     { key: "business", label: "Business" },
     { key: "workspace", label: "Workspace" },
     { key: "usage", label: "Usage" },
+    { key: "billing", label: "Billing" },
     { key: "integrations", label: "Integrations" },
     { key: "notifications", label: "Notifications" },
   ];
@@ -83,6 +86,7 @@ function SettingsPage() {
         {tab === "business" && <BusinessSettings />}
         {tab === "workspace" && <WorkspaceSettings />}
         {tab === "usage" && <UsageSettings />}
+        {tab === "billing" && <BillingSettings />}
         {tab === "integrations" && <IntegrationsSettings />}
         {tab === "notifications" && <NotificationsSettings />}
       </div>
