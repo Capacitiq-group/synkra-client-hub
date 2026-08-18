@@ -221,27 +221,27 @@ export async function settleAddonPurchase(
     return { ok: false, status: "failed", alreadySettled: false, kind, units };
   }
 
-  // Flip the row to paid first: the status check above plus this write make a
-  // concurrent webhook + return-page settlement grant the units only once.
-  try {
-    await pb.collection("addon_purchases").update(str(purchase, "id"), {
-      status: "paid",
-      paid_at: verification.paid_at ?? new Date().toISOString(),
-      provider_transaction_id: String(verification.id ?? ""),
-      error_message: "",
-    });
-  } catch {
-    return { ok: true, status: "paid", alreadySettled: true, kind, units };
-  }
-
+  // Re-read immediately before flipping the row: if a concurrent webhook /
+  // return-page settlement already marked it paid, stop here rather than
+  // granting the units a second time.
   const fresh = await findOne(pb, "addon_purchases", "reference = {:reference}", { reference });
-  if (fresh && str(fresh, "credited_reference") === reference) {
+  if (fresh && str(fresh, "status") === "paid") {
     return { ok: true, status: "paid", alreadySettled: true, kind, units };
   }
 
+  await pb.collection("addon_purchases").update(str(purchase, "id"), {
+    status: "paid",
+    paid_at: verification.paid_at ?? new Date().toISOString(),
+    provider_transaction_id: String(verification.id ?? ""),
+    error_message: "",
+  });
+
+  // grantAddonUnits is itself keyed on the reference (addon_credits.last_reference
+  // plus the unique user_id+kind index), so a replay can never add units twice.
   await grantAddonUnits(pb, { userId: str(purchase, "user_id"), kind, units, reference, source });
   return { ok: true, status: "paid", alreadySettled: false, kind, units };
 }
+
 
 async function grantAddonUnits(
   pb: PocketBase,
@@ -266,16 +266,32 @@ async function grantAddonUnits(
       last_reference: input.reference,
     });
   } else {
-    await pb.collection("addon_credits").create({
-      user_id: input.userId,
-      kind: input.kind,
-      units_purchased: input.units,
-      units_used: 0,
-      monthly: product.monthly,
-      period_start: new Date().toISOString(),
-      last_reference: input.reference,
-    });
+    try {
+      await pb.collection("addon_credits").create({
+        user_id: input.userId,
+        kind: input.kind,
+        units_purchased: input.units,
+        units_used: 0,
+        monthly: product.monthly,
+        period_start: new Date().toISOString(),
+        last_reference: input.reference,
+      });
+    } catch {
+      // The unique user_id+kind index rejected a racing create: fold the units
+      // into the row the other writer just made, unless it was this reference.
+      const row = await findOne(pb, "addon_credits", "user_id = {:userId} && kind = {:kind}", {
+        userId: input.userId,
+        kind: input.kind,
+      });
+      if (!row) throw new Error("Could not record the purchased add-on credit.");
+      if (str(row, "last_reference") === input.reference) return;
+      await pb.collection("addon_credits").update(str(row, "id"), {
+        units_purchased: num(row, "units_purchased") + input.units,
+        last_reference: input.reference,
+      });
+    }
   }
+
 
   // Storage is the one add-on the enforcement path reads straight off the user
   // record, because the storage limit is compared against a live total.
@@ -342,4 +358,17 @@ export async function getAddonPurchaseStatus(reference: string): Promise<AddonPu
     amountCents: num(purchase, "amount_cents"),
     activated: status === "paid",
   };
+}
+
+/**
+ * True when `reference` belongs to `userId`. Used before any add-on status is
+ * disclosed, so one account can never probe another account's purchases.
+ */
+export async function assertAddonPurchaseOwner(
+  reference: string,
+  userId: string,
+): Promise<boolean> {
+  const pb = await adminClient();
+  const purchase = await findOne(pb, "addon_purchases", "reference = {:reference}", { reference });
+  return Boolean(purchase && str(purchase, "user_id") === userId);
 }
