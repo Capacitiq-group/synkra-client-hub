@@ -130,12 +130,26 @@ function hashToken(token: string): string {
 
 /**
  * Issues a single-use, short-lived sign-in link. Only the SHA-256 hash is
- * stored, so a database read cannot be replayed as a login.
+ * stored, so a database read cannot be replayed as a login. Any previously
+ * issued unused link for the same user is invalidated first, so only the most
+ * recent link can sign anybody in.
  */
 export async function issueMagicLink(
   pb: PocketBase,
   input: { userId: string; email: string; purpose: string },
 ): Promise<string> {
+  const now = new Date().toISOString();
+  try {
+    const outstanding = await pb.collection("magic_links").getFullList({
+      filter: pb.filter("user_id = {:userId} && used_at = null", { userId: input.userId }),
+    });
+    for (const record of outstanding) {
+      await pb.collection("magic_links").update(record.id, { used_at: now });
+    }
+  } catch {
+    /* nothing outstanding, or the lookup failed: issuing a new link is still safe */
+  }
+
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + MAGIC_LINK_TTL_MINUTES * 60 * 1000).toISOString();
   await pb.collection("magic_links").create({
@@ -148,6 +162,27 @@ export async function issueMagicLink(
   return `${appUrl()}/auth/magic?token=${token}`;
 }
 
+/** Seconds a user must wait between sign-in link requests. */
+export const MAGIC_LINK_COOLDOWN_SECONDS = 60;
+
+/** True when the user asked for a link less than the cooldown ago. */
+async function magicLinkOnCooldown(pb: PocketBase, userId: string): Promise<boolean> {
+  try {
+    const recent = await pb.collection("magic_links").getFullList({
+      filter: pb.filter("user_id = {:userId}", { userId }),
+      sort: "-created",
+      perPage: 1,
+    });
+    const last = recent[0] as unknown as Record<string, unknown> | undefined;
+    if (!last) return false;
+    const created = new Date(str(last, "created").replace(" ", "T"));
+    if (Number.isNaN(created.getTime())) return false;
+    return Date.now() - created.getTime() < MAGIC_LINK_COOLDOWN_SECONDS * 1000;
+  } catch {
+    return false;
+  }
+}
+
 /** Sends a sign-in link if — and only if — the address already has an account. */
 export async function requestMagicLink(email: string): Promise<{ ok: true }> {
   const clean = normalizeEmail(email);
@@ -155,15 +190,15 @@ export async function requestMagicLink(email: string): Promise<{ ok: true }> {
   const user = await findByField(pb, "users", "email", clean);
   // Always report success: the response must not reveal who has an account.
   if (user) {
-    const link = await issueMagicLink(pb, {
-      userId: str(user, "id"),
-      email: clean,
-      purpose: "login",
-    });
-    await sendEmail({ to: clean, ...magicLinkEmail(link, MAGIC_LINK_TTL_MINUTES) });
+    const userId = str(user, "id");
+    if (!(await magicLinkOnCooldown(pb, userId))) {
+      const link = await issueMagicLink(pb, { userId, email: clean, purpose: "login" });
+      await sendEmail({ to: clean, ...magicLinkEmail(link, MAGIC_LINK_TTL_MINUTES) });
+    }
   }
   return { ok: true };
 }
+
 
 export interface MagicLinkSession {
   token: string;
