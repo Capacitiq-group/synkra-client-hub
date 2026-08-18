@@ -50,7 +50,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     draftWorkflows: 10,
     maxWorkflowSteps: 10,
     storageGb: 1,
-    emails: 800,
+    emails: 300,
     aiOps: 0,
     sms: 0,
     whatsapp: 0,
