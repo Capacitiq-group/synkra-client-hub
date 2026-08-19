@@ -239,7 +239,27 @@ export async function settleAddonPurchase(
   // grantAddonUnits is itself keyed on the reference (addon_credits.last_reference
   // plus the unique user_id+kind index), so a replay can never add units twice.
   await grantAddonUnits(pb, { userId: str(purchase, "user_id"), kind, units, reference, source });
+
+  // Confirmation email. The credits are already granted at this point, so a
+  // delivery failure is logged and swallowed — it must never fail settlement.
+  try {
+    const buyer = asRecord(await pb.collection("users").getOne(str(purchase, "user_id")));
+    const email = str(buyer, "email");
+    if (email) {
+      const product = getAddon(kind);
+      const { sendEmail, addonPurchaseEmail } = await import("./email.server");
+      const sent = await sendEmail({
+        to: email,
+        ...addonPurchaseEmail(product.label, units, product.unit),
+      });
+      if (!sent.ok) console.error("[addons] confirmation email failed:", sent.error);
+    }
+  } catch (err) {
+    console.error("[addons] confirmation email failed:", err);
+  }
+
   return { ok: true, status: "paid", alreadySettled: false, kind, units };
+
 }
 
 
