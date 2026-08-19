@@ -121,3 +121,24 @@ export function invitationEmail(link: string, workspace: string): Omit<EmailInpu
     text: `You have been invited to ${workspace} on Synkra. Accept: ${link}`,
   };
 }
+
+/** Confirmation for a settled add-on purchase. Units are already granted. */
+export function addonPurchaseEmail(
+  label: string,
+  units: number,
+  unit: string,
+): Omit<EmailInput, "to"> {
+  const quantity = `${units.toLocaleString("en-ZA")} ${unit}`;
+  return {
+    subject: `Your ${label} add-on purchase is confirmed`,
+    html: shell(
+      `${label} add-on confirmed`,
+      `<p>Thanks for your purchase — ${quantity} have been added to your account and are ready to use.</p>${button(
+        `${appUrl()}/dashboard/settings`,
+        "View my usage",
+      )}`,
+    ),
+    text: `Your ${label} add-on purchase is confirmed. ${quantity} have been added to your account and are ready to use. ${appUrl()}/dashboard/settings`,
+  };
+}
+
