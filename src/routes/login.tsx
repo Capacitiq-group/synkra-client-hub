@@ -9,9 +9,15 @@ import { useAuthStore } from "@/stores/auth";
 import { APPLY_URL } from "./signup";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>): { reason?: string; reset?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { reason?: string; reset?: string; next?: string } => ({
     ...(typeof search["reason"] === "string" ? { reason: search["reason"] as string } : {}),
     ...(typeof search["reset"] === "string" ? { reset: search["reset"] as string } : {}),
+    // Only same-origin paths are ever followed after sign-in.
+    ...(typeof search["next"] === "string" && (search["next"] as string).startsWith("/")
+      ? { next: search["next"] as string }
+      : {}),
   }),
   head: () => ({
     meta: [
@@ -58,7 +64,7 @@ function Wordmark() {
 }
 
 function LoginPage() {
-  const { reason, reset } = Route.useSearch();
+  const { reason, reset, next } = Route.useSearch();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const isReady = useAuthStore((s) => s.isReady);
@@ -72,8 +78,12 @@ function LoginPage() {
   const [lockMinutes, setLockMinutes] = useState(0);
 
   useEffect(() => {
-    if (isReady && user && reason !== "expired") navigate({ to: "/dashboard", replace: true });
-  }, [isReady, user, reason, navigate]);
+    if (isReady && user && reason !== "expired") {
+      if (next) navigate({ href: next, replace: true });
+      else navigate({ to: "/dashboard", replace: true });
+    }
+  }, [isReady, user, reason, next, navigate]);
+
 
   useEffect(() => {
     if (lockMinutes <= 0) return;
@@ -102,11 +112,14 @@ function LoginPage() {
       setFailures(0);
       useAuthStore.setState({ user: result.user as never });
       resetActivity();
-      if (result.user.onboarding_completed) {
+      if (next) {
+        navigate({ href: next, replace: true });
+      } else if (result.user.onboarding_completed) {
         navigate({ to: "/dashboard", replace: true });
       } else {
         navigate({ to: "/dashboard", search: { onboarding: true }, replace: true });
       }
+
       return;
     }
 
