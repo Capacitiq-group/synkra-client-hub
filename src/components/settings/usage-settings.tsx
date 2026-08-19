@@ -1,6 +1,14 @@
-import { AlertTriangle, ArrowUpRight, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, ArrowUpRight, Loader2, Sparkles } from "lucide-react";
 import { Shimmer, SectionError } from "@/components/dashboard/primitives";
 import { usePlanUsage } from "@/hooks/usePlanUsage";
+import { useAuth } from "@/contexts/AuthContext";
+import pb from "@/lib/pocketbase";
+import { getAddonBalancesFn } from "@/lib/billing/addons.functions";
+import { startUpgradeFn } from "@/lib/billing/billing.functions";
+import { AddonPurchaseModal } from "@/components/settings/addon-purchase-modal";
+import type { AddonKind } from "@/lib/billing/addons";
 import {
   formatNumber,
   formatStorage,
@@ -53,6 +61,7 @@ function UsageCard({
   display,
   onUpgrade,
   canUpgrade,
+  onBuyAddOn,
 }: {
   label: string;
   used: number;
@@ -60,6 +69,7 @@ function UsageCard({
   display: string;
   onUpgrade: () => void;
   canUpgrade: boolean;
+  onBuyAddOn?: () => void;
 }) {
   const state = usageState(used, limit);
   const percent = usagePercent(used, limit);
@@ -97,6 +107,16 @@ function UsageCard({
               ? `You've reached your ${label.toLowerCase()} limit for this month.`
               : `You're approaching your ${label.toLowerCase()} limit.`}
           </span>
+          {onBuyAddOn && (
+            <button
+              type="button"
+              onClick={onBuyAddOn}
+              className="synkra-focus inline-flex items-center gap-1 rounded-sm"
+              style={{ color: "var(--accent-green)", fontWeight: 600 }}
+            >
+              Buy more <ArrowUpRight size={13} aria-hidden="true" />
+            </button>
+          )}
           {canUpgrade && (
             <button
               type="button"
@@ -117,11 +137,13 @@ function AllowanceRow({
   label,
   included,
   unit,
+  balance,
   onBuyAddOn,
 }: {
   label: string;
   included: number;
   unit: string;
+  balance: number;
   onBuyAddOn: () => void;
 }) {
   return (
@@ -130,31 +152,58 @@ function AllowanceRow({
       style={{ borderColor: "var(--border-subtle)" }}
     >
       <span style={{ fontSize: 14, color: "var(--text-primary)" }}>{label}</span>
-      {included > 0 ? (
-        <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-          {formatNumber(included)} {unit} included this month
-        </span>
-      ) : (
-        <span className="flex flex-wrap items-center gap-3">
+      <span className="flex flex-wrap items-center gap-3">
+        {included > 0 ? (
+          <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>
+            {formatNumber(included)} {unit} included this month
+          </span>
+        ) : (
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
             Not included on your plan — available as a paid add-on
           </span>
-          <button
-            type="button"
-            onClick={onBuyAddOn}
-            className="synkra-focus inline-flex items-center gap-1 rounded-sm"
-            style={{ fontSize: 13, fontWeight: 600, color: "var(--accent-green)" }}
-          >
-            Buy add-on <ArrowUpRight size={13} aria-hidden="true" />
-          </button>
-        </span>
-      )}
+        )}
+        {balance > 0 && (
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent-green)" }}>
+            +{formatNumber(balance)} {unit} purchased
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onBuyAddOn}
+          className="synkra-focus inline-flex items-center gap-1 rounded-sm"
+          style={{ fontSize: 13, fontWeight: 600, color: "var(--accent-green)" }}
+        >
+          Buy add-on <ArrowUpRight size={13} aria-hidden="true" />
+        </button>
+      </span>
     </div>
   );
 }
 
 export function UsageSettings() {
   const usage = usePlanUsage();
+  const { user } = useAuth();
+  const [addonModal, setAddonModal] = useState<AddonKind | null>(null);
+  const [upgradeBusy, setUpgradeBusy] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+
+  const addonBalances = useQuery({
+    queryKey: ["addon-balances", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      const token = pb.authStore.token;
+      if (!token) throw new Error("Not authenticated");
+      const result = (await getAddonBalancesFn({ data: { token } })) as unknown as
+        | { ok: true; balances: Array<{ kind: AddonKind; remaining: number; unit: string; label: string }> }
+        | { ok: false; error: string; message: string };
+      if (!result.ok) throw new Error(result.message);
+      return result.balances;
+    },
+  });
+
+  function balanceFor(kind: AddonKind): number {
+    return addonBalances.data?.find((b) => b.kind === kind)?.remaining ?? 0;
+  }
 
   if (usage.isLoading) {
     return (
@@ -176,18 +225,44 @@ export function UsageSettings() {
   const nextPlan = nextTier ? getPlanLimits(nextTier) : null;
   const storageLimitMb = getStorageLimitMb(tier);
 
-  const handleUpgrade = () => {
-    // Payments are not wired up in this iteration.
-    window.alert(
-      nextPlan
-        ? `Upgrading to ${nextPlan.name} (R${nextPlan.priceZar}/month) will be available soon.`
-        : "You are already on our highest plan.",
-    );
+  /**
+   * Real upgrade flow: the tier is sent to the existing server function, which
+   * recomputes the price and returns a Paystack authorization URL. Same shape
+   * and redirect as the add-on purchase and the public /checkout page.
+   */
+  const handleUpgrade = async () => {
+    if (!nextTier || nextTier === "free") return;
+    setUpgradeError(null);
+    setUpgradeBusy(true);
+    try {
+      const token = pb.authStore.token;
+      if (!token) {
+        setUpgradeError("Your session has expired. Please sign in again.");
+        return;
+      }
+      const result = (await startUpgradeFn({
+        data: { token, tier: nextTier },
+      })) as unknown as
+        | { ok: true; authorizationUrl?: string }
+        | { ok: false; error: string; message: string };
+      if (!result.ok) {
+        setUpgradeError(result.message);
+        return;
+      }
+      if (result.authorizationUrl) {
+        window.location.href = result.authorizationUrl;
+        return;
+      }
+      setUpgradeError("Could not start checkout — no payment link was returned.");
+    } catch (err) {
+      setUpgradeError(err instanceof Error ? err.message : "Could not start the upgrade.");
+    } finally {
+      setUpgradeBusy(false);
+    }
   };
 
-  const handleBuyAddOn = () => {
-    window.alert("Add-on packs will be available to purchase soon.");
-  };
+  const handleBuyAddOn = (kind: AddonKind) => () => setAddonModal(kind);
+
 
   return (
     <div className="flex flex-col gap-8">
@@ -215,21 +290,32 @@ export function UsageSettings() {
           </div>
         </div>
         {canUpgrade && nextPlan && (
-          <button
-            type="button"
-            onClick={handleUpgrade}
-            className="synkra-focus inline-flex h-10 items-center gap-1.5 rounded-md px-4"
-            style={{
-              backgroundColor: "var(--accent-green)",
-              color: "var(--bg-base)",
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
-            Upgrade to {nextPlan.name} <ArrowUpRight size={15} aria-hidden="true" />
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onClick={handleUpgrade}
+              disabled={upgradeBusy}
+              className="synkra-focus inline-flex h-10 items-center gap-1.5 rounded-md px-4"
+              style={{
+                backgroundColor: "var(--accent-green)",
+                color: "var(--bg-base)",
+                fontSize: 14,
+                fontWeight: 600,
+                opacity: upgradeBusy ? 0.6 : 1,
+              }}
+            >
+              {upgradeBusy && <Loader2 size={15} className="animate-spin" aria-hidden="true" />}
+              Upgrade to {nextPlan.name} <ArrowUpRight size={15} aria-hidden="true" />
+            </button>
+            {upgradeError && (
+              <span role="alert" style={{ fontSize: 13, color: "var(--state-error)" }}>
+                {upgradeError}
+              </span>
+            )}
+          </div>
         )}
       </div>
+
 
       <section>
         <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
@@ -259,6 +345,7 @@ export function UsageSettings() {
             display={`${formatStorage(storageUsedMb)} / ${limits.storageGb} GB`}
             onUpgrade={handleUpgrade}
             canUpgrade={canUpgrade}
+            onBuyAddOn={handleBuyAddOn("storage_gb")}
           />
           {limits.aiOps > 0 ? (
             <UsageCard
@@ -268,6 +355,7 @@ export function UsageSettings() {
               display={`${formatNumber(aiOpsUsed)} / ${formatNumber(limits.aiOps)}`}
               onUpgrade={handleUpgrade}
               canUpgrade={canUpgrade}
+              onBuyAddOn={handleBuyAddOn("ai_ops")}
             />
           ) : (
             <div
@@ -288,11 +376,16 @@ export function UsageSettings() {
               <div className="mt-3 flex flex-wrap gap-4">
                 <button
                   type="button"
-                  onClick={handleBuyAddOn}
+                  onClick={handleBuyAddOn("ai_ops")}
                   className="synkra-focus inline-flex items-center gap-1 rounded-sm"
                   style={{ fontSize: 13, fontWeight: 600, color: "var(--accent-green)" }}
                 >
                   Buy AI add-on <ArrowUpRight size={13} aria-hidden="true" />
+                  {balanceFor("ai_ops") > 0 && (
+                    <span style={{ marginLeft: 4, color: "var(--text-muted)" }}>
+                      ({formatNumber(balanceFor("ai_ops"))} purchased)
+                    </span>
+                  )}
                 </button>
                 {canUpgrade && nextPlan && (
                   <button
@@ -327,19 +420,22 @@ export function UsageSettings() {
             label="SMS"
             included={limits.sms}
             unit="messages"
-            onBuyAddOn={handleBuyAddOn}
+            balance={balanceFor("sms")}
+            onBuyAddOn={handleBuyAddOn("sms")}
           />
           <AllowanceRow
             label="WhatsApp"
             included={limits.whatsapp}
             unit="conversations"
-            onBuyAddOn={handleBuyAddOn}
+            balance={balanceFor("whatsapp")}
+            onBuyAddOn={handleBuyAddOn("whatsapp")}
           />
           <AllowanceRow
             label="Voice"
             included={limits.voiceMinutes}
             unit="minutes"
-            onBuyAddOn={handleBuyAddOn}
+            balance={balanceFor("voice_minutes")}
+            onBuyAddOn={handleBuyAddOn("voice_minutes")}
           />
         </div>
       </section>
@@ -392,6 +488,17 @@ export function UsageSettings() {
         </span>
         <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>R0.00</span>
       </div>
+
+      {addonModal && (
+        <AddonPurchaseModal
+          kind={addonModal}
+          onClose={() => {
+            setAddonModal(null);
+            addonBalances.refetch();
+          }}
+        />
+      )}
     </div>
   );
 }
+
