@@ -12,6 +12,7 @@
  */
 import type PocketBase from "pocketbase";
 import { adminClient } from "@/lib/usage/pocketbase.server";
+import { appUrl, invitationEmail, sendEmail } from "@/lib/billing/email.server";
 import { getPlanName, normalizeTier, type PlanTier } from "@/lib/plans";
 import {
   can,
@@ -424,8 +425,19 @@ export async function inviteMember(input: InviteInput) {
     expires_at: expiresAt,
   });
 
+  // Same pattern as issueMagicLink in billing.server.ts: send after the record
+  // exists, and never let a delivery failure roll back the invitation itself.
+  try {
+    const link = `${appUrl()}/accept-invite?token=${encodeURIComponent(String(record["token"]))}`;
+    const sent = await sendEmail({ to: email, ...invitationEmail(link, ctx.workspace.name) });
+    if (!sent.ok) console.error("[team] invitation email failed:", sent.error);
+  } catch (err) {
+    console.error("[team] invitation email failed:", err);
+  }
+
   return { ok: true as const, invitationId: record.id, email, role, expiresAt };
 }
+
 
 export async function cancelInvitation(userId: string, invitationId: string) {
   const ctx = await loadWorkspaceContext(userId);
