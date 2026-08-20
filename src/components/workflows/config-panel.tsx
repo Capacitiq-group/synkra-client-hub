@@ -1,56 +1,74 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { Check, Copy } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import pb from "@/lib/pocketbase";
-import { webhookUrlFor } from "@/lib/workflow/api";
+
+import { webhookUrlFor, inboundEmailAddressFor } from "@/lib/workflow/api";
 import { OPERATORS, blockSubtype } from "@/lib/workflow/blocks";
 import { availableVariables } from "@/lib/workflow/describe";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { PlainField, VariableField } from "./variables-popover";
 
-function GmailStatusLine() {
-  const { user } = useAuth();
-  const { data, isLoading } = useQuery({
-    queryKey: ["integrations", "gmail", user?.id],
-    enabled: Boolean(user),
-    queryFn: async () => {
-      if (!user) return null;
-      const records = await pb.collection("integrations").getFullList({
-        filter: pb.filter('user_id = {:userId} && type = "gmail"', { userId: user.id }),
-      });
-      return (records[0] as Record<string, unknown> | undefined) ?? null;
-    },
-  });
+/**
+ * Inbound email address for the "Email received" trigger.
+ *
+ * Replaces the old Gmail OAuth connect flow: every workflow gets its own
+ * forwarding address, and Resend delivers matching mail to the backend.
+ */
+function InboundEmailAddressField({ workflowId }: { workflowId?: string | undefined }) {
+  const [copied, setCopied] = useState(false);
+  const address = workflowId ? inboundEmailAddressFor(workflowId) : null;
 
-  const connected = data?.["status"] === "connected";
-  const email = String(data?.["connected_email"] ?? data?.["display_name"] ?? "your inbox");
+  const copy = async () => {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
-        Mailbox connection
+        Your dedicated inbound address
       </span>
-      {isLoading ? (
-        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Checking Gmail connection…</p>
-      ) : connected ? (
-        <p style={{ fontSize: 12, color: "var(--state-success)" }}>Watching: {email}</p>
+      {address ? (
+        <>
+          <div
+            className="flex items-center justify-between gap-2 rounded-md px-3 py-2"
+            style={{ border: "1px solid var(--border-default)", backgroundColor: "var(--bg-card)" }}
+          >
+            <code style={{ fontSize: 12, color: "var(--text-primary)" }}>{address}</code>
+            <button
+              type="button"
+              onClick={() => void copy()}
+              aria-label="Copy inbound email address"
+              className="synkra-focus flex items-center gap-1 rounded-sm"
+              style={{ fontSize: 12, color: "var(--accent-green)" }}
+            >
+              {copied ? (
+                <Check size={13} aria-hidden="true" />
+              ) : (
+                <Copy size={13} aria-hidden="true" />
+              )}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            In your Gmail or Outlook settings, add a forwarding rule that sends matching mail to
+            this address. Any email forwarded here will be checked against the filters below.
+          </p>
+        </>
       ) : (
         <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          <Link
-            to="/dashboard/settings"
-            search={{ tab: "integrations" }}
-            style={{ color: "var(--accent-green)" }}
-          >
-            Connect your Gmail account in Settings → Integrations
-          </Link>{" "}
-          to use this trigger
+          Save this workflow once to generate its dedicated inbound address.
         </p>
       )}
     </div>
   );
 }
+
 
 
 function WebhookUrlField({ workflowId }: { workflowId?: string | undefined }) {
@@ -189,7 +207,7 @@ export function ConfigPanel({
 
       {subtype === "email_received" && (
         <>
-          <GmailStatusLine />
+          <InboundEmailAddressField workflowId={workflowId} />
           <div className="flex flex-col gap-3">
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
               Only trigger if
