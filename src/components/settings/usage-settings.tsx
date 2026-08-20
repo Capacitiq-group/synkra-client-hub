@@ -7,8 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import pb from "@/lib/pocketbase";
 import { getAddonBalancesFn } from "@/lib/billing/addons.functions";
 import { startUpgradeFn } from "@/lib/billing/billing.functions";
-import { AddonPurchaseModal } from "@/components/settings/addon-purchase-modal";
-import type { AddonKind } from "@/lib/billing/addons";
+import { AddonPurchaseModal, ComingSoonBadge } from "@/components/settings/addon-purchase-modal";
+import { ADDON_CATALOG, type AddonKind } from "@/lib/billing/addons";
 import {
   formatNumber,
   formatStorage,
@@ -62,6 +62,7 @@ function UsageCard({
   onUpgrade,
   canUpgrade,
   onBuyAddOn,
+  addonKind,
 }: {
   label: string;
   used: number;
@@ -70,6 +71,7 @@ function UsageCard({
   onUpgrade: () => void;
   canUpgrade: boolean;
   onBuyAddOn?: () => void;
+  addonKind?: AddonKind;
 }) {
   const state = usageState(used, limit);
   const percent = usagePercent(used, limit);
@@ -107,16 +109,20 @@ function UsageCard({
               ? `You've reached your ${label.toLowerCase()} limit for this month.`
               : `You're approaching your ${label.toLowerCase()} limit.`}
           </span>
-          {onBuyAddOn && (
-            <button
-              type="button"
-              onClick={onBuyAddOn}
-              className="synkra-focus inline-flex items-center gap-1 rounded-sm"
-              style={{ color: "var(--accent-green)", fontWeight: 600 }}
-            >
-              Buy more <ArrowUpRight size={13} aria-hidden="true" />
-            </button>
-          )}
+          {onBuyAddOn &&
+            addonKind &&
+            (ADDON_CATALOG[addonKind].purchasable ? (
+              <button
+                type="button"
+                onClick={onBuyAddOn}
+                className="synkra-focus inline-flex items-center gap-1 rounded-sm"
+                style={{ color: "var(--accent-green)", fontWeight: 600 }}
+              >
+                Buy more <ArrowUpRight size={13} aria-hidden="true" />
+              </button>
+            ) : (
+              <ComingSoonBadge />
+            ))}
           {canUpgrade && (
             <button
               type="button"
@@ -139,12 +145,14 @@ function AllowanceRow({
   unit,
   balance,
   onBuyAddOn,
+  addonKind,
 }: {
   label: string;
   included: number;
   unit: string;
   balance: number;
   onBuyAddOn: () => void;
+  addonKind: AddonKind;
 }) {
   return (
     <div
@@ -167,14 +175,18 @@ function AllowanceRow({
             +{formatNumber(balance)} {unit} purchased
           </span>
         )}
-        <button
-          type="button"
-          onClick={onBuyAddOn}
-          className="synkra-focus inline-flex items-center gap-1 rounded-sm"
-          style={{ fontSize: 13, fontWeight: 600, color: "var(--accent-green)" }}
-        >
-          Buy add-on <ArrowUpRight size={13} aria-hidden="true" />
-        </button>
+        {ADDON_CATALOG[addonKind].purchasable ? (
+          <button
+            type="button"
+            onClick={onBuyAddOn}
+            className="synkra-focus inline-flex items-center gap-1 rounded-sm"
+            style={{ fontSize: 13, fontWeight: 600, color: "var(--accent-green)" }}
+          >
+            Buy add-on <ArrowUpRight size={13} aria-hidden="true" />
+          </button>
+        ) : (
+          <ComingSoonBadge />
+        )}
       </span>
     </div>
   );
@@ -346,6 +358,7 @@ export function UsageSettings() {
             onUpgrade={handleUpgrade}
             canUpgrade={canUpgrade}
             onBuyAddOn={handleBuyAddOn("storage_gb")}
+            addonKind="storage_gb"
           />
           {limits.aiOps > 0 ? (
             <UsageCard
@@ -356,6 +369,7 @@ export function UsageSettings() {
               onUpgrade={handleUpgrade}
               canUpgrade={canUpgrade}
               onBuyAddOn={handleBuyAddOn("ai_ops")}
+              addonKind="ai_ops"
             />
           ) : (
             <div
@@ -422,6 +436,7 @@ export function UsageSettings() {
             unit="messages"
             balance={balanceFor("sms")}
             onBuyAddOn={handleBuyAddOn("sms")}
+            addonKind="sms"
           />
           <AllowanceRow
             label="WhatsApp"
@@ -429,6 +444,7 @@ export function UsageSettings() {
             unit="conversations"
             balance={balanceFor("whatsapp")}
             onBuyAddOn={handleBuyAddOn("whatsapp")}
+            addonKind="whatsapp"
           />
           <AllowanceRow
             label="Voice"
@@ -436,6 +452,7 @@ export function UsageSettings() {
             unit="minutes"
             balance={balanceFor("voice_minutes")}
             onBuyAddOn={handleBuyAddOn("voice_minutes")}
+            addonKind="voice_minutes"
           />
         </div>
       </section>
