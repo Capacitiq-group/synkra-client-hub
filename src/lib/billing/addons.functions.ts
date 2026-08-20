@@ -9,7 +9,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { ADDON_KINDS } from "./addons";
+import { ADDON_KINDS, ADDON_UNAVAILABLE_MESSAGE, isAddonPurchasable } from "./addons";
 
 const authSchema = z.object({ token: z.string().min(10) });
 const purchaseSchema = authSchema.extend({
@@ -73,6 +73,12 @@ export const startAddonPurchaseFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => purchaseSchema.parse(data))
   .handler(async ({ data }) =>
     guardedUser(data.token, async (userId) => {
+      // Rejected before any provider or database work happens; the same check
+      // is repeated inside createAddonCheckout so no call path can skip it.
+      if (!isAddonPurchasable(data.kind)) {
+        const { BillingError } = await import("./billing.server");
+        throw new BillingError("addon_unavailable", ADDON_UNAVAILABLE_MESSAGE);
+      }
       const { createAddonCheckout } = await import("./addons.server");
       return createAddonCheckout({ userId, kind: data.kind, packs: data.packs });
     }),
