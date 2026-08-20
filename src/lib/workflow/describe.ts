@@ -163,10 +163,24 @@ export interface VariableOption {
 }
 
 /** Turns a raw field name such as customer_email into "Customer email". */
-function humanizeFieldName(field: string): string {
+export function humanizeFieldName(field: string): string {
   const words = field.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").trim();
   if (!words) return field;
   return words.charAt(0).toUpperCase() + words.slice(1).toLowerCase();
+}
+
+/**
+ * Turns a human-typed field name into a token-safe key.
+ *
+ * Templating only understands {{word.characters}}, so "Customer intent" is
+ * stored as customer_intent and shown back to the user as "Customer intent".
+ */
+export function toFieldKey(name: string): string {
+  return name
+    .trim()
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
 }
 
 /** Friendlier names for the field names small businesses use most often. */
@@ -278,7 +292,9 @@ export function availableVariableOptions(
 
     if (subtype === "extract_information_ai") {
       const fields = extractFieldEntries(block);
-      fields.forEach(([name, description]) =>
+      fields
+        .filter(([name]) => name.trim() && !name.startsWith("__new_"))
+        .forEach(([name, description]) =>
         push({
           token: `{{${output}.${name}}}`,
           label: description.trim() || humanizeFieldName(name),
