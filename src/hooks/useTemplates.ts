@@ -4,6 +4,7 @@ import pb, { getFullListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { assertSaveAllowed } from "@/hooks/useWorkflows";
 import type { WorkflowBlock } from "@/lib/workflow/types";
+import { inboundEmailAddressFor } from "@/lib/workflow/api";
 
 export interface TemplateBlock {
   id: string;
@@ -93,7 +94,8 @@ export async function activateTemplate(template: PortalTemplate, userId: string)
     blocks: template.blocks as unknown as WorkflowBlock[],
     status: "draft",
   });
-  return pb.collection("workflows").create({
+  const isInboundEmail = firstBlock?.trigger_type === "email_received";
+  const created = await pb.collection("workflows").create({
     user_id: userId,
     template_id: template.template_id,
     name: template.name,
@@ -105,4 +107,16 @@ export async function activateTemplate(template: PortalTemplate, userId: string)
     integrations_required: JSON.stringify(template.integrations_required),
     run_count: 0,
   });
+  if (isInboundEmail) {
+    // Inbound address is derived from the new workflow id, so it can only be
+    // written after creation.
+    return pb.collection("workflows").update(created.id, {
+      trigger_config: JSON.stringify({
+        ...(firstBlock?.config || {}),
+        channel: "resend_inbound",
+        address: inboundEmailAddressFor(created.id),
+      }),
+    });
+  }
+  return created;
 }
