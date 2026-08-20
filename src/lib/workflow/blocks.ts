@@ -30,12 +30,18 @@ export interface BlockDefinition {
   section: "TRIGGERS" | "ACTIONS" | "LOGIC";
   usesCredits?: boolean;
   comingSoon?: boolean;
+  /**
+   * One-line, jargon-free explainer shown under the block title inside the
+   * config panel. Written for someone with no technical background.
+   */
+  configHint?: string;
   defaultConfig: Record<string, unknown>;
 }
 
 export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   {
     key: "webhook",
+    configHint: "Starts this workflow whenever your website form (or another tool) sends through a submission.",
     kind: "trigger",
     subtype: "webhook",
     label: "Webhook",
@@ -47,6 +53,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "schedule",
+    configHint: "Starts this workflow on its own at the time you choose — no one has to click anything.",
     kind: "trigger",
     subtype: "schedule",
     label: "Schedule",
@@ -63,6 +70,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "email_received",
+    configHint: "Starts this workflow when an email lands in the address below.",
     kind: "trigger",
     subtype: "email_received",
     label: "Email received",
@@ -74,6 +82,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "send_email",
+    configHint: "Sends an email automatically. You can drop in details from earlier steps, like the customer's name.",
     kind: "action",
     subtype: "send_email",
     label: "Send email",
@@ -85,6 +94,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "wait",
+    configHint: "Pauses here for a while before carrying on with the next step.",
     kind: "action",
     subtype: "wait",
     label: "Wait",
@@ -96,6 +106,8 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "save_information",
+    comingSoon: true,
+    configHint: "Stores details from this workflow so you can look them up later.",
     kind: "action",
     subtype: "save_information",
     label: "Save information",
@@ -107,6 +119,8 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "find_information",
+    comingSoon: true,
+    configHint: "Looks up something you saved earlier and brings it into this workflow.",
     kind: "action",
     subtype: "find_information",
     label: "Find information",
@@ -118,6 +132,8 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "generate_pdf",
+    comingSoon: true,
+    configHint: "Creates a PDF document from the details in this workflow.",
     kind: "action",
     subtype: "generate_pdf",
     label: "Generate PDF",
@@ -129,6 +145,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "summarise_ai",
+    configHint: "Turns a long piece of text into a short summary you can reuse in later steps and messages.",
     kind: "action",
     subtype: "summarise_ai",
     label: "Summarise with AI",
@@ -141,6 +158,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "generate_reply_ai",
+    configHint: "Writes a reply for you in the tone you pick, based on the message you point it at.",
     kind: "action",
     subtype: "generate_reply_ai",
     label: "Generate reply with AI",
@@ -153,6 +171,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "extract_information_ai",
+    configHint: "Reads a message and pulls out the specific details you ask for, so later steps can use them.",
     kind: "action",
     subtype: "extract_information_ai",
     label: "Extract information with AI",
@@ -165,6 +184,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "send_whatsapp",
+    configHint: "Sends a WhatsApp message.",
     kind: "action",
     subtype: "send_whatsapp",
     label: "Send WhatsApp",
@@ -177,6 +197,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "send_sms",
+    configHint: "Sends a text message.",
     kind: "action",
     subtype: "send_sms",
     label: "Send SMS",
@@ -189,6 +210,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "if_else",
+    configHint: "Check something and remember the result, so later steps and messages can refer to it.",
     kind: "logic",
     subtype: "if_else",
     label: "Make a decision",
@@ -206,6 +228,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "filter",
+    configHint: "Checks one thing before going further — if it isn't true, the workflow simply stops here.",
     kind: "logic",
     subtype: "filter",
     label: "Only continue if",
