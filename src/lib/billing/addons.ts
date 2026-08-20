@@ -31,6 +31,13 @@ export interface AddonProduct {
   maxPacks: number;
   /** True when the credit is consumed monthly rather than carried over. */
   monthly: boolean;
+  /**
+   * True only when the underlying capability is actually integrated and the
+   * add-on may be sold. Non-purchasable add-ons render as "Coming soon" and are
+   * rejected server-side, so a crafted request cannot buy credit for a channel
+   * the platform cannot yet deliver on.
+   */
+  purchasable: boolean;
   description: string;
 }
 
@@ -43,6 +50,7 @@ export const ADDON_CATALOG: Record<AddonKind, AddonProduct> = {
     packSize: 500,
     maxPacks: 20,
     monthly: false,
+    purchasable: true,
     description: "Extra AI steps for summarising, classifying and generating content.",
   },
   sms: {
@@ -53,6 +61,7 @@ export const ADDON_CATALOG: Record<AddonKind, AddonProduct> = {
     packSize: 50,
     maxPacks: 20,
     monthly: false,
+    purchasable: false,
     description: "Outbound SMS sent from your workflows.",
   },
   whatsapp: {
@@ -63,6 +72,7 @@ export const ADDON_CATALOG: Record<AddonKind, AddonProduct> = {
     packSize: 100,
     maxPacks: 20,
     monthly: false,
+    purchasable: false,
     description: "WhatsApp conversations initiated by your automations.",
   },
   voice_minutes: {
@@ -73,6 +83,7 @@ export const ADDON_CATALOG: Record<AddonKind, AddonProduct> = {
     packSize: 10,
     maxPacks: 20,
     monthly: false,
+    purchasable: false,
     description: "Voice call minutes used by voice-enabled workflows.",
   },
   storage_gb: {
@@ -83,6 +94,7 @@ export const ADDON_CATALOG: Record<AddonKind, AddonProduct> = {
     packSize: 1,
     maxPacks: 50,
     monthly: true,
+    purchasable: false,
     description: "Additional file storage, billed per GB for the current month.",
   },
 };
@@ -97,6 +109,14 @@ export function getAddon(kind: unknown): AddonProduct {
   if (!isAddonKind(kind)) throw new Error("Unknown add-on.");
   return ADDON_CATALOG[kind];
 }
+
+/** True when this add-on may be bought today. */
+export function isAddonPurchasable(kind: unknown): boolean {
+  return isAddonKind(kind) && ADDON_CATALOG[kind].purchasable;
+}
+
+/** Copy shown wherever a not-yet-integrated add-on would otherwise be sold. */
+export const ADDON_UNAVAILABLE_MESSAGE = "This add-on isn't available yet.";
 
 /** Units granted by a whole number of packs. */
 export function unitsForPacks(kind: AddonKind, packs: number): number {
