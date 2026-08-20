@@ -16,6 +16,7 @@ import { BillingError } from "./billing.server";
 import { CURRENCY, PROVIDER } from "./config";
 import {
   ADDON_KINDS,
+  ADDON_UNAVAILABLE_MESSAGE,
   addonPriceCents,
   emptyBalance,
   getAddon,
@@ -113,6 +114,11 @@ export async function createAddonCheckout(input: {
   packs: unknown;
 }): Promise<AddonCheckoutResult> {
   const product = getAddon(input.kind);
+  // Authoritative gate: channels that are not integrated yet can never be sold,
+  // regardless of what the browser sends.
+  if (!product.purchasable) {
+    throw new BillingError("addon_unavailable", ADDON_UNAVAILABLE_MESSAGE);
+  }
   const packs = normalizePacks(product.kind, input.packs);
   const units = unitsForPacks(product.kind, packs);
   const amountCents = addonPriceCents(product.kind, packs);
