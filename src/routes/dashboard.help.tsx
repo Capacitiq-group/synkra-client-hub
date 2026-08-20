@@ -206,7 +206,7 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   {
     question: "What are variables like {{payload.name}} and how do I use them?",
     answer:
-      'Variables let you insert real data into your emails automatically. Where they come from depends on the trigger: for a Webhook trigger, they come from whatever field names you list under "Expected fields" — typing name, email there gives you {{payload.name}} and {{payload.email}}. For an Email received trigger, you automatically get {{trigger.from_email}}, {{trigger.from_name}}, {{trigger.subject}}, and {{trigger.body}} — the sender\'s details and message content. You can type these directly into any To, Subject, or Body field.',
+      'Variables let you insert real data into your emails automatically. Where they come from depends on the trigger: for a Webhook trigger, they come from whatever field names you list under "What information will this receive?" — typing name, email there gives you {{payload.name}} and {{payload.email}}. For an Email received trigger, you automatically get {{trigger.from_email}}, {{trigger.from_name}}, {{trigger.subject}}, and {{trigger.body}} — the sender\'s details and message content. You can type these directly into any To, Subject, or Body field.',
     category: "Workflows & Templates",
   },
   {
@@ -529,4 +529,4 @@ function HelpPage() {
       </div>
     </div>
   );
-      }
+}
