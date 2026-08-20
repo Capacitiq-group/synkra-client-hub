@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Braces } from "lucide-react";
+import type { VariableOption } from "@/lib/workflow/describe";
 
-/** Popover listing the variables produced by earlier blocks. */
+/**
+ * Popover listing the information available from earlier steps.
+ *
+ * Users see a plain-language name and a one-line explanation; the literal
+ * {{...}} token is what actually gets inserted into the field.
+ */
 export function VariablesPopover({
   variables,
   onInsert,
 }: {
-  variables: string[];
+  variables: VariableOption[];
   onInsert: (variable: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -57,7 +63,7 @@ export function VariablesPopover({
               padding: "6px 8px",
             }}
           >
-            Available variables
+            Information you can use
           </p>
           {variables.length === 0 ? (
             <p style={{ fontSize: 12, color: "var(--text-muted)", padding: "6px 8px" }}>
@@ -66,24 +72,28 @@ export function VariablesPopover({
           ) : (
             variables.map((variable) => (
               <button
-                key={variable}
+                key={variable.token}
                 type="button"
                 role="menuitem"
                 onClick={() => {
-                  onInsert(variable);
+                  onInsert(variable.token);
                   setOpen(false);
                 }}
                 className="synkra-focus block w-full rounded-sm text-left"
                 style={{
                   fontSize: 12,
-                  fontFamily: "ui-monospace, SFMono-Regular, monospace",
                   color: "var(--text-secondary)",
                   padding: "6px 8px",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-elevated)")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
-                {variable}
+                <span style={{ display: "block", fontWeight: 600, color: "var(--text-primary)" }}>
+                  {variable.label}
+                </span>
+                <span style={{ display: "block", color: "var(--text-muted)", marginTop: 2 }}>
+                  {variable.description}
+                </span>
               </button>
             ))
           )}
@@ -116,7 +126,7 @@ export function VariableField({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  variables: string[];
+  variables: VariableOption[];
   multiline?: boolean;
   placeholder?: string;
   hint?: string;
@@ -176,6 +186,7 @@ export function PlainField({
   type = "text",
   options,
   placeholder,
+  hint,
 }: {
   label: string;
   value: string;
@@ -183,6 +194,7 @@ export function PlainField({
   type?: string;
   options?: { value: string; label: string }[];
   placeholder?: string;
+  hint?: string;
 }) {
   return (
     <div>
@@ -215,6 +227,7 @@ export function PlainField({
           style={fieldStyle}
         />
       )}
+      {hint && <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{hint}</p>}
     </div>
   );
 }
