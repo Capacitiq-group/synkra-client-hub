@@ -12,8 +12,31 @@ import { useState } from "react";
 import { Loader2, X } from "lucide-react";
 import pb from "@/lib/pocketbase";
 import { startAddonPurchaseFn } from "@/lib/billing/addons.functions";
-import { ADDON_CATALOG, addonPackPriceZar, type AddonKind } from "@/lib/billing/addons";
+import {
+  ADDON_CATALOG,
+  ADDON_UNAVAILABLE_MESSAGE,
+  addonPackPriceZar,
+  type AddonKind,
+} from "@/lib/billing/addons";
 import { formatZar } from "@/lib/billing/config";
+
+/** Small pill reused wherever a not-yet-available add-on is shown. */
+export function ComingSoonBadge() {
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2 py-0.5"
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        color: "var(--text-muted)",
+        border: "1px solid var(--border-default)",
+        backgroundColor: "var(--bg-elevated)",
+      }}
+    >
+      Coming soon
+    </span>
+  );
+}
 
 interface Props {
   kind: AddonKind;
@@ -31,6 +54,9 @@ export function AddonPurchaseModal({ kind, onClose }: Props) {
   const totalUnits = product.packSize * packs;
 
   async function submit() {
+    // Defence in depth: the button is disabled for non-purchasable add-ons, but
+    // the guard lives here too so no code path can start a checkout for them.
+    if (!product.purchasable) return;
     setError(null);
     setBusy(true);
     try {
@@ -147,24 +173,43 @@ export function AddonPurchaseModal({ kind, onClose }: Props) {
           </p>
         )}
 
-        <button
-          type="button"
-          onClick={submit}
-          disabled={busy}
-          className="synkra-focus mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-lg"
-          style={{
-            backgroundColor: "var(--accent-green)",
-            color: "var(--bg-base)",
-            fontSize: 14,
-            fontWeight: 600,
-            opacity: busy ? 0.6 : 1,
-          }}
-        >
-          {busy && <Loader2 size={16} className="animate-spin" />}
-          Pay {formatZar(Math.round(totalZar * 100))}
-        </button>
+        {product.purchasable ? (
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy}
+            className="synkra-focus mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-lg"
+            style={{
+              backgroundColor: "var(--accent-green)",
+              color: "var(--bg-base)",
+              fontSize: 14,
+              fontWeight: 600,
+              opacity: busy ? 0.6 : 1,
+            }}
+          >
+            {busy && <Loader2 size={16} className="animate-spin" />}
+            Pay {formatZar(Math.round(totalZar * 100))}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            className="mt-5 flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg"
+            style={{
+              border: "1px solid var(--border-default)",
+              color: "var(--text-muted)",
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            <ComingSoonBadge />
+          </button>
+        )}
         <p className="mt-3 text-center" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          You'll be redirected to Paystack to complete payment securely.
+          {product.purchasable
+            ? "You'll be redirected to Paystack to complete payment securely."
+            : `${ADDON_UNAVAILABLE_MESSAGE} We'll enable it here as soon as ${product.label} is connected.`}
         </p>
       </div>
     </div>
