@@ -4,6 +4,8 @@ import pb, { getFullListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseJson, type WorkflowRecordShape } from "@/lib/workflow/types";
 import type { WorkflowBlock } from "@/lib/workflow/types";
+import { inboundEmailAddressFor } from "@/lib/workflow/api";
+
 import {
   activateWorkflowFn,
   checkWorkflowSaveFn,
@@ -105,7 +107,8 @@ export async function deleteWorkflow(workflowId: string) {
 
 export async function duplicateWorkflow(workflow: PortalWorkflow) {
   await assertSaveAllowed({ blocks: workflow.blocks, status: "draft" });
-  return pb.collection("workflows").create({
+  const isInboundEmail = workflow.trigger_type === "email_received";
+  const created = await pb.collection("workflows").create({
     user_id: workflow.user_id,
     template_id: workflow.template_id ?? "",
     name: `${workflow.name} copy`,
@@ -117,6 +120,17 @@ export async function duplicateWorkflow(workflow: PortalWorkflow) {
     integrations_required: JSON.stringify(workflow.integrations_required ?? []),
     run_count: 0,
   });
+  if (isInboundEmail) {
+    // A copy must not inherit the original's inbound address.
+    return pb.collection("workflows").update(created.id, {
+      trigger_config: JSON.stringify({
+        ...(workflow.trigger_config ?? {}),
+        channel: "resend_inbound",
+        address: inboundEmailAddressFor(created.id),
+      }),
+    });
+  }
+  return created;
 }
 
 /** Server-side guard for step, draft and active workflow limits. */
@@ -151,6 +165,16 @@ export async function saveWorkflowDraft(params: {
     blocks: params.blocks,
     status,
   });
+  const isInboundEmail = trigger?.trigger_type === "email_received";
+  const buildTriggerConfig = (workflowId: string | null) => {
+    const config = { ...(trigger?.config ?? {}) };
+    if (isInboundEmail) {
+      config["channel"] = "resend_inbound";
+      if (workflowId) config["address"] = inboundEmailAddressFor(workflowId);
+    }
+    return JSON.stringify(config);
+  };
+
   const payload = {
     user_id: params.userId,
     template_id: params.templateId ?? "",
@@ -158,11 +182,20 @@ export async function saveWorkflowDraft(params: {
     status,
     blocks: JSON.stringify(params.blocks),
     trigger_type: trigger?.trigger_type ?? "webhook",
-    trigger_config: JSON.stringify(trigger?.config ?? {}),
+    trigger_config: buildTriggerConfig(params.workflowId ?? null),
   };
 
   if (params.workflowId) {
     return pb.collection("workflows").update(params.workflowId, payload);
   }
-  return pb.collection("workflows").create({ ...payload, run_count: 0 });
+  const created = await pb.collection("workflows").create({ ...payload, run_count: 0 });
+  if (isInboundEmail) {
+    // The dedicated inbound address is derived from the workflow id, which only
+    // exists after creation — patch it in so the backend can route mail here.
+    return pb
+      .collection("workflows")
+      .update(created.id, { trigger_config: buildTriggerConfig(created.id) });
+  }
+  return created;
 }
+
