@@ -264,6 +264,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           <ConfigPanel
             blocks={blocks}
             block={selectedBlock}
+            workflowId={savedId ?? workflowId}
             onChange={(id, config) =>
               mutate((current) => current.map((b) => (b.id === id ? { ...b, config } : b)))
             }
@@ -310,6 +311,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
             <ConfigPanel
               blocks={blocks}
               block={selectedBlock}
+              workflowId={savedId ?? workflowId}
               onChange={(id, config) =>
                 mutate((current) => current.map((b) => (b.id === id ? { ...b, config } : b)))
               }
