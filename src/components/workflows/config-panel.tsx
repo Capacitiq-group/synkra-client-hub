@@ -1,11 +1,178 @@
-import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Copy, Plus, X } from "lucide-react";
 
 import { webhookUrlFor, inboundEmailAddressFor } from "@/lib/workflow/api";
-import { OPERATORS, blockSubtype } from "@/lib/workflow/blocks";
-import { availableVariables } from "@/lib/workflow/describe";
+import { OPERATORS, blockSubtype, definitionFor } from "@/lib/workflow/blocks";
+import {
+  availableVariableOptions,
+  extractFieldEntries,
+  humanizeFieldName,
+  toFieldKey,
+} from "@/lib/workflow/describe";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { PlainField, VariableField } from "./variables-popover";
+
+/** One-tap starting points for the most common things people extract. */
+const EXTRACT_PRESETS: { name: string; description: string }[] = [
+  {
+    name: "Customer intent",
+    description: "What the customer is asking for or trying to accomplish.",
+  },
+  {
+    name: "Product interest",
+    description: "Which product or service the customer mentions or is interested in.",
+  },
+  {
+    name: "Sentiment",
+    description: "Whether the customer's message is positive, negative, or neutral.",
+  },
+  {
+    name: "Contact preference",
+    description: "The customer's preferred way or best time to be contacted.",
+  },
+];
+
+/**
+ * Repeatable "what should the AI find?" list for the extract-with-AI block.
+ *
+ * Stored in the existing `fields` config object as name -> description, which
+ * is exactly what the automation engine already reads, so nothing changes
+ * behind the scenes.
+ */
+function rowsFromBlock(block: WorkflowBlock): Array<[string, string]> {
+  // Rows the user has not named yet are stored under a `__new_n` placeholder
+  // key (an object cannot hold two empty keys); show them as blank.
+  return extractFieldEntries(block).map(([name, description]): [string, string] => [
+    name.startsWith("__new_") || !name ? "" : humanizeFieldName(name),
+    description,
+  ]);
+}
+
+function ExtractFieldsEditor({
+  block,
+  onChange,
+}: {
+  block: WorkflowBlock;
+  onChange: (fields: Array<[string, string]>) => void;
+}) {
+  // Local state so the user can type freely; the stored key is derived from
+  // what they typed each time it changes.
+  const [rows, setRows] = useState<Array<[string, string]>>(() => rowsFromBlock(block));
+  useEffect(() => {
+    setRows(rowsFromBlock(block));
+    // Re-read only when a different block is selected, not on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block.id]);
+
+  const commit = (next: Array<[string, string]>) => {
+    setRows(next);
+    onChange(next);
+  };
+
+  const update = (index: number, name: string, description: string) => {
+    commit(rows.map((row, i): [string, string] => (i === index ? [name, description] : row)));
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
+          Fields to extract
+        </span>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+          Give each piece of information a name and tell the AI what to look for.
+        </p>
+      </div>
+
+      {rows.map(([name, description], index) => (
+        <div
+          key={index}
+          className="flex flex-col gap-2 rounded-md p-2"
+          style={{ border: "1px solid var(--border-default)" }}
+        >
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <PlainField
+                label="Field name"
+                value={name}
+                placeholder="e.g. Customer intent"
+                onChange={(v) => update(index, v, description)}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => commit(rows.filter((_, i) => i !== index))}
+              aria-label={`Remove field ${name || index + 1}`}
+              className="synkra-focus mt-6 rounded-sm"
+              style={{ color: "var(--text-muted)", padding: 4 }}
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          </div>
+          <PlainField
+            label="What should the AI look for?"
+            value={description}
+            placeholder="e.g. What the customer is asking for or trying to accomplish."
+            onChange={(v) => update(index, name, v)}
+          />
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => commit([...rows, ["", ""]])}
+        className="synkra-focus inline-flex w-fit items-center gap-1 rounded-md border"
+        style={{
+          borderColor: "var(--border-default)",
+          color: "var(--text-secondary)",
+          fontSize: 12,
+          padding: "6px 10px",
+        }}
+      >
+        <Plus size={12} aria-hidden="true" />
+        Add field
+      </button>
+
+      <div className="flex flex-col gap-1.5">
+        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Or start with a common one:</span>
+        <div className="flex flex-wrap gap-1.5">
+          {EXTRACT_PRESETS.map((preset) => (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => {
+                const existing = rows.findIndex(
+                  ([n]) => n.trim().toLowerCase() === preset.name.toLowerCase(),
+                );
+                if (existing >= 0) {
+                  update(existing, preset.name, preset.description);
+                  return;
+                }
+                // Fill an empty row if the user left one behind, else append.
+                const blank = rows.findIndex(([n, d]) => !n.trim() && !d.trim());
+                const entry: [string, string] = [preset.name, preset.description];
+                commit(
+                  blank >= 0
+                    ? rows.map((row, i) => (i === blank ? entry : row))
+                    : [...rows, entry],
+                );
+              }}
+              className="synkra-focus rounded-full border"
+              style={{
+                borderColor: "var(--border-default)",
+                color: "var(--text-secondary)",
+                fontSize: 12,
+                padding: "4px 10px",
+              }}
+            >
+              {preset.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Inbound email address for the "Email received" trigger.
@@ -120,7 +287,9 @@ function WebhookUrlField({ workflowId }: { workflowId?: string | undefined }) {
         </p>
       )}
       <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-        POST JSON data to this URL to trigger this workflow.
+        This is your unique link. Save the workflow, then paste this link into your website's
+        contact form tool, such as Tally or Typeform, or give it to your web developer so every
+        submission comes straight here.
       </p>
     </div>
   );
@@ -147,11 +316,12 @@ export function ConfigPanel({
   }
 
   const index = blocks.findIndex((b) => b.id === block.id);
-  const variables = availableVariables(blocks, index);
+  const variables = availableVariableOptions(blocks, index);
   const config = block.config ?? {};
   const set = (key: string, value: unknown) => onChange(block.id, { ...config, [key]: value });
   const text = (key: string, fallback = "") => String(config[key] ?? fallback);
   const subtype = blockSubtype(block);
+  const configHint = definitionFor(block)?.configHint;
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-auto p-4">
@@ -160,16 +330,18 @@ export function ConfigPanel({
         <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
           {block.description}
         </p>
+        {configHint && (
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>{configHint}</p>
+        )}
       </div>
 
       {subtype === "webhook" && <WebhookUrlField workflowId={workflowId} />}
 
       {subtype === "webhook" && (
-
-        <VariableField
-          label="Expected fields"
+        <PlainField
+          label="What information will this receive?"
           value={((config["expected_fields"] as string[] | undefined) ?? []).join(", ")}
-          variables={[]}
+          placeholder="name, email, message"
           onChange={(value) =>
             set(
               "expected_fields",
@@ -179,7 +351,7 @@ export function ConfigPanel({
                 .filter(Boolean),
             )
           }
-          hint="Comma separated. These become {{payload.field}} variables."
+          hint="List what your form or website will send here, separated by commas — for example: name, email, message. You'll be able to use each one anywhere later in this workflow."
         />
       )}
 
@@ -336,7 +508,7 @@ export function ConfigPanel({
         />
       )}
 
-      {(subtype === "summarise_ai" || subtype === "extract_information_ai") && (
+      {subtype === "summarise_ai" && (
         <>
           <VariableField
             label="Input text"
@@ -348,6 +520,38 @@ export function ConfigPanel({
           <PlainField
             label="Save result as"
             value={text("output_variable", "ai_summary")}
+            onChange={(v) => set("output_variable", v)}
+          />
+        </>
+      )}
+
+      {subtype === "extract_information_ai" && (
+        <>
+          <VariableField
+            label="Input text"
+            multiline
+            value={text("input")}
+            variables={variables}
+            onChange={(v) => set("input", v)}
+          />
+          <ExtractFieldsEditor
+            block={block}
+            onChange={(entries) =>
+              set(
+                "fields",
+                entries.reduce<Record<string, string>>((acc, [name, description], i) => {
+                  // Keys are token-safe (customer_intent) so {{extracted.x}}
+                  // resolves; rows with no name yet keep a placeholder key so
+                  // the row survives until the user names it.
+                  acc[toFieldKey(name) || `__new_${i}`] = description;
+                  return acc;
+                }, {}),
+              )
+            }
+          />
+          <PlainField
+            label="Save result as"
+            value={text("output_variable", "extracted")}
             onChange={(v) => set("output_variable", v)}
           />
         </>
@@ -424,5 +628,4 @@ export function ConfigPanel({
       )}
     </div>
   );
-          }
-    
+}
