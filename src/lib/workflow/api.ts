@@ -61,6 +61,15 @@ export function webhookUrlFor(workflowId: string): string {
   return `${API_BASE}/webhooks/run/${workflowId}`;
 }
 
+/**
+ * Dedicated inbound address for a workflow's "Email received" trigger.
+ * Mail forwarded here is delivered to the backend by Resend inbound.
+ */
+export function inboundEmailAddressFor(workflowId: string): string {
+  return `flow-${workflowId}@in.synkra.co.za`;
+}
+
+
 export function integrationConnectUrl(
   type: "google-calendar" | "google-sheets" | "gmail",
   userId: string,
