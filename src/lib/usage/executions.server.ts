@@ -46,8 +46,17 @@ export async function loadUsage(pb: PocketBase, userId: string): Promise<UsageSn
   const currentPeriod = periodStartFor();
 
   if (periodHasRolledOver(record["billing_period_start"])) {
+    // A new billing month: reset EVERY monthly counter together. synkra-core
+    // (Python) meters AI ops/emails/sms/whatsapp/voice against these same
+    // fields, and whichever system first notices the rollover must zero all of
+    // them — otherwise the counters the other system reads silently never reset.
     await pb.collection("users").update(userId, {
       executions_used_this_month: 0,
+      ai_ops_used_this_month: 0,
+      emails_used_this_month: 0,
+      sms_used_this_month: 0,
+      whatsapp_used_this_month: 0,
+      voice_minutes_used_this_month: 0,
       billing_period_start: currentPeriod,
     });
     return { userId, tier, executionsUsed: 0, billingPeriodStart: currentPeriod };
@@ -362,4 +371,5 @@ export async function checkWorkspaceCreationAllowed(userId: string): Promise<Lim
     fields: "id",
   });
   return checkWorkspaceAllowed(usage.tier, owned.length);
-}
+  }
+    
