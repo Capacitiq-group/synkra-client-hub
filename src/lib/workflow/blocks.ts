@@ -106,7 +106,6 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "save_information",
-    comingSoon: true,
     configHint: "Stores details from this workflow so you can look them up later.",
     kind: "action",
     subtype: "save_information",
@@ -119,7 +118,6 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "find_information",
-    comingSoon: true,
     configHint: "Looks up something you saved earlier and brings it into this workflow.",
     kind: "action",
     subtype: "find_information",
@@ -283,3 +281,4 @@ export function createBlock(definition: BlockDefinition): WorkflowBlock {
   if (definition.kind === "logic") block.logic_type = definition.subtype;
   return block;
     }
+    
