@@ -843,6 +843,70 @@
       "indexes": [
         "CREATE UNIQUE INDEX `idx_addon_credits_user_kind` ON `addon_credits` (`user_id`, `kind`)"
       ]
+    },
+    {
+      "name": "workflow_records",
+      "type": "base",
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "collection",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "natural_key",
+          "type": "text"
+        },
+        {
+          "name": "fields",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "name": "inbound_addresses",
+      "type": "base",
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "verified",
+          "type": "bool"
+        },
+        {
+          "name": "verified_at",
+          "type": "date"
+        },
+        {
+          "name": "confirmation_method",
+          "type": "select",
+          "values": [
+            "auto",
+            "manual"
+          ]
+        },
+        {
+          "name": "last_confirmation_attempted_at",
+          "type": "date"
+        },
+        {
+          "name": "last_confirmation_raw",
+          "type": "json"
+        }
+      ]
     }
   ],
   "userFields": [
