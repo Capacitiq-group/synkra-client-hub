@@ -194,13 +194,13 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   {
     question: "How does mailbox monitoring actually work?",
     answer:
-      'Go to Settings → Integrations and connect your Gmail account. Once connected, any published workflow using the "Email received" trigger automatically watches that inbox — you don\'t need to set up any forwarding or type in an address. New emails are checked roughly once a minute.',
+      'Every account gets a dedicated inbound address (shown on the "Email received" trigger in the builder). Forward emails to it from Gmail or Outlook using a filter or forwarding rule. The first time you set this up, your email provider asks you to confirm the forwarding address — we detect and confirm this automatically when possible. Anything forwarded there is checked against the trigger\'s criteria.',
     category: "Webhooks & Triggers",
   },
   {
     question: "Why is my Email received workflow replying to everything, including newsletters?",
     answer:
-      'By default, an Email received trigger with no filter set will run on every single new email in the connected inbox — including newsletters, order notifications, and anything else. Open the trigger\'s settings and set a "Subject contains" or "From address contains" filter so it only responds to emails that actually match, like real customer inquiries.',
+      'If the trigger is set to "Run this workflow for every forwarded email", it runs on everything forwarded to your inbound address — including newsletters and notifications. Open the trigger\'s settings, choose "Only when", and set a condition (for example subject contains "quote") so it only responds to emails that actually match.',
     category: "Webhooks & Triggers",
   },
   {
@@ -222,9 +222,9 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
     category: "Webhooks & Triggers",
   },
   {
-    question: "I disconnected or reconnected Gmail — will my workflows still work?",
+    question: "Do I need to connect Gmail for email triggers?",
     answer:
-      "Yes. Reconnecting Gmail (for example after revoking access in your Google account) picks up right where it left off, as long as you reconnect the same email address. Your published workflows don't need to be rebuilt.",
+      "No. Email triggers work by forwarding: you set a forwarding rule or filter in Gmail or Outlook that sends mail to your dedicated inbound address. There is no account to connect, and changing your forwarding rules doesn't require rebuilding your published workflows.",
     category: "Account & Settings",
   },
 ];
