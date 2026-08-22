@@ -4,7 +4,6 @@ import pb, { getFullListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseJson, type WorkflowRecordShape } from "@/lib/workflow/types";
 import type { WorkflowBlock } from "@/lib/workflow/types";
-import { inboundEmailAddressFor } from "@/lib/workflow/api";
 
 import {
   activateWorkflowFn,
@@ -121,12 +120,12 @@ export async function duplicateWorkflow(workflow: PortalWorkflow) {
     run_count: 0,
   });
   if (isInboundEmail) {
-    // A copy must not inherit the original's inbound address.
+    // Inbound mail is routed by the account-level address, so a copy only needs
+    // the channel marker; its matching criteria carry over as-is.
     return pb.collection("workflows").update(created.id, {
       trigger_config: JSON.stringify({
         ...(workflow.trigger_config ?? {}),
         channel: "resend_inbound",
-        address: inboundEmailAddressFor(created.id),
       }),
     });
   }
@@ -166,12 +165,9 @@ export async function saveWorkflowDraft(params: {
     status,
   });
   const isInboundEmail = trigger?.trigger_type === "email_received";
-  const buildTriggerConfig = (workflowId: string | null) => {
+  const buildTriggerConfig = () => {
     const config = { ...(trigger?.config ?? {}) };
-    if (isInboundEmail) {
-      config["channel"] = "resend_inbound";
-      if (workflowId) config["address"] = inboundEmailAddressFor(workflowId);
-    }
+    if (isInboundEmail) config["channel"] = "resend_inbound";
     return JSON.stringify(config);
   };
 
@@ -182,20 +178,12 @@ export async function saveWorkflowDraft(params: {
     status,
     blocks: JSON.stringify(params.blocks),
     trigger_type: trigger?.trigger_type ?? "webhook",
-    trigger_config: buildTriggerConfig(params.workflowId ?? null),
+    trigger_config: buildTriggerConfig(),
   };
 
   if (params.workflowId) {
     return pb.collection("workflows").update(params.workflowId, payload);
   }
-  const created = await pb.collection("workflows").create({ ...payload, run_count: 0 });
-  if (isInboundEmail) {
-    // The dedicated inbound address is derived from the workflow id, which only
-    // exists after creation — patch it in so the backend can route mail here.
-    return pb
-      .collection("workflows")
-      .update(created.id, { trigger_config: buildTriggerConfig(created.id) });
-  }
-  return created;
+  return pb.collection("workflows").create({ ...payload, run_count: 0 });
 }
 
