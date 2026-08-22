@@ -24,7 +24,7 @@ type Service = {
   iconBg: string;
   comingSoon?: boolean;
   tooltip?: string;
-  endpoint?: "google-calendar" | "google-sheets" | "gmail";
+  endpoint?: "google-calendar" | "google-sheets";
 };
 const SERVICES: Service[] = [
   {
@@ -34,16 +34,6 @@ const SERVICES: Service[] = [
     icon: Mail,
     iconColor: "var(--text-primary)",
     iconBg: "var(--bg-primary)",
-  },
-  {
-    key: "gmail",
-    name: "Gmail monitoring",
-    description:
-      "Connect your Gmail account so workflows can react to new emails automatically.",
-    icon: Mail,
-    iconColor: "var(--state-info)",
-    iconBg: "var(--bg-primary)",
-    endpoint: "gmail",
   },
   {
     key: "whatsapp",
@@ -260,12 +250,8 @@ export function IntegrationsSettings() {
           >
             <h2 className="text-lg font-semibold">Connect {confirm.name}</h2>
             <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-              Synkra will be able to {confirm.key === "gmail" ? "read" : "create and read"}{" "}
-              {confirm.key === "google_calendar"
-                ? "calendar events"
-                : confirm.key === "gmail"
-                  ? "incoming emails in your inbox"
-                  : "spreadsheet data"}{" "}
+              Synkra will be able to create and read{" "}
+              {confirm.key === "google_calendar" ? "calendar events" : "spreadsheet data"}{" "}
               on your behalf. We do not read or modify existing data without your workflow
               specifically requesting it.
             </p>
@@ -281,4 +267,4 @@ export function IntegrationsSettings() {
     </>
   );
                       }
-               
+
