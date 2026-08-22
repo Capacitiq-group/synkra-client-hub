@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Calendar, CheckCircle, Mail, MessageCircle, Smartphone, Table2 } from "lucide-react";
+import { CheckCircle, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,17 +15,28 @@ type IntegrationRecord = {
   error_message?: string;
   connected_email?: string;
 };
+
 type Service = {
   key: string;
   name: string;
   description: string;
-  icon: typeof Mail;
-  iconColor: string;
-  iconBg: string;
+  /** Lucide icon for first-party (Synkra) rows only. */
+  icon?: typeof Mail;
+  iconColor?: string;
+  iconBg?: string;
+  /**
+   * Official hosted logo for third-party platforms. Standing rule: use the real
+   * hosted logo image, never an icon component, and give it a background that
+   * keeps the brand's own colours legible in both light and dark mode.
+   */
+  logoUrl?: string;
+  /** Background painted behind the logo inside the fixed-size container. */
+  logoBg?: string;
   comingSoon?: boolean;
   tooltip?: string;
-  endpoint?: "google-calendar" | "google-sheets";
+  endpoint?: "hubspot";
 };
+
 const SERVICES: Service[] = [
   {
     key: "email",
@@ -36,52 +47,22 @@ const SERVICES: Service[] = [
     iconBg: "var(--bg-primary)",
   },
   {
-    key: "whatsapp",
-    name: "WhatsApp",
+    key: "hubspot",
+    name: "HubSpot",
     description:
-      "Connect your WhatsApp Business account to send and receive messages automatically.",
-    icon: MessageCircle,
-    iconColor: "#25D366",
-    iconBg: "var(--bg-primary)",
-    comingSoon: true,
-    tooltip: "WhatsApp automation launches in September 2026",
-  },
-  {
-    key: "google_calendar",
-    name: "Google Calendar",
-    description: "Create calendar events and check availability from your workflows.",
-    icon: Calendar,
-    iconColor: "var(--state-info)",
-    iconBg: "var(--text-primary)",
-    comingSoon: true,
-    tooltip: "Google Calendar automation launches soon",
-  },
-  {
-    key: "google_sheets",
-    name: "Google Sheets",
-    description: "Add rows, read data, and update spreadsheets from your workflows.",
-    icon: Table2,
-    iconColor: "var(--state-success)",
-    iconBg: "var(--text-primary)",
-    comingSoon: true,
-    tooltip: "Google Sheets automation launches soon",
-  },
-  {
-    key: "twilio_sms",
-    name: "SMS",
-    description: "Send SMS messages to customers from your automations.",
-    icon: Smartphone,
-    iconColor: "var(--state-error)",
-    iconBg: "var(--bg-primary)",
-    comingSoon: true,
-    tooltip: "SMS automation launches in September 2026",
+      "Automatically follow up, escalate, and personalise outreach based on deals and contacts in your HubSpot CRM.",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1787420665/HubSpot-Logo_xqgtan.png",
+    // HubSpot's mark is charcoal + orange, so it needs a light neutral chip to
+    // stay legible and true to brand on a dark background.
+    logoBg: "#F5F5F3",
+    endpoint: "hubspot",
   },
 ];
 
 export function IntegrationsSettings() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [confirm, setConfirm] = useState<Service | null>(null);
   const query = useQuery({
     queryKey: ["integrations", user?.id],
     enabled: Boolean(user),
@@ -158,11 +139,22 @@ export function IntegrationsSettings() {
                 }}
               >
                 <div className="flex min-w-0 flex-1 items-start gap-4">
+                  {/* Fixed-size logo container so every row lines up evenly,
+                      whatever shape the individual logo has. */}
                   <span
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: service.iconBg }}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full p-2"
+                    style={{ backgroundColor: service.logoBg ?? service.iconBg }}
                   >
-                    <Icon size={21} style={{ color: service.iconColor }} />
+                    {service.logoUrl ? (
+                      <img
+                        src={service.logoUrl}
+                        alt={`${service.name} logo`}
+                        loading="lazy"
+                        className="h-full w-full object-contain"
+                      />
+                    ) : Icon ? (
+                      <Icon size={21} style={{ color: service.iconColor }} />
+                    ) : null}
                   </span>
                   <div>
                     <h3 className="text-base font-semibold">{service.name}</h3>
@@ -220,7 +212,7 @@ export function IntegrationsSettings() {
                       </Button>
                     </>
                   ) : (
-                    <Button variant="secondary" onClick={() => setConfirm(service)}>
+                    <Button variant="secondary" onClick={() => connect(service)}>
                       Connect
                     </Button>
                   )}
@@ -233,38 +225,6 @@ export function IntegrationsSettings() {
       <p className="mt-3 text-left" style={{ fontSize: 13, color: "var(--text-muted)" }}>
         Your notification email address is configured in the Notifications tab.
       </p>
-      {confirm && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="w-full max-w-md border p-6"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              borderColor: "var(--border-default)",
-              borderRadius: "var(--radius-lg)",
-            }}
-          >
-            <h2 className="text-lg font-semibold">Connect {confirm.name}</h2>
-            <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-              Synkra will be able to create and read{" "}
-              {confirm.key === "google_calendar" ? "calendar events" : "spreadsheet data"}{" "}
-              on your behalf. We do not read or modify existing data without your workflow
-              specifically requesting it.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setConfirm(null)}>
-                Cancel
-              </Button>
-              <Button onClick={() => connect(confirm)}>Connect with Google</Button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
-                      }
-
+    }
