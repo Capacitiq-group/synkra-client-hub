@@ -4,7 +4,6 @@ import pb, { getFullListSafe } from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { assertSaveAllowed } from "@/hooks/useWorkflows";
 import type { WorkflowBlock } from "@/lib/workflow/types";
-import { inboundEmailAddressFor } from "@/lib/workflow/api";
 
 export interface TemplateBlock {
   id: string;
@@ -108,13 +107,12 @@ export async function activateTemplate(template: PortalTemplate, userId: string)
     run_count: 0,
   });
   if (isInboundEmail) {
-    // Inbound address is derived from the new workflow id, so it can only be
-    // written after creation.
+    // Inbound mail is routed by the account-level address; the workflow only
+    // needs the channel marker alongside its matching criteria.
     return pb.collection("workflows").update(created.id, {
       trigger_config: JSON.stringify({
         ...(firstBlock?.config || {}),
         channel: "resend_inbound",
-        address: inboundEmailAddressFor(created.id),
       }),
     });
   }
