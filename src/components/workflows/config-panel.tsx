@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, Plus, X } from "lucide-react";
 
-import { webhookUrlFor, inboundEmailAddressFor } from "@/lib/workflow/api";
+import { useAuth } from "@/contexts/AuthContext";
+import pb from "@/lib/pocketbase";
+import { webhookUrlFor, inboundEmailAddressForUser } from "@/lib/workflow/api";
 import { OPERATORS, blockSubtype, definitionFor } from "@/lib/workflow/blocks";
 import {
   availableVariableOptions,
@@ -174,15 +177,50 @@ function ExtractFieldsEditor({
   );
 }
 
+/** Variables an inbound email trigger can be matched on. */
+const EMAIL_TRIGGER_VARIABLES: { value: string; label: string }[] = [
+  { value: "trigger.subject", label: "Subject" },
+  { value: "trigger.from_email", label: "From address" },
+  { value: "trigger.body", label: "Message body" },
+];
+
 /**
- * Inbound email address for the "Email received" trigger.
+ * Inbound email setup for the "Email received" trigger.
  *
- * Replaces the old Gmail OAuth connect flow: every workflow gets its own
- * forwarding address, and Resend delivers matching mail to the backend.
+ * Replaces the old Gmail OAuth connect flow: every account gets one dedicated
+ * forwarding address and Resend delivers matching mail to the backend.
  */
-function InboundEmailAddressField({ workflowId }: { workflowId?: string | undefined }) {
+function InboundEmailSetup({
+  config,
+  set,
+  replace,
+}: {
+  config: Record<string, unknown>;
+  set: (key: string, value: unknown) => void;
+  replace: (config: Record<string, unknown>) => void;
+}) {
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
-  const address = workflowId ? inboundEmailAddressFor(workflowId) : null;
+  const address = user?.id ? inboundEmailAddressForUser(user.id) : null;
+
+  const verification = useQuery({
+    queryKey: ["inbound-address", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      if (!user?.id) return null;
+      try {
+        const records = await pb.collection("inbound_addresses").getFullList({
+          filter: pb.filter("user_id = {:userId}", { userId: user.id }),
+        });
+        const record = records[0];
+        return record ? { verified: Boolean(record["verified"]) } : null;
+      } catch {
+        // The collection may not be readable/available yet — never block setup.
+        return null;
+      }
+    },
+    staleTime: 30000,
+  });
 
   const copy = async () => {
     if (!address) return;
@@ -195,46 +233,129 @@ function InboundEmailAddressField({ workflowId }: { workflowId?: string | undefi
     }
   };
 
+  const matchAll = config["match_all"] !== false && !config["variable"];
+  const operator = String(config["operator"] ?? "contains");
+
+  const chooseMatchAll = () => {
+    replace({ channel: "resend_inbound", match_all: true });
+  };
+  const chooseCriteria = () => {
+    replace({
+      channel: "resend_inbound",
+      variable: String(config["variable"] ?? "trigger.subject"),
+      operator: String(config["operator"] ?? "contains"),
+      value: String(config["value"] ?? ""),
+    });
+  };
+
   return (
-    <div className="flex flex-col gap-2">
-      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
-        Your dedicated inbound address
-      </span>
-      {address ? (
-        <>
-          <div
-            className="flex items-center justify-between gap-2 rounded-md px-3 py-2"
-            style={{ border: "1px solid var(--border-default)", backgroundColor: "var(--bg-card)" }}
-          >
-            <code style={{ fontSize: 12, color: "var(--text-primary)" }}>{address}</code>
-            <button
-              type="button"
-              onClick={() => void copy()}
-              aria-label="Copy inbound email address"
-              className="synkra-focus flex items-center gap-1 rounded-sm"
-              style={{ fontSize: 12, color: "var(--accent-green)" }}
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
+          Your dedicated inbound address
+        </span>
+        {address ? (
+          <>
+            <div
+              className="flex items-center justify-between gap-2 rounded-md px-3 py-2"
+              style={{
+                border: "1px solid var(--border-default)",
+                backgroundColor: "var(--bg-card)",
+              }}
             >
-              {copied ? (
-                <Check size={13} aria-hidden="true" />
-              ) : (
-                <Copy size={13} aria-hidden="true" />
-              )}
-              {copied ? "Copied" : "Copy"}
-            </button>
-          </div>
+              <code style={{ fontSize: 12, color: "var(--text-primary)" }}>{address}</code>
+              <button
+                type="button"
+                onClick={() => void copy()}
+                aria-label="Copy inbound email address"
+                className="synkra-focus flex items-center gap-1 rounded-sm"
+                style={{ fontSize: 12, color: "var(--accent-green)" }}
+              >
+                {copied ? (
+                  <Check size={13} aria-hidden="true" />
+                ) : (
+                  <Copy size={13} aria-hidden="true" />
+                )}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              Forward emails to this address from Gmail or Outlook using a filter or forwarding
+              rule. The first time you set this up, you&apos;ll need to confirm the forwarding
+              address with your email provider — we detect and confirm this automatically when
+              possible.
+            </p>
+            {verification.data?.verified ? (
+              <p style={{ fontSize: 12, color: "var(--state-success)" }}>
+                Verified — forwarded emails will start this workflow.
+              </p>
+            ) : verification.isSuccess ? (
+              <p style={{ fontSize: 12, color: "var(--state-warning)" }}>
+                Not verified yet — send a test forwarded email to complete setup.
+              </p>
+            ) : null}
+          </>
+        ) : (
           <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            In your Gmail or Outlook settings, add a forwarding rule that sends matching mail to
-            this address. Any email forwarded here will be checked against the filters below.
+            Sign in to see your dedicated inbound address.
           </p>
-        </>
-      ) : (
-        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Save this workflow once to generate its dedicated inbound address.
-        </p>
-      )}
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
+          When should this workflow run?
+        </span>
+        <label className="flex items-center gap-2" style={{ fontSize: 12 }}>
+          <input
+            type="radio"
+            name="inbound-email-criteria"
+            checked={matchAll}
+            onChange={chooseMatchAll}
+          />
+          <span style={{ color: "var(--text-secondary)" }}>
+            Run this workflow for every forwarded email
+          </span>
+        </label>
+        <label className="flex items-center gap-2" style={{ fontSize: 12 }}>
+          <input
+            type="radio"
+            name="inbound-email-criteria"
+            checked={!matchAll}
+            onChange={chooseCriteria}
+          />
+          <span style={{ color: "var(--text-secondary)" }}>Only when</span>
+        </label>
+
+        {!matchAll && (
+          <div className="flex flex-col gap-3">
+            <PlainField
+              label="Variable"
+              value={String(config["variable"] ?? "trigger.subject")}
+              onChange={(v) => set("variable", v)}
+              options={EMAIL_TRIGGER_VARIABLES}
+            />
+            <PlainField
+              label="Condition"
+              value={operator}
+              onChange={(v) => set("operator", v)}
+              options={OPERATORS}
+            />
+            {!["is_empty", "is_not_empty"].includes(operator) && (
+              <PlainField
+                label="Value"
+                value={String(config["value"] ?? "")}
+                onChange={(v) => set("value", v)}
+                placeholder="e.g. quote request"
+              />
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
 
 
 
@@ -378,44 +499,12 @@ export function ConfigPanel({
       )}
 
       {subtype === "email_received" && (
-        <>
-          <InboundEmailAddressField workflowId={workflowId} />
-          <div className="flex flex-col gap-3">
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
-              Only trigger if
-            </span>
-            <PlainField
-              label="Subject contains"
-              value={text("subject_filter")}
-              onChange={(v) => set("subject_filter", v)}
-              placeholder="e.g. quote request"
-            />
-            <PlainField
-              label="From address contains"
-              value={text("from_filter")}
-              onChange={(v) => set("from_filter", v)}
-              placeholder="e.g. @clientdomain.co.za"
-            />
-            {!text("subject_filter").trim() && !text("from_filter").trim() && (
-              <p
-                className="rounded-md px-2 py-1.5"
-                style={{
-                  fontSize: 12,
-                  color: "var(--state-warning)",
-                  border: "1px solid var(--state-warning)",
-                }}
-              >
-                No filter set — this will trigger on every email received, including newsletters,
-                notifications, and anything else that arrives.
-              </p>
-            )}
-            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              Matching is case-insensitive. Leave a field empty to ignore it.
-            </p>
-          </div>
-        </>
+        <InboundEmailSetup
+          config={config}
+          set={set}
+          replace={(next) => onChange(block.id, next)}
+        />
       )}
-
 
       {subtype === "send_email" && (
         <>
