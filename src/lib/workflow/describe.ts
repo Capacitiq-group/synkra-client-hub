@@ -40,7 +40,10 @@ export function summariseConfig(block: WorkflowBlock): string | null {
     case "schedule":
       return `${String(config["frequency"] ?? "daily")} at ${String(config["time"] ?? "07:00")}`;
     case "email_received":
-      return config["address"] ? `Watches ${String(config["address"])}` : null;
+      if (config["match_all"]) return "Runs for every forwarded email";
+      return config["variable"]
+        ? `${String(config["variable"])} ${String(config["operator"] ?? "contains")} ${String(config["value"] ?? "")}`
+        : null;
     case "send_email":
       return config["to"] && config["subject"]
         ? `To ${String(config["to"])} with subject ${String(config["subject"])}`
@@ -97,7 +100,9 @@ export function isConfigured(block: WorkflowBlock): boolean {
     case "schedule":
       return filled("frequency") && filled("time");
     case "email_received":
-      return filled("address");
+      // Forwarding is set up at account level; the trigger itself is always
+      // runnable (either match-all or a criteria row).
+      return Boolean(config["match_all"]) || filled("variable");
     case "send_email":
       return filled("to") && filled("subject") && filled("body");
     case "wait":
@@ -350,3 +355,4 @@ export function sampleInputFor(blocks: WorkflowBlock[]): Record<string, unknown>
   });
   return { payload };
 }
+  
