@@ -70,10 +70,7 @@ export function inboundEmailAddressForUser(userId: string): string {
 }
 
 
-export function integrationConnectUrl(
-  type: "google-calendar" | "google-sheets",
-  userId: string,
-) {
+export function integrationConnectUrl(type: "hubspot", userId: string) {
   return `${API_BASE}/integrations/${type}/connect?user_id=${encodeURIComponent(userId)}`;
 }
 
