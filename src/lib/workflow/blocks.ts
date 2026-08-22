@@ -70,15 +70,15 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "email_received",
-    configHint: "Starts this workflow when an email lands in the address below.",
+    configHint: "Starts this workflow when an email is forwarded to your dedicated inbound address.",
     kind: "trigger",
     subtype: "email_received",
     label: "Email received",
-    description: "Fires when an email arrives at a monitored address",
+    description: "Fires when an email is forwarded to your inbound address",
     icon: Mail,
     color: "var(--accent-green)",
     section: "TRIGGERS",
-    defaultConfig: { address: "" },
+    defaultConfig: { channel: "resend_inbound", match_all: true },
   },
   {
     key: "send_email",
@@ -190,7 +190,6 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     icon: MessageCircle,
     color: "#25D366",
     section: "ACTIONS",
-    comingSoon: true,
     defaultConfig: { to: "", body: "" },
   },
   {
@@ -203,7 +202,6 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     icon: Smartphone,
     color: "#25D366",
     section: "ACTIONS",
-    comingSoon: true,
     defaultConfig: { to: "", body: "" },
   },
   {
@@ -281,4 +279,5 @@ export function createBlock(definition: BlockDefinition): WorkflowBlock {
   if (definition.kind === "logic") block.logic_type = definition.subtype;
   return block;
     }
+
     
