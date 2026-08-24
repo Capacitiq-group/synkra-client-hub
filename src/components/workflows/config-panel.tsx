@@ -442,7 +442,9 @@ export function ConfigPanel({
   const set = (key: string, value: unknown) => onChange(block.id, { ...config, [key]: value });
   const text = (key: string, fallback = "") => String(config[key] ?? fallback);
   const subtype = blockSubtype(block);
-  const configHint = definitionFor(block)?.configHint;
+  const definition = definitionFor(block);
+  const configHint = definition?.configHint;
+  const configNote = definition?.configNote;
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-auto p-4">
@@ -453,6 +455,9 @@ export function ConfigPanel({
         </p>
         {configHint && (
           <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>{configHint}</p>
+        )}
+        {configNote && (
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>{configNote}</p>
         )}
       </div>
 
