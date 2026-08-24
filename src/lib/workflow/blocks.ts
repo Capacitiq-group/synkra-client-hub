@@ -35,6 +35,8 @@ export interface BlockDefinition {
    * config panel. Written for someone with no technical background.
    */
   configHint?: string;
+  /** Extra one-line clarification shown under the description in the config panel. */
+  configNote?: string;
   defaultConfig: Record<string, unknown>;
 }
 
@@ -119,6 +121,8 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   {
     key: "find_information",
     configHint: "Looks up something you saved earlier and brings it into this workflow.",
+    configNote:
+      "Looks up records your own workflows saved earlier with a 'Save information' step in the same Collection — not your email or any external data.",
     kind: "action",
     subtype: "find_information",
     label: "Find information",
@@ -280,4 +284,5 @@ export function createBlock(definition: BlockDefinition): WorkflowBlock {
   return block;
     }
 
-    
+
+  
