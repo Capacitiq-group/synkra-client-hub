@@ -6,7 +6,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import pb from "@/lib/pocketbase";
-import { disconnectIntegration, integrationConnectUrl, testIntegration } from "@/lib/workflow/api";
+import {
+  disconnectIntegration,
+  inboundEmailAddressForUser,
+  integrationConnectUrl,
+  testIntegration,
+} from "@/lib/workflow/api";
 import { SettingsSection } from "./settings-primitives";
 
 type IntegrationRecord = {
@@ -222,9 +227,78 @@ export function IntegrationsSettings() {
           })}
         </div>
       </SettingsSection>
+      <div className="mt-8">
+        <InboundAddressPanel userId={user.id} />
+      </div>
       <p className="mt-3 text-left" style={{ fontSize: 13, color: "var(--text-muted)" }}>
         Your notification email address is configured in the Notifications tab.
       </p>
     </>
   );
+}
+
+type InboundAddressRecord = {
+  id: string;
+  verified?: boolean;
+  verified_at?: string;
+};
+
+/**
+ * Read-only view of the account's dedicated inbound workflow-trigger address.
+ * The address itself is deterministic (flow-{user.id}@in.synkra.co.za); the
+ * inbound_addresses record only tells us whether it has been verified yet.
+ */
+function InboundAddressPanel({ userId }: { userId: string }) {
+  const address = inboundEmailAddressForUser(userId);
+  const query = useQuery({
+    queryKey: ["inbound-address", userId],
+    queryFn: async () => {
+      const records = await pb
+        .collection("inbound_addresses")
+        .getFullList({ filter: pb.filter("user_id = {:userId}", { userId }) });
+      return (records[0] as InboundAddressRecord | undefined) ?? null;
+    },
+  });
+
+  const record = query.data;
+  const verified = Boolean(record?.verified);
+  const verifiedAt = record?.verified_at;
+
+  return (
+    <SettingsSection title="Inbound workflow address">
+      <p className="mb-4 text-sm" style={{ color: "var(--text-secondary)" }}>
+        Emails forwarded here can trigger your workflows. One address works for every workflow on
+        your account.
+      </p>
+      <div
+        className="flex flex-col gap-2 border p-5"
+        style={{
+          backgroundColor: "var(--bg-card)",
+          borderColor: "var(--border-default)",
+          borderRadius: "var(--radius-lg)",
+        }}
+      >
+        <code className="break-all" style={{ fontSize: 14, color: "var(--text-primary)" }}>
+          {address}
+        </code>
+        {query.isLoading ? (
+          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Checking verification…</p>
+        ) : verified ? (
+          <p
+            className="flex items-center gap-1"
+            style={{ fontSize: 13, color: "var(--state-success)" }}
+          >
+            <CheckCircle size={14} />
+            Verified
+            {verifiedAt ? ` — ${new Date(verifiedAt).toLocaleDateString()}` : ""}
+          </p>
+        ) : (
+          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            Not verified yet — forward a test email here to complete setup.
+          </p>
+        )}
+      </div>
+    </SettingsSection>
+  );
     }
+                        
