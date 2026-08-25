@@ -142,3 +142,32 @@ export function addonPurchaseEmail(
   };
 }
 
+/**
+ * Generic notification email. Used for the preference-driven notifications
+ * (workflow outcomes, credit warnings, platform updates) so every channel goes
+ * through the same delivery + template path.
+ */
+export function notificationEmail(
+  title: string,
+  message: string,
+  link?: string,
+): Omit<EmailInput, "to"> {
+  const href = `${appUrl()}${link && link.startsWith("/") ? link : "/dashboard/notifications"}`;
+  const safeMessage = escapeHtml(message);
+  return {
+    subject: title,
+    html: shell(
+      escapeHtml(title),
+      `<p>${safeMessage}</p>${button(href, "Open in Synkra")}`,
+    ),
+    text: `${title}\n\n${message}\n\n${href}`,
+  };
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+    }
