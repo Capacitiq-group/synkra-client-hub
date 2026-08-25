@@ -26,6 +26,22 @@ import {
   type LimitDecision,
 } from "./limits";
 import { normalizeTier, safeUsage, type PlanTier } from "@/lib/plans";
+import { notifyCreditsLow, notifyRunOutcome } from "@/lib/notification-feed.server";
+
+const CREDIT_WARNING_THRESHOLD = 20;
+
+async function emitCreditWarning(params: {
+  userId: string;
+  used: number;
+  limit: number;
+  billingPeriodStart: string;
+}) {
+  if (params.limit <= 0 || (params.used / params.limit) * 100 < 100 - CREDIT_WARNING_THRESHOLD) {
+    return;
+  }
+  const result = await notifyCreditsLow({ ...params, threshold: CREDIT_WARNING_THRESHOLD });
+  if (result.reason === "write_failed") console.error("credit notification write failed");
+}
 
 export interface UsageSnapshot {
   userId: string;
@@ -178,6 +194,12 @@ export async function startExecution(input: StartExecutionInput): Promise<StartE
   }
 
   if (!decision.allowed) {
+    await emitCreditWarning({
+      userId: input.userId,
+      used: decision.used,
+      limit: decision.limit,
+      billingPeriodStart: usage.billingPeriodStart,
+    });
     // The monthly included allowance is exhausted. Purchased execution credits
     // are a standing balance that never expires, and they are only reachable
     // here — i.e. strictly after the included amount has run out. Spending one
@@ -268,6 +290,13 @@ export async function startExecution(input: StartExecutionInput): Promise<StartE
     last_run_status: "running",
   });
 
+  await emitCreditWarning({
+    userId: input.userId,
+    used: usageView.used + 1,
+    limit: usageView.limit,
+    billingPeriodStart: usage.billingPeriodStart,
+  });
+
   return {
     allowed: true,
     counted: true,
@@ -308,6 +337,25 @@ export async function completeExecution(input: CompleteExecutionInput) {
   const workflowId = (run as unknown as Record<string, unknown>)["workflow_id"];
   if (typeof workflowId === "string" && workflowId) {
     await pb.collection("workflows").update(workflowId, { last_run_status: input.status });
+    const runRecord = run as unknown as Record<string, unknown>;
+    const userId = runRecord["user_id"];
+    const workflow = (await pb.collection("workflows").getOne(workflowId)) as unknown as Record<
+      string,
+      unknown
+    >;
+    if (typeof userId === "string" && userId) {
+      const result = await notifyRunOutcome({
+        userId,
+        workflowId,
+        workflowName: String(workflow["name"] || "Workflow"),
+        runId: run.id,
+        executionId: input.executionId,
+        status: input.status,
+        ...(input.errorMessage ? { errorMessage: input.errorMessage } : {}),
+        ...(input.durationMs !== undefined ? { durationMs: input.durationMs } : {}),
+      });
+      if (result.reason === "write_failed") console.error("run notification write failed");
+    }
   }
   return { ok: true as const };
 }
@@ -424,4 +472,5 @@ export async function checkIntegrationConnectionAllowed(userId: string): Promise
   return checkIntegrationConnectAllowed(usage.tier);
     }
 
-          
+
+    
