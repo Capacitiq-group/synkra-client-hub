@@ -13,6 +13,8 @@
  */
 import { adminClient } from "./usage/pocketbase.server";
 import { eventMeta, type NotificationSeverity } from "./notification-events";
+import { resolveRecipientDelivery } from "./notification-delivery.server";
+import { notificationEmail, sendEmail } from "./billing/email.server";
 
 export interface CreateNotificationInput {
   userId: string;
@@ -35,7 +37,15 @@ export interface CreateNotificationInput {
 export interface CreateNotificationResult {
   created: boolean;
   id?: string;
-  reason?: "duplicate" | "write_failed";
+  reason?:
+    | "duplicate"
+    | "write_failed"
+    | "preference_off"
+    | "recipient_unknown";
+  /** True only when an email was actually accepted by the provider. */
+  emailSent?: boolean;
+  /** Why email was withheld, when it was. */
+  emailSkipped?: "preference_off" | "requires_paid_plan" | "no_address" | "send_failed";
 }
 
 function clamp(value: string, max: number): string {
@@ -51,6 +61,15 @@ export async function createNotification(
 
   const pb = await adminClient();
 
+  // Channel enforcement happens BEFORE anything is written or sent: the tier
+  // and the user's toggle are read from the users record here, never trusted
+  // from the caller.
+  const delivery = await resolveRecipientDelivery(pb, input.userId, input.eventType);
+  if (!delivery) return { created: false, reason: "recipient_unknown" };
+  if (!delivery.inApp && !delivery.email) {
+    return { created: false, reason: "preference_off", emailSkipped: "preference_off" };
+  }
+
   if (input.dedupeKey) {
     try {
       const existing = await pb
@@ -63,6 +82,7 @@ export async function createNotification(
   }
 
   const meta = eventMeta(input.eventType);
+  let id: string;
   try {
     const record = await pb.collection("notifications").create({
       user_id: input.userId,
@@ -77,12 +97,35 @@ export async function createNotification(
       read: false,
       dedupe_key: input.dedupeKey ?? "",
     });
-    return { created: true, id: record.id };
+    id = record.id;
   } catch (err) {
     // A concurrent writer may have won the unique dedupe index race.
     console.error("notification create failed", err);
     return { created: false, reason: "write_failed" };
   }
+
+  if (!delivery.email) {
+    return {
+      created: true,
+      id,
+      emailSent: false,
+      emailSkipped:
+        delivery.reason === "email_requires_paid_plan" ? "requires_paid_plan" : "preference_off",
+    };
+  }
+  if (!delivery.emailAddress) {
+    return { created: true, id, emailSent: false, emailSkipped: "no_address" };
+  }
+
+  const result = await sendEmail({
+    to: delivery.emailAddress,
+    ...notificationEmail(input.title, input.message ?? "", input.link),
+  });
+  if (!result.ok) {
+    console.error("notification email failed", result.error);
+    return { created: true, id, emailSent: false, emailSkipped: "send_failed" };
+  }
+  return { created: true, id, emailSent: true };
 }
 
 /** Convenience wrapper for run outcome notifications. */
@@ -112,7 +155,7 @@ export async function notifyRunOutcome(params: {
     runId: params.runId,
     link: `/dashboard/activity?run=${params.runId}`,
     ...(params.durationMs !== undefined ? { metadata: { durationMs: params.durationMs } } : {}),
-    dedupeKey: `${failed ? "workflow_failed" : "workflow_completed"}:${params.executionId}`,
+    dedupeKey: `${failed ? "workflow_failed" : "workflow_completed"}:${params.runId}`,
   });
 }
 
@@ -145,4 +188,4 @@ export async function notifyCreditsLow(params: {
     metadata: { used: params.used, limit: params.limit, threshold: params.threshold },
     dedupeKey: `credit_balance_low:${params.userId}:${params.billingPeriodStart}:${params.threshold}`,
   });
-                  }
+                                           }
