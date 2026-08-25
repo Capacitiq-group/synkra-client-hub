@@ -426,5 +426,5 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
       </Dialog>
     </div>
   );
-  }
+      }
       
