@@ -8,7 +8,8 @@ import { OnboardingWizard } from "@/components/portal/onboarding-wizard";
 import { PWAInstallPrompt } from "@/components/portal/pwa-install-prompt";
 import { NotificationBell } from "@/components/portal/notification-bell";
 import pb, { safeSubscribe } from "@/lib/pocketbase";
-import { claimNotification, sendNotificationEmail } from "@/lib/notifications";
+import { claimNotification } from "@/lib/notifications";
+import { deliverNotificationEventFn } from "@/lib/notifications.functions";
 import { logTelemetry } from "@/lib/telemetry";
 import { getLastActivity, initSession, isSessionExpired, teardownSession } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth";
@@ -162,11 +163,13 @@ function DashboardLayout() {
     if (onboarding) setWizardOpen(true);
   }, [onboarding]);
 
-  // Email the user when one of their workflow runs fails. Realtime can deliver
-  // several updates for the same run, so each run id is claimed once.
+  // Notify the user when one of their workflow runs fails. Delivery is decided
+  // server-side: the toggle and the tier are re-read there, so the free tier
+  // gets the in-app notification only and paid tiers also get the email.
+  // Realtime can deliver several updates for the same run, so each run id is
+  // claimed once per browser; the server dedupe key covers every other path.
   useEffect(() => {
-    if (!user || !user["notify_on_failure"]) return;
-    const notificationEmail = String(user["notification_email"] || user.email || "");
+    if (!user) return;
     let cleanup: (() => void) | undefined;
     let cancelled = false;
 
@@ -180,11 +183,35 @@ function DashboardLayout() {
         });
         return;
       }
-      void sendNotificationEmail({
-        to: notificationEmail,
-        subject: "A Synkra workflow has failed",
-        body: `Hi,\n\nOne of your automations encountered an error.\n\nWorkflow run: ${record["id"]}\nError: ${record["error_message"] || "Unknown error"}\n\nGo to your Activity page to see the full details and retry the run.\n\nhttps://client.synkra.co.za/dashboard/activity\n\nSynkra`,
-      });
+      const token = pb.authStore.token;
+      if (!token) return;
+      void deliverNotificationEventFn({
+        data: {
+          token,
+          eventType: "workflow_failed",
+          title: "A Synkra workflow has failed",
+          message: `One of your automations encountered an error. Error: ${
+            record["error_message"] || "Unknown error"
+          }`,
+          link: `/dashboard/activity?run=${record["id"]}`,
+          runId: record["id"],
+          dedupeKey: `workflow_failed:${record["id"]}`,
+        },
+      })
+        .then((result) => {
+          logTelemetry("notification", "info", "Failure notification delivered", {
+            run: record["id"],
+            created: result.created,
+            emailSent: result.emailSent,
+            emailSkipped: result.emailSkipped,
+          });
+        })
+        .catch((err: unknown) => {
+          logTelemetry("notification", "error", "Failure notification failed", {
+            run: record["id"],
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
     }).then((unsub) => {
       if (cancelled) unsub();
       else cleanup = unsub;
@@ -321,4 +348,4 @@ function DashboardLayout() {
       <PWAInstallPrompt />
     </div>
   );
-}
+              }
