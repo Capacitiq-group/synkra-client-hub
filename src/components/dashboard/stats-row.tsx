@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Shimmer, ProgressBar, SectionError } from "./primitives";
 import type { DashboardStats } from "@/hooks/useDashboardStats";
 
@@ -9,15 +10,53 @@ const cardStyle: React.CSSProperties = {
   transition: "border-color 150ms ease",
 };
 
-function Card({ children }: { children: React.ReactNode }) {
+/**
+ * A metric card. When `to` is given the whole card becomes a real link to the
+ * section that owns the number; without it the card is plain display, because
+ * that metric has no destination in the app (never a fake one).
+ */
+type CardLink =
+  | { to: "/dashboard/activity"; search?: undefined }
+  | { to: "/dashboard/workflows"; search: { tab: "mine" } }
+  | { to: "/dashboard/settings"; search: { tab: "billing" | "usage" } };
+
+function Card({
+  children,
+  link,
+  label,
+}: {
+  children: React.ReactNode;
+  link?: CardLink;
+  label?: string;
+}) {
+  const hoverProps = {
+    onMouseEnter: (e: React.MouseEvent<HTMLElement>) =>
+      (e.currentTarget.style.borderColor = "var(--border-strong)"),
+    onMouseLeave: (e: React.MouseEvent<HTMLElement>) =>
+      (e.currentTarget.style.borderColor = "var(--border-default)"),
+  };
+
+  if (!link) {
+    return (
+      <div style={cardStyle} {...hoverProps}>
+        {children}
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={cardStyle}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-default)")}
+    <Link
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      to={link.to as any}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      search={link.search as any}
+      aria-label={label}
+      className="synkra-focus block text-left"
+      style={{ ...cardStyle, display: "block", textDecoration: "none", color: "inherit" }}
+      {...hoverProps}
     >
       {children}
-    </div>
+    </Link>
   );
 }
 
@@ -101,7 +140,7 @@ export function StatsRow({
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <Card>
+      <Card link={{ to: "/dashboard/workflows", search: { tab: "mine" } }} label="Active workflows — open your workflows">
         <h3 className="sr-only">Active workflows</h3>
         <BigNumber value={String(stats.activeCount)} />
         <Label>Active workflows</Label>
@@ -120,7 +159,7 @@ export function StatsRow({
         </div>
       </Card>
 
-      <Card>
+      <Card link={{ to: "/dashboard/activity" }} label="Runs this month — open activity">
         <h3 className="sr-only">Runs this month</h3>
         <BigNumber value={stats.runsThisMonth.toLocaleString("en-ZA")} />
         <Label>Runs this month</Label>
@@ -133,7 +172,10 @@ export function StatsRow({
         </div>
       </Card>
 
-      <Card>
+      <Card
+        link={{ to: "/dashboard/settings", search: { tab: "billing" } }}
+        label={isPaid ? "Next billing — open billing" : "Days remaining — open billing"}
+      >
         <h3 className="sr-only">{isPaid ? "Next billing" : "Days remaining"}</h3>
         {isPaid ? (
           <>
@@ -166,7 +208,10 @@ export function StatsRow({
         )}
       </Card>
 
-      <Card>
+      <Card
+        link={{ to: "/dashboard/settings", search: { tab: "usage" } }}
+        label="Emails remaining — open billing usage"
+      >
         <h3 className="sr-only">Emails remaining</h3>
         <BigNumber value={stats.emailCreditsRemaining.toLocaleString("en-ZA")} color={emailColor} />
         <Label>Emails remaining</Label>
@@ -180,4 +225,4 @@ export function StatsRow({
       </Card>
     </div>
   );
-}
+                   }
