@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Clock, Info } from "lucide-react";
 import { describeBlock } from "@/lib/workflow/describe";
 import { OwnershipBadge } from "@/components/workflows/ownership-badge";
+import { PaidPlanBadge, PlanLockNotice } from "@/components/workflows/plan-lock";
+import { requiresPaidPlan } from "@/lib/workflow/plan-access";
 import type { PortalTemplate } from "@/hooks/useTemplates";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 
@@ -16,19 +18,25 @@ export function TemplateCard({
   template,
   activated,
   pending,
+  locked = false,
   onActivate,
   onPreview,
+  onUpgrade,
 }: {
   template: PortalTemplate;
   activated: boolean;
   pending: boolean;
+  locked?: boolean;
   onActivate: () => void;
   onPreview: () => void;
+  onUpgrade: () => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   const blocks = template.blocks as unknown as WorkflowBlock[];
   const visible = showAll ? blocks : blocks.slice(0, 4);
   const needsWhatsApp = template.integrations_required.some((i) => /whatsapp|sms|twilio/i.test(i));
+  const paid = requiresPaidPlan(template);
+
 
   return (
     <article
@@ -53,7 +61,11 @@ export function TemplateCard({
       }}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <OwnershipBadge kind="template" />
+        <span className="flex flex-wrap items-center gap-2">
+          <OwnershipBadge kind="template" />
+          {paid && <PaidPlanBadge locked={locked} />}
+        </span>
+
         <span
           style={{
             fontSize: 11,
@@ -144,31 +156,36 @@ export function TemplateCard({
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <span
-          className="flex items-center gap-1.5"
-          style={{ fontSize: 12, color: "var(--text-muted)" }}
-        >
-          <Clock size={12} aria-hidden="true" />
-          Takes about 2 minutes to activate
-        </span>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={onActivate}
-          className="synkra-focus rounded-md font-semibold"
-          style={{
-            backgroundColor: activated ? "var(--bg-elevated)" : "var(--accent-green)",
-            color: activated ? "var(--text-primary)" : "#0A0A0A",
-            border: activated ? "1px solid var(--border-default)" : "1px solid transparent",
-            fontSize: 13,
-            padding: "8px 18px",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {activated ? "Open in builder" : "Activate"}
-        </button>
-      </div>
+      {locked ? (
+        <PlanLockNotice item={template} onUpgrade={onUpgrade} />
+      ) : (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <span
+            className="flex items-center gap-1.5"
+            style={{ fontSize: 12, color: "var(--text-muted)" }}
+          >
+            <Clock size={12} aria-hidden="true" />
+            Takes about 2 minutes to activate
+          </span>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onActivate}
+            className="synkra-focus rounded-md font-semibold"
+            style={{
+              backgroundColor: activated ? "var(--bg-elevated)" : "var(--accent-green)",
+              color: activated ? "var(--text-primary)" : "#0A0A0A",
+              border: activated ? "1px solid var(--border-default)" : "1px solid transparent",
+              fontSize: 13,
+              padding: "8px 18px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {activated ? "Open in builder" : "Activate"}
+          </button>
+        </div>
+      )}
+
     </article>
   );
-}
+              }
