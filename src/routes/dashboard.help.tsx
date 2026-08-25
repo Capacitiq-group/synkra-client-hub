@@ -78,7 +78,7 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   },
   {
     question: "How do I connect Google Calendar or Sheets?",
-    answer: "Go to Settings and open the Integrations tab. Click Connect next to the service. You will be asked to sign in with your Google account and authorise access. Once connected your workflows can create events and update spreadsheets.",
+    answer: "Integrations require a paid plan — upgrade to connect. On a paid plan, go to Settings and open the Integrations tab, then click Connect next to the service. You will be asked to sign in and authorise access. There is no limit on how many platforms a paid plan can connect. Free accounts keep every other free feature, but cannot connect external platforms.",
     category: "Account & Settings",
   },
   {
