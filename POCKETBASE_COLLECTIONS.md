@@ -181,3 +181,54 @@ Security: one workflow run = at most one counted execution. Only
 failed run is not refunded and a completion callback cannot inflate usage. Both
 public endpoints (`/api/public/executions/start`, `/api/public/executions/complete`)
 require the `x-synkra-secret` shared secret (`API_SECRET`).
+
+## `execution_pack_purchases` (base, server-only)
+
+Purpose: one row per purchased execution top-up pack. Separate from
+`addon_purchases` — the add-on system (`ai_ops`, `sms`, `whatsapp`,
+`voice_minutes`, `storage_gb`) is untouched by this kind.
+
+| Field                     | Type                                                                                | Notes                                              |
+| ------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `user_id`                 | text, required                                                                      | `users.id`.                                        |
+| `kind`                    | select `executions`, required                                                       | The new purchasable kind.                          |
+| `pack_id`                 | select `exec_250` \| `exec_1000` \| `exec_5000` \| `exec_10000` \| `exec_25000`     | Published pack. Prices live in `execution-packs.ts`.|
+| `units`                   | number                                                                              | Executions granted by the pack.                    |
+| `amount_cents`            | number                                                                              | Recomputed server-side, never sent by the browser. |
+| `currency`, `provider`    | text                                                                                | `ZAR`, `paystack`.                                 |
+| `reference`               | text, required                                                                      | `SYN-EXECPACK-<units>-<uuid>`.                     |
+| `authorization_url`, `access_code` | text                                                                       | Paystack checkout handles.                         |
+| `status`                  | select `pending` \| `paid` \| `failed`, required                                    |                                                    |
+| `provider_transaction_id` | text                                                                                |                                                    |
+| `paid_at`                 | date                                                                                |                                                    |
+| `error_message`           | text                                                                                |                                                    |
+
+Indexes:
+
+- `idx_execution_pack_purchases_reference`: unique on `reference` — settlement
+  from the webhook and from the return page is therefore idempotent.
+
+## `execution_credits` (base, server-only)
+
+Purpose: the standing purchased execution balance. One row per user. These
+credits do **not** expire with the billing month; the monthly rollover in
+`executions.server.ts` only zeroes the counters on the `users` record.
+
+| Field                | Type                          | Notes                                                    |
+| -------------------- | ----------------------------- | -------------------------------------------------------- |
+| `user_id`            | text, required                | `users.id`.                                              |
+| `kind`               | select `executions`, required |                                                          |
+| `units_purchased`    | number                        | Lifetime purchased executions. Never reset.              |
+| `units_used`         | number                        | Spent only after the monthly included allowance is gone. |
+| `expires_monthly`    | bool                          | Always false — kept explicit for auditability.           |
+| `first_purchased_at` | date                          |                                                          |
+| `last_reference`     | text                          | Guards against double-granting one reference.            |
+
+Indexes:
+
+- `idx_execution_credits_user_id`: unique on `user_id` — a racing create is
+  folded into the existing row.
+
+Note: adding these two collections to a live PocketBase requires re-running the
+first-time setup (`runFirstTimeSetup`, `/setup`) or applying `pb_schema.json`
+manually. Until that happens, purchase writes fail.
