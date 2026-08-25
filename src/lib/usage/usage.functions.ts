@@ -39,6 +39,25 @@ export const getUsageSnapshotFn = createServerFn({ method: "POST" })
     return { ...usage, limits: getPlanLimits(usage.tier) };
   });
 
+/**
+ * Paid-plan gate that must pass before any "Connect [platform]" action
+ * completes. The browser calls this first; the tier is re-read server-side.
+ */
+export const checkIntegrationConnectFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => tokenSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { verifyUserToken } = await import("./pocketbase.server");
+    const { checkIntegrationConnectionAllowed } = await import("./executions.server");
+    const { userId } = await verifyUserToken(data.token);
+    const decision = await checkIntegrationConnectionAllowed(userId);
+    return {
+      ok: decision.allowed,
+      message: decision.message,
+      reason: decision.reason,
+      tier: decision.tier,
+    };
+  });
+
 /** Enforced activation: checks step + active workflow limits, then publishes. */
 export const activateWorkflowFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => activateSchema.parse(data))
@@ -112,3 +131,4 @@ export const createWorkspaceFn = createServerFn({ method: "POST" })
     });
     return { ok: true as const, workspaceId: record.id };
   });
+  
