@@ -11,11 +11,13 @@
  * All numeric limits come from the central plan configuration in `@/lib/plans`.
  */
 import {
+  INTEGRATIONS_PAID_PLAN_NOTE,
   getDraftWorkflowLimit,
   getExecutionLimit,
   getMaxWorkflowSteps,
   getWorkflowLimit,
   getWorkspaceLimit,
+  integrationsAllowed,
   normalizeTier,
   safeUsage,
   type PlanTier,
@@ -26,6 +28,8 @@ export const ACTIVE_WORKFLOW_STATUSES = ["published"] as const;
 /** Workflow statuses that occupy a "draft workflow" slot. */
 export const DRAFT_WORKFLOW_STATUSES = ["draft", "paused", "error"] as const;
 
+export const INTEGRATION_PLAN_MESSAGE = INTEGRATIONS_PAID_PLAN_NOTE;
+
 export const EXECUTION_LIMIT_MESSAGE =
   "Your monthly automation execution limit has been reached.";
 
@@ -34,7 +38,8 @@ export type BlockedReason =
   | "active_workflow_limit_reached"
   | "draft_workflow_limit_reached"
   | "step_limit_exceeded"
-  | "workspace_limit_reached";
+  | "workspace_limit_reached"
+  | "integrations_requires_paid_plan";
 
 export interface LimitDecision {
   allowed: boolean;
@@ -134,6 +139,19 @@ export function checkWorkspaceAllowed(tierInput: unknown, workspaceCount: number
     );
   }
   return ok(workspaceCount, limit, tier);
+}
+
+/**
+ * Gate for connecting an external platform. Free tier is blocked outright;
+ * paid tiers are always allowed — there is deliberately NO count limit, so the
+ * decision carries limit 0 as "not applicable".
+ */
+export function checkIntegrationConnectAllowed(tierInput: unknown): LimitDecision {
+  const tier = normalizeTier(tierInput);
+  if (!integrationsAllowed(tier)) {
+    return blocked("integrations_requires_paid_plan", INTEGRATION_PLAN_MESSAGE, 0, 0, tier);
+  }
+  return ok(0, 0, tier);
 }
 
 /** First instant (UTC) of the calendar month a date falls in. */
