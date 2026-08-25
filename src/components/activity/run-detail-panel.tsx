@@ -137,7 +137,7 @@ function StepRow({
               <button
                 type="button"
                 onClick={() =>
-                  navigate({ to: "/dashboard/settings", search: { tab: "integrations" } })
+                  navigate({ to: "/dashboard/integrations", search: {} })
                 }
                 className="synkra-focus inline-flex items-center gap-1.5 rounded-md border"
                 style={{
@@ -388,4 +388,5 @@ export function RunDetailPanel({
     </div>
   );
          }
-    
+
+            
