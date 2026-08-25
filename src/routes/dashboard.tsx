@@ -1,11 +1,12 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Bell, LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { NAV_ITEMS, NavLink, useIsActive } from "@/components/portal/nav-items";
 import { ThemeToggle } from "@/components/portal/theme-toggle";
 import { SessionWarningModal } from "@/components/portal/session-warning-modal";
 import { OnboardingWizard } from "@/components/portal/onboarding-wizard";
 import { PWAInstallPrompt } from "@/components/portal/pwa-install-prompt";
+import { NotificationBell } from "@/components/portal/notification-bell";
 import pb, { safeSubscribe } from "@/lib/pocketbase";
 import { claimNotification, sendNotificationEmail } from "@/lib/notifications";
 import { logTelemetry } from "@/lib/telemetry";
@@ -230,8 +231,9 @@ function DashboardLayout() {
         style={{ backgroundColor: "var(--bg-secondary)", borderColor: "var(--border-default)" }}
       >
         <div>
-          <div className="p-4">
+          <div className="flex items-center justify-between p-4">
             <Wordmark />
+            <NotificationBell />
           </div>
           <nav className="mt-2 flex flex-col">
             {NAV_ITEMS.map((item) => (
@@ -256,9 +258,7 @@ function DashboardLayout() {
         >
           SYNKRA
         </div>
-        <button type="button" aria-label="Notifications">
-          <Bell size={20} style={{ color: "var(--text-secondary)" }} />
-        </button>
+        <NotificationBell />
       </header>
 
       {/* Mobile full-screen nav overlay */}
@@ -321,4 +321,4 @@ function DashboardLayout() {
       <PWAInstallPrompt />
     </div>
   );
-            }
+}
