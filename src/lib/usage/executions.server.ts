@@ -178,6 +178,44 @@ export async function startExecution(input: StartExecutionInput): Promise<StartE
   }
 
   if (!decision.allowed) {
+    // The monthly included allowance is exhausted. Purchased execution credits
+    // are a standing balance that never expires, and they are only reachable
+    // here — i.e. strictly after the included amount has run out. Spending one
+    // lets the run proceed without touching the monthly counter.
+    const { consumeExecutionCredit } = await import("@/lib/billing/execution-packs.server");
+    const credit = await consumeExecutionCredit(input.userId, 1);
+    if (credit.spent > 0) {
+      const creditRun = await pb.collection("workflow_runs").create({
+        workflow_id: input.workflowId,
+        user_id: input.userId,
+        execution_id: input.executionId,
+        status: "running",
+        trigger_type: input.triggerType,
+        triggered_at: new Date().toISOString(),
+        attempt_count: 1,
+        // `counted` tracks the MONTHLY allowance only; this run was paid for
+        // out of the purchased credit balance instead.
+        counted: false,
+        input_data: JSON.stringify(input.inputData ?? {}),
+        step_logs: JSON.stringify([]),
+      });
+
+      await pb.collection("workflows").update(input.workflowId, {
+        "run_count+": 1,
+        last_run_at: new Date().toISOString(),
+        last_run_status: "running",
+      });
+
+      return {
+        allowed: true,
+        counted: false,
+        retry: false,
+        runId: creditRun.id,
+        executionId: input.executionId,
+        usage: usageView,
+      };
+    }
+
     // Record the blocked attempt in the existing execution log.
     const blockedRun = await pb.collection("workflow_runs").create({
       workflow_id: input.workflowId,
@@ -385,4 +423,5 @@ export async function checkIntegrationConnectionAllowed(userId: string): Promise
   const usage = await loadUsage(pb, userId);
   return checkIntegrationConnectAllowed(usage.tier);
     }
-                                              
+
+          
