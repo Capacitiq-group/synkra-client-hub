@@ -560,11 +560,19 @@ export async function handleWebhookEvent(payload: {
   let ok = true;
   try {
     if (event === "charge.success" && reference) {
-      // One webhook, two settlement paths: add-on references are namespaced, so
-      // the transaction type is decided from the reference itself. Both paths
-      // are idempotent, so a redelivery grants nothing twice.
+            // One webhook, three settlement paths: add-on and execution-pack
+      // references are namespaced, so the transaction type is decided from the
+      // reference itself. Every path is idempotent, so a redelivery grants
+      // nothing twice.
       const { isAddonReference, settleAddonPurchase } = await import("./addons.server");
-      if (isAddonReference(reference)) {
+      const { isExecutionPackReference, settleExecutionPackPurchase } = await import(
+        "./execution-packs.server"
+      );
+      if (isExecutionPackReference(reference)) {
+        const settled = await settleExecutionPackPurchase(reference, "webhook");
+        result = settled.alreadySettled ? "already_settled" : `execution_pack_${settled.status}`;
+        ok = settled.ok;
+      } else if (isAddonReference(reference)) {
         const settled = await settleAddonPurchase(reference, "webhook");
         result = settled.alreadySettled ? "already_settled" : `addon_${settled.status}`;
         ok = settled.ok;
