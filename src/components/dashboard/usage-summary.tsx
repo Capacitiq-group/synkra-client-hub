@@ -1,12 +1,39 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 import { usePlanUsage } from "@/hooks/usePlanUsage";
+import { useAuth } from "@/contexts/AuthContext";
+import pb from "@/lib/pocketbase";
 import { Shimmer } from "./primitives";
 import { formatNumber, usagePercent, usageState } from "@/lib/plans";
+import { ExecutionPackModal } from "@/components/settings/execution-pack-modal";
+import { getExecutionCreditBalanceFn } from "@/lib/billing/execution-packs.functions";
+import {
+  EXECUTION_LIMIT_TITLE,
+  emptyExecutionBalance,
+  type ExecutionCreditBalance,
+} from "@/lib/billing/execution-packs";
 
 /** Compact executions-only usage widget for the dashboard home. */
 export function UsageSummary() {
   const usage = usePlanUsage();
+  const { user } = useAuth();
+  const [packModal, setPackModal] = useState(false);
+
+  const credit = useQuery<ExecutionCreditBalance>({
+    queryKey: ["execution-credit-balance", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      const token = pb.authStore.token;
+      if (!token) throw new Error("Not authenticated");
+      const result = (await getExecutionCreditBalanceFn({ data: { token } })) as unknown as
+        | { ok: true; balance: ExecutionCreditBalance }
+        | { ok: false; error: string; message: string };
+      if (!result.ok) throw new Error(result.message);
+      return result.balance;
+    },
+  });
 
   if (usage.isLoading) return <Shimmer height={92} />;
   if (usage.isError || !usage.data) return null;
@@ -14,6 +41,7 @@ export function UsageSummary() {
   const { limits, executionsUsed } = usage.data;
   const percent = usagePercent(executionsUsed, limits.executions);
   const state = usageState(executionsUsed, limits.executions);
+  const purchased = credit.data ?? emptyExecutionBalance();
   const color =
     state === "reached"
       ? "var(--state-error)"
@@ -67,7 +95,7 @@ export function UsageSummary() {
           {state === "reached" ? (
             <span className="inline-flex items-center gap-1.5">
               <AlertTriangle size={13} aria-hidden="true" />
-              You've reached your automation executions limit for this month.
+              {EXECUTION_LIMIT_TITLE}
             </span>
           ) : state === "warning" ? (
             <span className="inline-flex items-center gap-1.5">
@@ -87,6 +115,55 @@ export function UsageSummary() {
           View usage
         </Link>
       </div>
+
+      {purchased.remaining > 0 && (
+        <p className="mt-2" style={{ fontSize: 13, color: "var(--text-muted)" }}>
+          <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>
+            +{formatNumber(purchased.remaining)} purchased executions
+          </span>{" "}
+          available — these don't expire and are used after your monthly allowance.
+        </p>
+      )}
+
+      {state === "reached" && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setPackModal(true)}
+            className="synkra-focus inline-flex h-9 items-center rounded-lg px-3"
+            style={{
+              backgroundColor: "var(--accent-green)",
+              color: "var(--bg-base)",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            Buy more executions
+          </button>
+          <Link
+            to="/dashboard/settings"
+            search={{ tab: "billing" }}
+            className="synkra-focus inline-flex h-9 items-center rounded-lg px-3"
+            style={{
+              border: "1px solid var(--border-default)",
+              color: "var(--text-primary)",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            Upgrade plan
+          </Link>
+        </div>
+      )}
+
+      {packModal && (
+        <ExecutionPackModal
+          onClose={() => {
+            setPackModal(false);
+            void credit.refetch();
+          }}
+        />
+      )}
     </section>
   );
 }
