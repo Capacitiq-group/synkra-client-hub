@@ -73,7 +73,7 @@ export function NotificationsSettings() {
     <div className="max-w-[560px]">
       <SettingsSection title="Notification preferences">
         <p className="mb-5 text-sm" style={{ color: "var(--text-secondary)" }}>
-          In-app notifications are always on. Control which events also send you an email.
+          Workflow and account events are saved in your notification feed. Control which events also send you an email.
         </p>
         <label className="mb-6 block">
           <span
