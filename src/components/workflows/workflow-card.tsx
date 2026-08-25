@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { CheckCircle, Clock, List, MoreHorizontal, Pause, Pencil, Play, Zap } from "lucide-react";
 import { StatusBadge } from "@/components/dashboard/primitives";
+import { OwnershipBadge } from "@/components/workflows/ownership-badge";
 import { relativeTime } from "@/lib/utils/time";
 import type { PortalWorkflow } from "@/hooks/useWorkflows";
 
@@ -96,21 +97,21 @@ export function WorkflowCard({
         padding: 16,
       }}
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-        <h3
-          className="min-w-0 break-words"
-          style={{ fontSize: 17, fontWeight: 600, color: "var(--text-primary)" }}
-        >
-          {workflow.name}
-        </h3>
-        <div className="shrink-0">
-          <StatusBadge status={workflow.status} />
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <OwnershipBadge kind="user" />
+        <StatusBadge status={workflow.status} />
       </div>
+
+      <h3
+        className="mt-2 min-w-0 break-words"
+        style={{ fontSize: 17, fontWeight: 600, color: "var(--text-primary)" }}
+      >
+        {workflow.name}
+      </h3>
 
       {templateName && (
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>
-          From template: {templateName}
+          Created by you from the Synkra template “{templateName}”
         </div>
       )}
 
