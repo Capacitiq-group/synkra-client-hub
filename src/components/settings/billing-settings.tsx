@@ -12,7 +12,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Shimmer, SectionError } from "@/components/dashboard/primitives";
 import { getBillingOverviewFn, startUpgradeFn } from "@/lib/billing/billing.functions";
 import { formatZar, PURCHASABLE_TIERS, type PurchasableTier } from "@/lib/billing/config";
-import { getPlanLimits, getPlanName, normalizeTier } from "@/lib/plans";
+import {
+  getPlanLimits,
+  getPlanName,
+  integrationsAllowed,
+  normalizeTier,
+  INTEGRATIONS_PAID_PLAN_NOTE,
+} from "@/lib/plans";
 import type { BillingOverview } from "@/lib/billing/billing.server";
 
 type Result = Record<string, unknown> & { ok?: boolean; message?: string };
@@ -118,6 +124,11 @@ export function BillingSettings() {
             </span>
           )}
         </div>
+        {!integrationsAllowed(currentTier) && (
+          <p className="mt-3 text-[13px]" style={{ color: "var(--text-secondary)" }}>
+            {INTEGRATIONS_PAID_PLAN_NOTE}
+          </p>
+        )}
       </Card>
 
       {upgrades.length > 0 && (
@@ -209,4 +220,5 @@ export function BillingSettings() {
       </Card>
     </div>
   );
-}
+                    }
+                    
