@@ -1,5 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, Database, HelpCircle, Home, Settings, Zap, type LucideIcon } from "lucide-react";
+import {
+  Activity,
+  Database,
+  HelpCircle,
+  Home,
+  Plug,
+  Settings,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface NavItem {
   label: string;
@@ -13,6 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Workflows", to: "/dashboard/workflows", icon: Zap },
   { label: "Activity", to: "/dashboard/activity", icon: Activity },
   { label: "Saved data", to: "/dashboard/data", icon: Database },
+  { label: "Integrations", to: "/dashboard/integrations", icon: Plug },
   { label: "Settings", to: "/dashboard/settings", icon: Settings },
   { label: "Help", to: "/dashboard/help", icon: HelpCircle },
 ];
