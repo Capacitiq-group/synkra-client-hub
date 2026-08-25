@@ -4,7 +4,14 @@
  * Prices are NEVER defined here. They come from `@/lib/plans` — the single
  * source of truth — and are only converted to the minor unit Paystack expects.
  */
-import { PLAN_LIMITS, getPlanLimits, normalizeTier, type PlanTier } from "@/lib/plans";
+import {
+  PLAN_LIMITS,
+  getPlanLimits,
+  integrationsAllowed,
+  normalizeTier,
+  INTEGRATIONS_PAID_PLAN_NOTE,
+  type PlanTier,
+} from "@/lib/plans";
 
 /** Tiers a customer can actually pay for. Free is activated without payment. */
 export const PURCHASABLE_TIERS = ["basic", "pro"] as const;
@@ -54,6 +61,7 @@ export function planOptions(): PlanOption[] {
         `${p.seats} ${p.seats === 1 ? "seat" : "seats"}`,
         `${p.emails.toLocaleString("en-ZA")} emails / month`,
         `${p.storageGb} GB storage`,
+        integrationsAllowed(tier) ? "Unlimited integrations" : INTEGRATIONS_PAID_PLAN_NOTE,
       ],
     };
   });
