@@ -19,14 +19,29 @@ export interface SetupProgress {
 
 export type FieldDef = Record<string, unknown>;
 
+export interface CollectionRules {
+  listRule?: string | null;
+  viewRule?: string | null;
+  createRule?: string | null;
+  updateRule?: string | null;
+  deleteRule?: string | null;
+}
+
 export interface CollectionDef {
   name: string;
   type: string;
   /** true = superuser-only collection: every API rule stays null. */
   serverOnly?: boolean;
+  /**
+   * API rules the collection needs to work from the browser. Applied on
+   * creation, and to an existing collection only when every live rule is still
+   * null — a rule an operator set by hand is never overwritten.
+   */
+  rules?: CollectionRules;
   fields: FieldDef[];
   indexes?: string[];
 }
+
 
 interface SchemaFile {
   collections: CollectionDef[];
@@ -90,6 +105,34 @@ async function syncIndexes(pb: PocketBase, collectionName: string, wanted: strin
   await pb.collections.update(live.id, { indexes: [...current, ...missing] });
 }
 
+const RULE_KEYS = ["listRule", "viewRule", "createRule", "updateRule", "deleteRule"] as const;
+
+/** Rules for a brand-new collection. */
+export function rulesForCreate(collection: CollectionDef): Record<string, string | null> {
+  if (collection.serverOnly) {
+    // Superuser-only: the browser can never read or write these.
+    return Object.fromEntries(RULE_KEYS.map((key) => [key, null]));
+  }
+  if (!collection.rules) return {};
+  return Object.fromEntries(
+    RULE_KEYS.map((key) => [key, collection.rules?.[key] ?? null]),
+  ) as Record<string, string | null>;
+}
+
+/**
+ * Applies the schema's API rules to an existing collection, but only when every
+ * live rule is still null. This makes an already-provisioned instance pick up a
+ * newly added collection's rules without ever discarding rules an operator
+ * tuned by hand.
+ */
+async function syncRules(pb: PocketBase, live: { id: string }, collection: CollectionDef) {
+  if (collection.serverOnly || !collection.rules) return;
+  const record = live as unknown as Record<string, unknown>;
+  const allNull = RULE_KEYS.every((key) => record[key] === null || record[key] === undefined);
+  if (!allNull) return;
+  await pb.collections.update(live.id, rulesForCreate(collection));
+}
+
 export async function runFirstTimeSetup(
   pbUrl: string,
   adminEmail: string,
@@ -110,24 +153,15 @@ export async function runFirstTimeSetup(
     for (const collection of COLLECTIONS) {
       if (existingNames.has(collection.name)) continue;
       const fields = [...collection.fields.map(normalizeField), ...AUTODATE_FIELDS];
-      const rules = collection.serverOnly
-        ? {
-            // Superuser-only: the browser can never read or write these.
-            listRule: null,
-            viewRule: null,
-            createRule: null,
-            updateRule: null,
-            deleteRule: null,
-          }
-        : {};
       await pb.collections.create({
         name: collection.name,
         type: collection.type,
         fields,
         schema: fields,
-        ...rules,
+        ...rulesForCreate(collection),
       });
     }
+
 
     progress.onStep("Adding any missing fields to existing collections");
     const afterCreate = await pb.collections.getFullList();
@@ -148,6 +182,13 @@ export async function runFirstTimeSetup(
     for (const collection of COLLECTIONS) {
       await syncIndexes(pb, collection.name, collection.indexes);
     }
+
+    progress.onStep("Applying API rules");
+    for (const collection of COLLECTIONS) {
+      const live = afterCreate.find((c) => c.name === collection.name);
+      if (live) await syncRules(pb, live, collection);
+    }
+
 
     progress.onStep("Extending the users collection");
     const usersCollection = afterCreate.find((c) => c.name === "users");
