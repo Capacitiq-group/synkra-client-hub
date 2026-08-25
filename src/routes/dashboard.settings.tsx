@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ProfileSettings } from "@/components/settings/profile-settings";
 import { BusinessSettings } from "@/components/settings/business-settings";
-import { IntegrationsSettings } from "@/components/settings/integrations-settings";
 import { NotificationsSettings } from "@/components/settings/notifications-settings";
 import { UsageSettings } from "@/components/settings/usage-settings";
 import { BillingSettings } from "@/components/settings/billing-settings";
@@ -50,7 +49,6 @@ function SettingsPage() {
     { key: "workspace", label: "Workspace" },
     { key: "usage", label: "Usage" },
     { key: "billing", label: "Billing" },
-    { key: "integrations", label: "Integrations" },
     { key: "notifications", label: "Notifications" },
   ];
   return (
@@ -87,7 +85,6 @@ function SettingsPage() {
         {tab === "workspace" && <WorkspaceSettings />}
         {tab === "usage" && <UsageSettings />}
         {tab === "billing" && <BillingSettings />}
-        {tab === "integrations" && <IntegrationsSettings />}
         {tab === "notifications" && <NotificationsSettings />}
       </div>
     </div>
