@@ -1,0 +1,1310 @@
+{
+  "$comment": "CANONICAL PocketBase schema for SYNKRA Client Hub. Single source of truth. Consumed by src/lib/setup/createCollections.ts (via ?raw import) and scripts/seed-pocketbase.mjs (via fs). Documented in POCKETBASE_COLLECTIONS.md. Collections with all rules null are superuser-only: the browser can never read or write them, only server code holding PB_ADMIN_* can.",
+  "collections": [
+    {
+      "name": "workflow_templates",
+      "type": "base",
+      "serverOnly": false,
+      "fields": [
+        {
+          "name": "template_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "text"
+        },
+        {
+          "name": "category",
+          "type": "text"
+        },
+        {
+          "name": "requires_paid_api",
+          "type": "bool"
+        },
+        {
+          "name": "integrations_required",
+          "type": "json"
+        },
+        {
+          "name": "blocks",
+          "type": "json",
+          "required": true
+        },
+        {
+          "name": "is_active",
+          "type": "bool"
+        },
+        {
+          "name": "sort_order",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "name": "workflows",
+      "type": "base",
+      "serverOnly": false,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "template_id",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "draft",
+            "published",
+            "paused",
+            "error"
+          ]
+        },
+        {
+          "name": "blocks",
+          "type": "json",
+          "required": true
+        },
+        {
+          "name": "trigger_type",
+          "type": "text"
+        },
+        {
+          "name": "trigger_config",
+          "type": "json"
+        },
+        {
+          "name": "integrations_required",
+          "type": "json"
+        },
+        {
+          "name": "run_count",
+          "type": "number"
+        },
+        {
+          "name": "last_run_at",
+          "type": "date"
+        },
+        {
+          "name": "last_run_status",
+          "type": "select",
+          "values": [
+            "success",
+            "failed",
+            "running"
+          ]
+        },
+        {
+          "name": "workspace_id",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "name": "workflow_runs",
+      "type": "base",
+      "serverOnly": false,
+      "fields": [
+        {
+          "name": "workflow_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "running",
+            "success",
+            "failed",
+            "blocked",
+            "scheduled"
+          ]
+        },
+        {
+          "name": "execution_id",
+          "type": "text"
+        },
+        {
+          "name": "trigger_type",
+          "type": "text"
+        },
+        {
+          "name": "attempt_count",
+          "type": "number"
+        },
+        {
+          "name": "counted",
+          "type": "bool"
+        },
+        {
+          "name": "blocked_reason",
+          "type": "text"
+        },
+        {
+          "name": "triggered_at",
+          "type": "date"
+        },
+        {
+          "name": "completed_at",
+          "type": "date"
+        },
+        {
+          "name": "duration_ms",
+          "type": "number"
+        },
+        {
+          "name": "input_data",
+          "type": "json"
+        },
+        {
+          "name": "output_data",
+          "type": "json"
+        },
+        {
+          "name": "step_logs",
+          "type": "json"
+        },
+        {
+          "name": "error_message",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_workflow_runs_execution_id` ON `workflow_runs` (`execution_id`) WHERE `execution_id` != ''"
+      ]
+    },
+    {
+      "name": "integrations",
+      "type": "base",
+      "serverOnly": false,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "values": [
+            "gmail",
+            "whatsapp",
+            "google_calendar",
+            "google_sheets",
+            "openai",
+            "webhook"
+          ]
+        },
+        {
+          "name": "credentials",
+          "type": "json"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "values": [
+            "connected",
+            "disconnected",
+            "error"
+          ]
+        },
+        {
+          "name": "display_name",
+          "type": "text"
+        },
+        {
+          "name": "last_tested_at",
+          "type": "date"
+        },
+        {
+          "name": "error_message",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "name": "workspaces",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "owner_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "is_default",
+          "type": "bool"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_workspaces_owner` ON `workspaces` (`owner_id`)"
+      ]
+    },
+    {
+      "name": "workspace_members",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "workspace_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "values": [
+            "owner",
+            "admin",
+            "member"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "active",
+            "removed"
+          ]
+        },
+        {
+          "name": "invited_by",
+          "type": "text"
+        },
+        {
+          "name": "joined_at",
+          "type": "date"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_workspace_members_unique` ON `workspace_members` (`workspace_id`, `user_id`)",
+        "CREATE INDEX `idx_workspace_members_user` ON `workspace_members` (`user_id`)"
+      ]
+    },
+    {
+      "name": "workspace_invitations",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "workspace_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "values": [
+            "admin",
+            "member"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "pending",
+            "accepted",
+            "cancelled",
+            "expired"
+          ]
+        },
+        {
+          "name": "token",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "invited_by",
+          "type": "text"
+        },
+        {
+          "name": "expires_at",
+          "type": "date"
+        },
+        {
+          "name": "accepted_at",
+          "type": "date"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_workspace_invitations_token` ON `workspace_invitations` (`token`)",
+        "CREATE INDEX `idx_workspace_invitations_workspace` ON `workspace_invitations` (`workspace_id`)"
+      ]
+    },
+    {
+      "name": "billing_customers",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "phone",
+          "type": "text"
+        },
+        {
+          "name": "provider",
+          "type": "text"
+        },
+        {
+          "name": "provider_customer_code",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_billing_customers_user` ON `billing_customers` (`user_id`)"
+      ]
+    },
+    {
+      "name": "billing_checkouts",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "reference",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "user_id",
+          "type": "text"
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "phone",
+          "type": "text"
+        },
+        {
+          "name": "tier",
+          "type": "select",
+          "required": true,
+          "values": [
+            "free",
+            "basic",
+            "pro"
+          ]
+        },
+        {
+          "name": "amount_cents",
+          "type": "number"
+        },
+        {
+          "name": "currency",
+          "type": "text"
+        },
+        {
+          "name": "provider",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "pending",
+            "paid",
+            "failed",
+            "cancelled",
+            "activated"
+          ]
+        },
+        {
+          "name": "authorization_url",
+          "type": "text"
+        },
+        {
+          "name": "access_code",
+          "type": "text"
+        },
+        {
+          "name": "source",
+          "type": "text"
+        },
+        {
+          "name": "paid_at",
+          "type": "date"
+        },
+        {
+          "name": "error_message",
+          "type": "text"
+        },
+        {
+          "name": "metadata",
+          "type": "json"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_billing_checkouts_reference` ON `billing_checkouts` (`reference`)"
+      ]
+    },
+    {
+      "name": "billing_payments",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "reference",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "checkout_id",
+          "type": "text"
+        },
+        {
+          "name": "tier",
+          "type": "select",
+          "values": [
+            "free",
+            "basic",
+            "pro"
+          ]
+        },
+        {
+          "name": "amount_cents",
+          "type": "number"
+        },
+        {
+          "name": "currency",
+          "type": "text"
+        },
+        {
+          "name": "provider",
+          "type": "text"
+        },
+        {
+          "name": "provider_transaction_id",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "values": [
+            "success",
+            "failed"
+          ]
+        },
+        {
+          "name": "paid_at",
+          "type": "date"
+        },
+        {
+          "name": "raw",
+          "type": "json"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_billing_payments_reference` ON `billing_payments` (`reference`)"
+      ]
+    },
+    {
+      "name": "billing_subscriptions",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "tier",
+          "type": "select",
+          "required": true,
+          "values": [
+            "free",
+            "basic",
+            "pro"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "active",
+            "cancelled",
+            "expired"
+          ]
+        },
+        {
+          "name": "provider",
+          "type": "text"
+        },
+        {
+          "name": "last_reference",
+          "type": "text"
+        },
+        {
+          "name": "started_at",
+          "type": "date"
+        },
+        {
+          "name": "current_period_start",
+          "type": "date"
+        },
+        {
+          "name": "current_period_end",
+          "type": "date"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_billing_subscriptions_user` ON `billing_subscriptions` (`user_id`)"
+      ]
+    },
+    {
+      "name": "billing_events",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "event_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "provider",
+          "type": "text"
+        },
+        {
+          "name": "type",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text"
+        },
+        {
+          "name": "processed",
+          "type": "bool"
+        },
+        {
+          "name": "processed_at",
+          "type": "date"
+        },
+        {
+          "name": "result",
+          "type": "text"
+        },
+        {
+          "name": "payload",
+          "type": "json"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_billing_events_event_id` ON `billing_events` (`event_id`)"
+      ]
+    },
+    {
+      "name": "magic_links",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "token_hash",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "purpose",
+          "type": "text"
+        },
+        {
+          "name": "expires_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "used_at",
+          "type": "date"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_magic_links_token_hash` ON `magic_links` (`token_hash`)",
+        "CREATE INDEX `idx_magic_links_user` ON `magic_links` (`user_id`)"
+      ]
+    },
+    {
+      "name": "addon_purchases",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "select",
+          "required": true,
+          "values": [
+            "ai_ops",
+            "sms",
+            "whatsapp",
+            "voice_minutes",
+            "storage_gb"
+          ]
+        },
+        {
+          "name": "packs",
+          "type": "number"
+        },
+        {
+          "name": "units",
+          "type": "number"
+        },
+        {
+          "name": "amount_cents",
+          "type": "number"
+        },
+        {
+          "name": "currency",
+          "type": "text"
+        },
+        {
+          "name": "provider",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "authorization_url",
+          "type": "text"
+        },
+        {
+          "name": "access_code",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "pending",
+            "paid",
+            "failed"
+          ]
+        },
+        {
+          "name": "provider_transaction_id",
+          "type": "text"
+        },
+        {
+          "name": "paid_at",
+          "type": "date"
+        },
+        {
+          "name": "error_message",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_addon_purchases_reference` ON `addon_purchases` (`reference`)"
+      ]
+    },
+    {
+      "name": "addon_credits",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "select",
+          "required": true,
+          "values": [
+            "ai_ops",
+            "sms",
+            "whatsapp",
+            "voice_minutes",
+            "storage_gb"
+          ]
+        },
+        {
+          "name": "units_purchased",
+          "type": "number"
+        },
+        {
+          "name": "units_used",
+          "type": "number"
+        },
+        {
+          "name": "monthly",
+          "type": "bool"
+        },
+        {
+          "name": "period_start",
+          "type": "date"
+        },
+        {
+          "name": "last_reference",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_addon_credits_user_kind` ON `addon_credits` (`user_id`, `kind`)"
+      ]
+    },
+    {
+      "name": "execution_pack_purchases",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "select",
+          "required": true,
+          "values": [
+            "executions"
+          ]
+        },
+        {
+          "name": "pack_id",
+          "type": "select",
+          "required": true,
+          "values": [
+            "exec_250",
+            "exec_1000",
+            "exec_5000",
+            "exec_10000",
+            "exec_25000"
+          ]
+        },
+        {
+          "name": "units",
+          "type": "number"
+        },
+        {
+          "name": "amount_cents",
+          "type": "number"
+        },
+        {
+          "name": "currency",
+          "type": "text"
+        },
+        {
+          "name": "provider",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "authorization_url",
+          "type": "text"
+        },
+        {
+          "name": "access_code",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "pending",
+            "paid",
+            "failed"
+          ]
+        },
+        {
+          "name": "provider_transaction_id",
+          "type": "text"
+        },
+        {
+          "name": "paid_at",
+          "type": "date"
+        },
+        {
+          "name": "error_message",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_execution_pack_purchases_reference` ON `execution_pack_purchases` (`reference`)"
+      ]
+    },
+    {
+      "name": "execution_credits",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "select",
+          "required": true,
+          "values": [
+            "executions"
+          ]
+        },
+        {
+          "name": "units_purchased",
+          "type": "number"
+        },
+        {
+          "name": "units_used",
+          "type": "number"
+        },
+        {
+          "name": "expires_monthly",
+          "type": "bool"
+        },
+        {
+          "name": "first_purchased_at",
+          "type": "date"
+        },
+        {
+          "name": "last_reference",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_execution_credits_user_id` ON `execution_credits` (`user_id`)"
+      ]
+    },
+    {
+      "name": "workflow_records",
+      "type": "base",
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "collection",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "natural_key",
+          "type": "text"
+        },
+        {
+          "name": "fields",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "name": "inbound_addresses",
+      "type": "base",
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "verified",
+          "type": "bool"
+        },
+        {
+          "name": "verified_at",
+          "type": "date"
+        },
+        {
+          "name": "confirmation_method",
+          "type": "select",
+          "values": [
+            "auto",
+            "manual"
+          ]
+        },
+        {
+          "name": "last_confirmation_attempted_at",
+          "type": "date"
+        },
+        {
+          "name": "last_confirmation_raw",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "name": "scheduled_steps",
+      "type": "base",
+      "fields": [
+        {
+          "name": "run_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "execution_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "workflow_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "remaining_blocks",
+          "type": "json"
+        },
+        {
+          "name": "context",
+          "type": "json"
+        },
+        {
+          "name": "step_logs_so_far",
+          "type": "json"
+        },
+        {
+          "name": "elapsed_ms_so_far",
+          "type": "number"
+        },
+        {
+          "name": "resume_at",
+          "type": "date"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "values": [
+            "pending",
+            "processing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "notifications",
+      "type": "base",
+      "serverOnly": false,
+      "rules": {
+        "listRule": "user_id = @request.auth.id",
+        "viewRule": "user_id = @request.auth.id",
+        "createRule": null,
+        "updateRule": "user_id = @request.auth.id",
+        "deleteRule": "user_id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "event_type",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": "text"
+        },
+        {
+          "name": "workflow_id",
+          "type": "text"
+        },
+        {
+          "name": "run_id",
+          "type": "text"
+        },
+        {
+          "name": "link",
+          "type": "text"
+        },
+        {
+          "name": "severity",
+          "type": "text"
+        },
+        {
+          "name": "metadata",
+          "type": "json"
+        },
+        {
+          "name": "read",
+          "type": "bool"
+        },
+        {
+          "name": "read_at",
+          "type": "date"
+        },
+        {
+          "name": "dedupe_key",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_notifications_user_created` ON `notifications` (`user_id`, `created`)",
+        "CREATE INDEX `idx_notifications_user_read` ON `notifications` (`user_id`, `read`)",
+        "CREATE UNIQUE INDEX `idx_notifications_dedupe_key` ON `notifications` (`dedupe_key`) WHERE `dedupe_key` != ''"
+      ]
+    }
+  ],
+  "userFields": [
+    {
+      "name": "business_name",
+      "type": "text"
+    },
+    {
+      "name": "business_industry",
+      "type": "text"
+    },
+    {
+      "name": "business_address",
+      "type": "text"
+    },
+    {
+      "name": "whatsapp_number",
+      "type": "text"
+    },
+    {
+      "name": "review_link",
+      "type": "text"
+    },
+    {
+      "name": "is_tester",
+      "type": "bool"
+    },
+    {
+      "name": "user_type",
+      "type": "select",
+      "values": [
+        "beta",
+        "paid"
+      ]
+    },
+    {
+      "name": "trial_ends_at",
+      "type": "date"
+    },
+    {
+      "name": "theme_preference",
+      "type": "select",
+      "values": [
+        "dark",
+        "light",
+        "system"
+      ]
+    },
+    {
+      "name": "notify_on_failure",
+      "type": "bool"
+    },
+    {
+      "name": "notify_weekly_summary",
+      "type": "bool"
+    },
+    {
+      "name": "notify_on_success",
+      "type": "bool"
+    },
+    {
+      "name": "notify_credit_low",
+      "type": "bool"
+    },
+    {
+      "name": "notify_platform_updates",
+      "type": "bool"
+    },
+    {
+      "name": "notification_email",
+      "type": "email"
+    },
+    {
+      "name": "credit_emails",
+      "type": "number"
+    },
+    {
+      "name": "credit_emails_used",
+      "type": "number"
+    },
+    {
+      "name": "credit_workflows",
+      "type": "number"
+    },
+    {
+      "name": "credit_workflows_used",
+      "type": "number"
+    },
+    {
+      "name": "onboarding_completed",
+      "type": "bool"
+    },
+    {
+      "name": "onboarding_step",
+      "type": "number"
+    },
+    {
+      "name": "tier",
+      "type": "select",
+      "values": [
+        "free",
+        "basic",
+        "pro"
+      ]
+    },
+    {
+      "name": "billing_period_start",
+      "type": "date"
+    },
+    {
+      "name": "executions_used_this_month",
+      "type": "number"
+    },
+    {
+      "name": "ai_ops_used_this_month",
+      "type": "number"
+    },
+    {
+      "name": "emails_used_this_month",
+      "type": "number"
+    },
+    {
+      "name": "storage_used_mb",
+      "type": "number"
+    },
+    {
+      "name": "phone",
+      "type": "text"
+    },
+    {
+      "name": "sms_used_this_month",
+      "type": "number"
+    },
+    {
+      "name": "whatsapp_used_this_month",
+      "type": "number"
+    },
+    {
+      "name": "voice_minutes_used_this_month",
+      "type": "number"
+    },
+    {
+      "name": "addon_storage_gb",
+      "type": "number"
+    }
+  ]
+}
