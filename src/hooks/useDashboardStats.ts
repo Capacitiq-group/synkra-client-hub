@@ -2,19 +2,37 @@
 import { useQuery } from "@tanstack/react-query";
 import pb from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
-import { sendNotificationEmail } from "@/lib/notifications";
+import { deliverNotificationEventFn } from "@/lib/notifications.functions";
 
-/** Sends the low balance warning at most once per credit allocation. */
-function maybeWarnLowCredits(userId: string, email: string, remaining: number, total: number) {
+/**
+ * Raises the low balance warning at most once per credit allocation.
+ *
+ * Delivery is decided server-side (`deliverNotificationEventFn`): the in-app
+ * notification is written for every tier, and the email is sent for every tier
+ * too, because credit-balance alerts are not a paid-only email. The toggle is
+ * still re-checked on the server, so this call is a no-op when the user turned
+ * "Credit balance low" off.
+ */
+function maybeWarnLowCredits(userId: string, remaining: number, total: number) {
   if (typeof window === "undefined" || total <= 0) return;
   if (remaining / total >= 0.2) return;
   const key = `synkra-credit-warning-${userId}-${total}`;
   if (localStorage.getItem(key)) return;
+  const token = pb.authStore.token;
+  if (!token) return;
   localStorage.setItem(key, "sent");
-  void sendNotificationEmail({
-    to: email,
-    subject: "Your Synkra email credits are running low",
-    body: `Hi,\n\nYou have ${remaining} of ${total} email credits remaining, which is under 20 percent.\n\nEmail automations pause automatically once your credits run out.\n\nhttps://client.synkra.co.za/dashboard\n\nSynkra`,
+  void deliverNotificationEventFn({
+    data: {
+      token,
+      eventType: "credit_balance_low",
+      title: "Your Synkra email credits are running low",
+      message: `You have ${remaining} of ${total} email credits remaining, which is under 20 percent. Email automations pause automatically once your credits run out.`,
+      link: "/dashboard/settings?tab=usage",
+      dedupeKey: `credit_balance_low:emails:${userId}:${total}`,
+    },
+  }).catch(() => {
+    // Allow a retry on the next poll when the call itself failed.
+    localStorage.removeItem(key);
   });
 }
 
@@ -90,7 +108,6 @@ export function useDashboardStats() {
       if (user.notify_credit_low !== false) {
         maybeWarnLowCredits(
           user.id,
-          user.notification_email || user.email,
           Math.max(0, emailCreditsTotal - emailCreditsUsed),
           emailCreditsTotal,
         );
@@ -115,4 +132,4 @@ export function useDashboardStats() {
     refetchInterval: 30000,
     staleTime: 10000,
   });
-}
+        }
