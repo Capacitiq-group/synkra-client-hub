@@ -36,6 +36,12 @@ export interface PlanLimits {
   whatsapp: number;
   /** Included voice minutes per month (0 = add-on purchase required). */
   voiceMinutes: number;
+  /**
+   * Whether the tier may connect external platforms (integrations).
+   * Free keeps every other free-tier capability; it just cannot connect any
+   * external platform. There is NO cap on how many a paid tier may connect.
+   */
+  integrations: boolean;
 }
 
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
@@ -55,6 +61,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     sms: 0,
     whatsapp: 0,
     voiceMinutes: 0,
+    integrations: false,
   },
   basic: {
     tier: "basic",
@@ -72,6 +79,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     sms: 50,
     whatsapp: 50,
     voiceMinutes: 15,
+    integrations: true,
   },
   pro: {
     tier: "pro",
@@ -89,6 +97,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     sms: 75,
     whatsapp: 75,
     voiceMinutes: 15,
+    integrations: true,
   },
 };
 
@@ -161,6 +170,25 @@ export function getWhatsappLimit(tier: unknown): number {
 
 export function getVoiceLimit(tier: unknown): number {
   return getPlanLimits(tier).voiceMinutes;
+}
+
+/**
+ * True when the tier may connect external platforms. Paid tiers only, and the
+ * number of connected platforms is never limited.
+ */
+export function integrationsAllowed(tier: unknown): boolean {
+  return getPlanLimits(tier).integrations;
+}
+
+/** One-line, reused everywhere package info is shown. */
+export const INTEGRATIONS_PAID_PLAN_NOTE =
+  "Integrations require a paid plan — Upgrade to connect.";
+
+/** Package-info line for a tier: "Unlimited integrations" vs the paid-plan note. */
+export function integrationsPlanLabel(tier: unknown): string {
+  return integrationsAllowed(tier)
+    ? "Unlimited integrations"
+    : "No integrations (paid plans only)";
 }
 
 export function getSeatLimit(tier: unknown): number {
