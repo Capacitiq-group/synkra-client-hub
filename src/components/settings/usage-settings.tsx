@@ -8,6 +8,13 @@ import pb from "@/lib/pocketbase";
 import { getAddonBalancesFn } from "@/lib/billing/addons.functions";
 import { startUpgradeFn } from "@/lib/billing/billing.functions";
 import { AddonPurchaseModal, ComingSoonBadge } from "@/components/settings/addon-purchase-modal";
+import { ExecutionPackModal } from "@/components/settings/execution-pack-modal";
+import { getExecutionCreditBalanceFn } from "@/lib/billing/execution-packs.functions";
+import {
+  EXECUTION_LIMIT_TITLE,
+  emptyExecutionBalance,
+  type ExecutionCreditBalance,
+} from "@/lib/billing/execution-packs";
 import { ADDON_CATALOG, type AddonKind } from "@/lib/billing/addons";
 import {
   formatNumber,
@@ -63,6 +70,10 @@ function UsageCard({
   canUpgrade,
   onBuyAddOn,
   addonKind,
+  onBuyMore,
+  buyMoreLabel,
+  reachedMessage,
+  footnote,
 }: {
   label: string;
   used: number;
@@ -72,6 +83,11 @@ function UsageCard({
   canUpgrade: boolean;
   onBuyAddOn?: () => void;
   addonKind?: AddonKind;
+  /** Separate purchasable kind (execution packs) — not part of the add-on catalogue. */
+  onBuyMore?: () => void;
+  buyMoreLabel?: string;
+  reachedMessage?: string;
+  footnote?: React.ReactNode;
 }) {
   const state = usageState(used, limit);
   const percent = usagePercent(used, limit);
@@ -106,9 +122,19 @@ function UsageCard({
           <span className="inline-flex items-center gap-1.5">
             <AlertTriangle size={14} aria-hidden="true" />
             {state === "reached"
-              ? `You've reached your ${label.toLowerCase()} limit for this month.`
+              ? (reachedMessage ?? `You've reached your ${label.toLowerCase()} limit for this month.`)
               : `You're approaching your ${label.toLowerCase()} limit.`}
           </span>
+          {onBuyMore && (
+            <button
+              type="button"
+              onClick={onBuyMore}
+              className="synkra-focus inline-flex items-center gap-1 rounded-sm"
+              style={{ color: "var(--accent-green)", fontWeight: 600 }}
+            >
+              {buyMoreLabel ?? "Buy more"} <ArrowUpRight size={13} aria-hidden="true" />
+            </button>
+          )}
           {onBuyAddOn &&
             addonKind &&
             (ADDON_CATALOG[addonKind].purchasable ? (
@@ -130,9 +156,15 @@ function UsageCard({
               className="synkra-focus inline-flex items-center gap-1 rounded-sm"
               style={{ color: "var(--accent-green)", fontWeight: 600 }}
             >
-              Upgrade <ArrowUpRight size={13} aria-hidden="true" />
+              {onBuyMore ? "Upgrade plan" : "Upgrade"} <ArrowUpRight size={13} aria-hidden="true" />
             </button>
           )}
+        </div>
+      )}
+
+      {footnote && (
+        <div className="mt-3" style={{ fontSize: 13, color: "var(--text-muted)" }}>
+          {footnote}
         </div>
       )}
     </div>
@@ -196,6 +228,7 @@ export function UsageSettings() {
   const usage = usePlanUsage();
   const { user } = useAuth();
   const [addonModal, setAddonModal] = useState<AddonKind | null>(null);
+  const [executionPackModal, setExecutionPackModal] = useState(false);
   const [upgradeBusy, setUpgradeBusy] = useState(false);
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
 
@@ -210,6 +243,24 @@ export function UsageSettings() {
         | { ok: false; error: string; message: string };
       if (!result.ok) throw new Error(result.message);
       return result.balances;
+    },
+  });
+
+  /**
+   * Purchased execution credit — a standing balance that does not reset with
+   * the billing month, read from its own endpoint (separate from add-ons).
+   */
+  const executionCredit = useQuery<ExecutionCreditBalance>({
+    queryKey: ["execution-credit-balance", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      const token = pb.authStore.token;
+      if (!token) throw new Error("Not authenticated");
+      const result = (await getExecutionCreditBalanceFn({ data: { token } })) as unknown as
+        | { ok: true; balance: ExecutionCreditBalance }
+        | { ok: false; error: string; message: string };
+      if (!result.ok) throw new Error(result.message);
+      return result.balance;
     },
   });
 
@@ -236,6 +287,7 @@ export function UsageSettings() {
   const canUpgrade = nextTier !== null;
   const nextPlan = nextTier ? getPlanLimits(nextTier) : null;
   const storageLimitMb = getStorageLimitMb(tier);
+  const executionCreditBalance = executionCredit.data ?? emptyExecutionBalance();
 
   /**
    * Real upgrade flow: the tier is sent to the existing server function, which
@@ -341,6 +393,34 @@ export function UsageSettings() {
             display={`${formatNumber(executionsUsed)} / ${formatNumber(limits.executions)}`}
             onUpgrade={handleUpgrade}
             canUpgrade={canUpgrade}
+            onBuyMore={() => setExecutionPackModal(true)}
+            buyMoreLabel="Buy more executions"
+            reachedMessage={EXECUTION_LIMIT_TITLE}
+            footnote={
+              executionCreditBalance.remaining > 0 ? (
+                <>
+                  <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>
+                    +{formatNumber(executionCreditBalance.remaining)} purchased executions
+                  </span>{" "}
+                  available ({formatNumber(executionCreditBalance.used)} of{" "}
+                  {formatNumber(executionCreditBalance.purchased)} used). Purchased executions never
+                  expire and are only used once this month's included allowance runs out.
+                </>
+              ) : (
+                <>
+                  Need more than your monthly allowance?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setExecutionPackModal(true)}
+                    className="synkra-focus rounded-sm"
+                    style={{ color: "var(--accent-green)", fontWeight: 600 }}
+                  >
+                    Buy an execution top-up pack
+                  </button>{" "}
+                  — purchased executions never expire.
+                </>
+              )
+            }
           />
           <UsageCard
             label="Email"
@@ -506,6 +586,15 @@ export function UsageSettings() {
         <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>R0.00</span>
       </div>
 
+      {executionPackModal && (
+        <ExecutionPackModal
+          onClose={() => {
+            setExecutionPackModal(false);
+            void executionCredit.refetch();
+          }}
+        />
+      )}
+
       {addonModal && (
         <AddonPurchaseModal
           kind={addonModal}
@@ -518,4 +607,3 @@ export function UsageSettings() {
     </div>
   );
 }
-
