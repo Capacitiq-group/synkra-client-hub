@@ -49,7 +49,16 @@ function indexName(sql) {
   return match ? match[1] : sql;
 }
 
-/** Creates missing collections, adds missing fields and missing indexes. */
+const RULE_KEYS = ["listRule", "viewRule", "createRule", "updateRule", "deleteRule"];
+
+/** Rules a definition asks for; serverOnly collections stay superuser-only. */
+function rulesFor(def) {
+  if (def.serverOnly) return Object.fromEntries(RULE_KEYS.map((k) => [k, null]));
+  if (!def.rules) return {};
+  return Object.fromEntries(RULE_KEYS.map((k) => [k, def.rules[k] ?? null]));
+}
+
+/** Creates missing collections, adds missing fields, indexes and API rules. */
 async function provisionCollections(pb) {
   const existing = await pb.collections.getFullList();
   const byName = new Map(existing.map((c) => [c.name, c]));
@@ -58,15 +67,12 @@ async function provisionCollections(pb) {
     const fields = [...def.fields.map(normalizeField), ...AUTODATE_FIELDS];
     let live = byName.get(def.name);
     if (!live) {
-      const rules = def.serverOnly
-        ? { listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null }
-        : {};
       live = await pb.collections.create({
         name: def.name,
         type: def.type,
         fields,
         schema: fields,
-        ...rules,
+        ...rulesFor(def),
       });
       log("collection created", def.name);
     } else {
@@ -77,6 +83,12 @@ async function provisionCollections(pb) {
         const merged = [...current, ...missing];
         live = await pb.collections.update(live.id, { fields: merged, schema: merged });
         log("collection fields added", `${def.name}: ${missing.map((f) => f.name).join(", ")}`);
+      }
+      // Only fill in rules that were never configured: never clobber rules an
+      // operator set by hand on a live instance.
+      if (!def.serverOnly && def.rules && RULE_KEYS.every((k) => !live[k])) {
+        live = await pb.collections.update(live.id, rulesFor(def));
+        log("collection rules applied", def.name);
       }
     }
 
@@ -92,6 +104,7 @@ async function provisionCollections(pb) {
     }
   }
 }
+
 
 function log(step, detail = "") {
   console.log(`[seed] ${step}${detail ? ` - ${detail}` : ""}`);
@@ -207,3 +220,4 @@ main().catch((err) => {
   console.error("[seed] failed:", err?.message || err);
   process.exit(1);
 });
+      
