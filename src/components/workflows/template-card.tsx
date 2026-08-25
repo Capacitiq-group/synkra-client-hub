@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Clock, Info } from "lucide-react";
 import { describeBlock } from "@/lib/workflow/describe";
+import { OwnershipBadge } from "@/components/workflows/ownership-badge";
 import type { PortalTemplate } from "@/hooks/useTemplates";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 
@@ -51,20 +52,23 @@ export function TemplateCard({
         e.currentTarget.style.boxShadow = "none";
       }}
     >
-      <div
-        style={{
-          fontSize: 11,
-          color: "var(--accent-green)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-        }}
-      >
-        {template.category}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <OwnershipBadge kind="template" />
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--text-muted)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          {template.category}
+        </span>
       </div>
       <button
         type="button"
         onClick={onPreview}
-        className="synkra-focus mt-1 self-start rounded-sm"
+        className="synkra-focus mt-2 self-start rounded-sm"
         style={{ fontSize: 13, color: "var(--accent-green)" }}
       >
         Preview
