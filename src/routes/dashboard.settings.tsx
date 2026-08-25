@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ProfileSettings } from "@/components/settings/profile-settings";
 import { BusinessSettings } from "@/components/settings/business-settings";
 import { NotificationsSettings } from "@/components/settings/notifications-settings";
@@ -12,15 +12,43 @@ type SettingsTab =
   | "workspace"
   | "usage"
   | "billing"
-  | "integrations"
   | "notifications";
 
+/**
+ * Transient value only: ?tab=integrations is accepted purely so beforeLoad can
+ * forward it to /dashboard/integrations. It is never rendered as a tab.
+ */
+type SettingsSearch = { tab: SettingsTab | "integrations"; connected?: string };
+
 export const Route = createFileRoute("/dashboard/settings")({
-  validateSearch: (search: Record<string, unknown>): { tab: SettingsTab; connected?: string } => ({
-    tab: ["profile", "business", "workspace", "usage", "billing", "integrations", "notifications"].includes(
+  /**
+   * Integrations moved out of Settings into its own left-sidebar page.
+   * The legacy ?tab=integrations link (and the HubSpot OAuth callback that
+   * returns to it with ?connected=<key>) is forwarded so the post-connect
+   * toast and cache invalidation still fire on the new page.
+   */
+  beforeLoad: ({ search }: { search: SettingsSearch }) => {
+    if (search.tab === "integrations") {
+      throw redirect({
+        to: "/dashboard/integrations",
+        search: search.connected ? { connected: search.connected } : {},
+        replace: true,
+      });
+    }
+  },
+  validateSearch: (search: Record<string, unknown>): SettingsSearch => ({
+    tab: [
+      "profile",
+      "business",
+      "workspace",
+      "usage",
+      "billing",
+      "notifications",
+      "integrations",
+    ].includes(
       String(search["tab"]),
     )
-      ? (search["tab"] as SettingsTab)
+      ? (search["tab"] as SettingsSearch["tab"])
       : "profile",
     ...(search["connected"] ? { connected: String(search["connected"]) } : {}),
   }),
