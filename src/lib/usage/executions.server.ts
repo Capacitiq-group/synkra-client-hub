@@ -17,6 +17,7 @@ import {
   checkActivationAllowed,
   checkDraftAllowed,
   checkExecutionAllowed,
+  checkIntegrationConnectAllowed,
   checkStepsAllowed,
   checkWorkspaceAllowed,
   countWorkflowSteps,
@@ -372,4 +373,16 @@ export async function checkWorkspaceCreationAllowed(userId: string): Promise<Lim
   });
   return checkWorkspaceAllowed(usage.tier, owned.length);
   }
-    
+
+/**
+ * Enforces the paid-plan requirement for connecting an external platform.
+ * Mirrors checkWorkspaceCreationAllowed: read the tier server-side from the
+ * users record, then apply the pure rule. No count limit is applied — paid
+ * accounts may connect as many platforms as they want.
+ */
+export async function checkIntegrationConnectionAllowed(userId: string): Promise<LimitDecision> {
+  const pb = await adminClient();
+  const usage = await loadUsage(pb, userId);
+  return checkIntegrationConnectAllowed(usage.tier);
+    }
+                                              
