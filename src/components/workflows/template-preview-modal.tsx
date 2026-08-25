@@ -1,6 +1,7 @@
 import { Check, X } from "lucide-react";
 import { definitionFor } from "@/lib/workflow/blocks";
 import { describeBlock } from "@/lib/workflow/describe";
+import { PlanLockNotice } from "@/components/workflows/plan-lock";
 import type { PortalTemplate } from "@/hooks/useTemplates";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 
@@ -10,13 +11,18 @@ export function TemplatePreviewModal({
   onActivate,
   activated,
   pending,
+  locked = false,
+  onUpgrade,
 }: {
   template: PortalTemplate;
   onClose: () => void;
   onActivate: () => void;
   activated: boolean;
   pending: boolean;
+  locked?: boolean;
+  onUpgrade: () => void;
 }) {
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 md:items-center"
@@ -136,6 +142,8 @@ export function TemplatePreviewModal({
           )}
         </ul>
 
+        {locked && <PlanLockNotice item={template} onUpgrade={onUpgrade} compact />}
+
         <div className="mt-6 flex flex-wrap gap-3">
           <button
             type="button"
@@ -150,22 +158,25 @@ export function TemplatePreviewModal({
           >
             Close
           </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={onActivate}
-            className="synkra-focus rounded-md font-semibold"
-            style={{
-              backgroundColor: activated ? "var(--bg-elevated)" : "var(--accent-green)",
-              color: activated ? "var(--text-primary)" : "#0A0A0A",
-              border: activated ? "1px solid var(--border-default)" : "none",
-              fontSize: 13,
-              padding: "8px 18px",
-            }}
-          >
-            {activated ? "Open in builder" : "Activate this template"}
-          </button>
+          {!locked && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={onActivate}
+              className="synkra-focus rounded-md font-semibold"
+              style={{
+                backgroundColor: activated ? "var(--bg-elevated)" : "var(--accent-green)",
+                color: activated ? "var(--text-primary)" : "#0A0A0A",
+                border: activated ? "1px solid var(--border-default)" : "none",
+                fontSize: 13,
+                padding: "8px 18px",
+              }}
+            >
+              {activated ? "Open in builder" : "Activate this template"}
+            </button>
+          )}
         </div>
+
       </div>
     </div>
   );
