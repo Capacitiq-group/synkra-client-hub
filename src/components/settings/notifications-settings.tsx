@@ -5,41 +5,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSaveAction } from "@/hooks/useSaveAction";
 import pb from "@/lib/pocketbase";
 import { sendNotificationEmail } from "@/lib/notifications";
+import {
+  EMAIL_PAID_PLAN_NOTE,
+  NOTIFICATION_PREFERENCES,
+  channelLabel,
+  emailChannelAvailable,
+  isPaidTier,
+  preferenceEnabled,
+} from "@/lib/notification-preferences";
 import { sanitizeEmail } from "@/lib/sanitize";
 import { fieldStyle, SettingsSection } from "./settings-primitives";
 
-const ROWS = [
-  [
-    "notify_on_failure",
-    "Workflow failed",
-    "Email me when any automation encounters an error.",
-    true,
-  ],
-  [
-    "notify_weekly_summary",
-    "Weekly summary",
-    "A summary of your workflow runs every Monday at 8am.",
-    true,
-  ],
-  [
-    "notify_on_success",
-    "Workflow completed",
-    "Email me each time a workflow finishes running successfully.",
-    false,
-  ],
-  [
-    "notify_credit_low",
-    "Credit balance low",
-    "Alert me when any credit type drops below 20 percent remaining.",
-    true,
-  ],
-  [
-    "notify_platform_updates",
-    "Platform updates",
-    "Occasional emails about new templates and features from Synkra.",
-    false,
-  ],
-] as const;
 export function NotificationsSettings() {
   const { user, refreshUser } = useAuth();
   const [email, setEmail] = useState("");
@@ -61,7 +37,7 @@ export function NotificationsSettings() {
         void sendNotificationEmail({
           to: clean,
           subject: "Synkra notifications are active",
-          body: `Hi,\n\nThis confirms that Synkra workflow notifications will be sent to this address.\n\nYou will receive an email when any of your automations encounter an error.\n\nSynkra`,
+          body: `Hi,\n\nThis confirms that Synkra notification emails will be sent to this address.\n\nSynkra`,
         });
       }
     },
@@ -69,11 +45,21 @@ export function NotificationsSettings() {
   );
   if (!user) return null;
   const preferences = user as unknown as Record<string, unknown>;
+  const tier = user.tier;
+  const paid = isPaidTier(tier);
+
   return (
     <div className="max-w-[560px]">
       <SettingsSection title="Notification preferences">
-        <p className="mb-5 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Workflow and account events are saved in your notification feed. Control which events also send you an email.
+        <p className="mb-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+          Each switch below controls whether that event is delivered at all. Every enabled event
+          appears in your in-app notification feed. The channel shown on each row is exactly what is
+          sent.
+        </p>
+        <p className="mb-5 text-[13px]" style={{ color: "var(--text-muted)" }}>
+          {paid
+            ? "Your paid plan includes email for every event you enable, alongside the in-app feed."
+            : "On the Free plan, email is sent for credit balance alerts and platform updates only. Workflow and summary events are delivered in-app — upgrade to receive those by email as well."}
         </p>
         <label className="mb-6 block">
           <span
@@ -102,30 +88,61 @@ export function NotificationsSettings() {
           </span>
         </label>
         <div>
-          {ROWS.map(([key, name, description, defaultValue]) => (
-            <div
-              key={key}
-              className="flex min-h-16 items-center justify-between gap-4 border-t px-1"
-              style={{ borderColor: "var(--border-subtle)" }}
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{name}</p>
-                <p className="text-[13px]" style={{ color: "var(--text-muted)" }}>
-                  {description}
-                </p>
+          {NOTIFICATION_PREFERENCES.map((def) => {
+            const emailAvailable = emailChannelAvailable(tier, def.eventType);
+            const gated = def.emailRequiresPaid && !emailAvailable;
+            return (
+              <div
+                key={def.field}
+                className="flex min-h-16 items-center justify-between gap-4 border-t px-1 py-3"
+                style={{ borderColor: "var(--border-subtle)" }}
+              >
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                    {def.label}
+                    <span
+                      className="rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                      style={{
+                        borderColor: "var(--border-subtle)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {channelLabel(tier, def.eventType)}
+                    </span>
+                    {gated && (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                        style={{
+                          backgroundColor: "var(--accent-green)",
+                          color: "var(--bg-primary, #07130d)",
+                        }}
+                      >
+                        Email: paid plan
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-[13px]" style={{ color: "var(--text-muted)" }}>
+                    {def.description}
+                  </p>
+                  {gated && (
+                    <p className="mt-1 text-[12px]" style={{ color: "var(--text-muted)" }}>
+                      {EMAIL_PAID_PLAN_NOTE}
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center justify-end">
+                  <Switch
+                    checked={preferenceEnabled(preferences, def.eventType)}
+                    disabled={savingPreference}
+                    onCheckedChange={(value) => void update(user.id, def.field, value)}
+                    aria-label={`${def.label} — ${channelLabel(tier, def.eventType)}`}
+                  />
+                </div>
               </div>
-              <div className="flex shrink-0 items-center justify-end">
-                <Switch
-                  checked={Boolean(preferences[key] ?? defaultValue)}
-                  disabled={savingPreference}
-                  onCheckedChange={(value) => void update(user.id, key, value)}
-                  aria-label={name}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </SettingsSection>
     </div>
   );
-}
+                    }
