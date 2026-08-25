@@ -4,6 +4,7 @@ import {
   Database,
   HelpCircle,
   Home,
+  Bell,
   Plug,
   Settings,
   Zap,
@@ -23,6 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Activity", to: "/dashboard/activity", icon: Activity },
   { label: "Saved data", to: "/dashboard/data", icon: Database },
   { label: "Integrations", to: "/dashboard/integrations", icon: Plug },
+  { label: "Notifications", to: "/dashboard/notifications", icon: Bell },
   { label: "Settings", to: "/dashboard/settings", icon: Settings },
   { label: "Help", to: "/dashboard/help", icon: HelpCircle },
 ];
