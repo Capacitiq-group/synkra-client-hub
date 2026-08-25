@@ -36,3 +36,47 @@ export const sendNotificationEmailFn = createServerFn({ method: "POST" })
       return { ok: false };
     }
   });
+
+const deliverSchema = z.object({
+  token: z.string().min(10),
+  eventType: z.enum(["workflow_failed", "workflow_completed", "credit_balance_low"]),
+  title: z.string().min(1).max(200),
+  message: z.string().max(2000).optional(),
+  link: z.string().max(300).optional(),
+  runId: z.string().max(50).optional(),
+  workflowId: z.string().max(50).optional(),
+  dedupeKey: z.string().max(200).optional(),
+});
+
+/**
+ * Enforced notification delivery for browser-observed events (e.g. a failed run
+ * seen over realtime).
+ *
+ * The caller's token is verified and the notification is always created for the
+ * token's own user id — the browser cannot notify anyone else, cannot choose a
+ * channel, and cannot bypass the free/paid email rules: `createNotification`
+ * re-reads the tier and the preference server-side and decides both channels.
+ */
+export const deliverNotificationEventFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => deliverSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { verifyUserToken } = await import("./usage/pocketbase.server");
+    const { createNotification } = await import("./notification-feed.server");
+    const { userId } = await verifyUserToken(data.token);
+    const result = await createNotification({
+      userId,
+      eventType: data.eventType,
+      title: data.title,
+      ...(data.message ? { message: data.message } : {}),
+      ...(data.link ? { link: data.link } : {}),
+      ...(data.runId ? { runId: data.runId } : {}),
+      ...(data.workflowId ? { workflowId: data.workflowId } : {}),
+      ...(data.dedupeKey ? { dedupeKey: data.dedupeKey } : {}),
+    });
+    return {
+      created: result.created,
+      emailSent: Boolean(result.emailSent),
+      reason: result.reason ?? null,
+      emailSkipped: result.emailSkipped ?? null,
+    };
+  });
