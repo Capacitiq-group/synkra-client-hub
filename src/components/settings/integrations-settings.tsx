@@ -13,6 +13,9 @@ import {
   testIntegration,
 } from "@/lib/workflow/api";
 import { SettingsSection } from "./settings-primitives";
+import { usePlanUsage } from "@/hooks/usePlanUsage";
+import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
+import { INTEGRATIONS_PAID_PLAN_NOTE, integrationsAllowed } from "@/lib/plans";
 
 type IntegrationRecord = {
   id: string;
@@ -84,6 +87,8 @@ export function IntegrationsSettings() {
   });
   const { connected: connectedParam } = useSearch({ from: "/dashboard/settings" });
   const navigate = useNavigate();
+  const usage = usePlanUsage();
+  const planAllowsIntegrations = usage.data ? integrationsAllowed(usage.data.tier) : true;
   useEffect(() => {
     if (!connectedParam) return;
     const service = SERVICES.find((item) => item.key === connectedParam);
@@ -92,8 +97,32 @@ export function IntegrationsSettings() {
     void navigate({ to: "/dashboard/settings", search: { tab: "integrations" }, replace: true });
   }, [connectedParam, navigate, queryClient, user?.id]);
   if (!user) return null;
-  const connect = (service: Service) => {
-    if (service.endpoint) window.location.assign(integrationConnectUrl(service.endpoint, user.id));
+  /**
+   * Paid-plan gate. The server re-reads the tier and decides; the UI only
+   * reflects that decision, so a stale client tier can never open the flow.
+   */
+  const connect = async (service: Service) => {
+    if (!service.endpoint) return;
+    const token = pb.authStore.token;
+    if (!token) {
+      toast.error("Your session has expired. Please sign in again.");
+      return;
+    }
+    try {
+      const decision = (await checkIntegrationConnectFn({ data: { token } })) as unknown as {
+        ok: boolean;
+        message?: string;
+      };
+      if (!decision.ok) {
+        toast.error(decision.message || INTEGRATIONS_PAID_PLAN_NOTE);
+        void navigate({ to: "/dashboard/settings", search: { tab: "billing" } });
+        return;
+      }
+    } catch {
+      toast.error("Could not verify your plan. Please try again.");
+      return;
+    }
+    window.location.assign(integrationConnectUrl(service.endpoint, user.id));
   };
   const test = async (service: Service) => {
     try {
@@ -119,6 +148,27 @@ export function IntegrationsSettings() {
           Connect external services to power your automations. Each connection is used automatically
           by any workflow that requires it.
         </p>
+        {!planAllowsIntegrations && (
+          <div
+            className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg p-4"
+            style={{
+              border: "1px solid var(--border-default)",
+              backgroundColor: "var(--bg-card)",
+            }}
+          >
+            <span className="text-[13px]" style={{ color: "var(--text-secondary)" }}>
+              {INTEGRATIONS_PAID_PLAN_NOTE}
+            </span>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                void navigate({ to: "/dashboard/settings", search: { tab: "billing" } })
+              }
+            >
+              Upgrade plan
+            </Button>
+          </div>
+        )}
         <div className="flex flex-col gap-3">
           {SERVICES.map((service) => {
             const record = query.data?.[service.key];
@@ -217,7 +267,11 @@ export function IntegrationsSettings() {
                       </Button>
                     </>
                   ) : (
-                    <Button variant="secondary" onClick={() => connect(service)}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => void connect(service)}
+                      title={planAllowsIntegrations ? undefined : INTEGRATIONS_PAID_PLAN_NOTE}
+                    >
                       Connect
                     </Button>
                   )}
@@ -301,4 +355,5 @@ function InboundAddressPanel({ userId }: { userId: string }) {
     </SettingsSection>
   );
     }
-                        
+
+  
