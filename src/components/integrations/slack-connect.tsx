@@ -56,6 +56,16 @@ export function useSlackConnect(onConnected?: () => void) {
       const sessionToken = await createSlackConnectSession(user.id);
       const nango = new Nango({ host: NANGO_HOST });
       const connect = nango.openConnectUI({
+        // Nango's Connect UI defaults to its own public cloud
+        // (connect.nango.dev / api.nango.dev) unless these are passed
+        // explicitly — the constructor's `host` option is NOT read by
+        // openConnectUI(), it's only used by the legacy create()/auth()
+        // popup methods. Without this, the popup validates our self-hosted
+        // session token against Nango's cloud, which has never heard of it,
+        // and shows a generic "session expired" error. See:
+        // https://github.com/NangoHQ/nango/issues/5432
+        baseURL: NANGO_HOST,
+        apiURL: NANGO_HOST,
         onEvent: (event) => {
           // Keep the button disabled for the *whole* popup lifetime, not just
           // until the token handoff — otherwise it re-enables while the user
