@@ -31,6 +31,11 @@ export function useSlackConnect(onConnected?: () => void) {
 
   const start = async () => {
     if (!user) return;
+    // Guard against a second tap while a popup/session is already in flight —
+    // this is what previously let two Connect sessions get created for the
+    // same user_id within seconds of each other, which invalidates the first
+    // popup mid-flow and surfaces Nango's "Your session has expired" error.
+    if (connecting) return;
     const token = pb.authStore.token;
     if (!token) {
       toast.error("Your session has expired. Please sign in again.");
@@ -44,6 +49,7 @@ export function useSlackConnect(onConnected?: () => void) {
       };
       if (!decision.ok) {
         toast.error(decision.message || INTEGRATIONS_PAID_PLAN_NOTE);
+        setConnecting(false);
         return;
       }
 
@@ -51,6 +57,14 @@ export function useSlackConnect(onConnected?: () => void) {
       const nango = new Nango({ host: NANGO_HOST });
       const connect = nango.openConnectUI({
         onEvent: (event) => {
+          // Keep the button disabled for the *whole* popup lifetime, not just
+          // until the token handoff — otherwise it re-enables while the user
+          // is still mid-flow in the popup, and a second tap creates a
+          // competing Connect session for the same user_id that invalidates
+          // the first one.
+          if (event.type === "close" || event.type === "error") {
+            setConnecting(false);
+          }
           if (event.type === "connect") {
             void (async () => {
               try {
@@ -68,6 +82,8 @@ export function useSlackConnect(onConnected?: () => void) {
                 onConnected?.();
               } catch {
                 toast.error("Slack connected, but we could not confirm it. Please refresh.");
+              } finally {
+                setConnecting(false);
               }
             })();
           }
@@ -76,7 +92,6 @@ export function useSlackConnect(onConnected?: () => void) {
       connect.setSessionToken(sessionToken);
     } catch {
       toast.error("Could not start the Slack connection. Please try again.");
-    } finally {
       setConnecting(false);
     }
   };
@@ -97,4 +112,4 @@ export function SlackConnectButton({
       {connecting ? "Opening Slack…" : label}
     </Button>
   );
-      }
+}
