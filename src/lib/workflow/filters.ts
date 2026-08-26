@@ -114,15 +114,28 @@ export function collectCategoryOptions(items: FilterableItem[]): string[] {
   return present.has(UNCATEGORISED) ? [...known, UNCATEGORISED] : known;
 }
 
-export function matchesCategory(item: FilterableItem, category: string): boolean {
-  if (category === "all") return true;
-  const value = (item.category ?? "").trim() || UNCATEGORISED;
-  return value === category;
+/** Category of an item, normalised. Blank categories collapse to Uncategorised. */
+export function itemCategory(item: FilterableItem): string {
+  return (item.category ?? "").trim() || UNCATEGORISED;
 }
 
-export function matchesPlatform(item: FilterableItem, platform: string): boolean {
-  if (platform === "all") return true;
-  return itemPlatforms(item).includes(platform);
+/**
+ * Category group. OR within the group: an empty selection means "no category
+ * restriction", otherwise the item must sit in one of the chosen categories.
+ */
+export function matchesCategories(item: FilterableItem, categories: readonly string[]): boolean {
+  if (categories.length === 0) return true;
+  return categories.includes(itemCategory(item));
+}
+
+/**
+ * Apps group. OR within the group: an empty selection means "no app
+ * restriction", otherwise the item must use at least one chosen app.
+ */
+export function matchesPlatforms(item: FilterableItem, platforms: readonly string[]): boolean {
+  if (platforms.length === 0) return true;
+  const used = itemPlatforms(item);
+  return platforms.some((key) => used.includes(key));
 }
 
 /** Name/keyword search across name, description, category and platform names. */
@@ -144,17 +157,34 @@ export function matchesSearch(item: FilterableItem, query: string): boolean {
   return haystack.includes(needle);
 }
 
+/** Multi-select filter state: OR inside each group, AND across the groups. */
 export interface FilterState {
   query: string;
-  category: string;
-  platform: string;
+  categories: string[];
+  platforms: string[];
 }
 
-/** All three filters combined with AND. */
+export const EMPTY_FILTERS: FilterState = { query: "", categories: [], platforms: [] };
+
+export function hasActiveFilters(filters: FilterState): boolean {
+  return (
+    filters.query.trim() !== "" || filters.categories.length > 0 || filters.platforms.length > 0
+  );
+}
+
+/** Toggle one value inside a selection array (used by the dropdown filters). */
+export function toggleValue(values: readonly string[], value: string): string[] {
+  return values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
+}
+
+/**
+ * (category A OR category B) AND (app X OR app Y) AND search.
+ */
 export function matchesFilters(item: FilterableItem, filters: FilterState): boolean {
   return (
-    matchesCategory(item, filters.category) &&
-    matchesPlatform(item, filters.platform) &&
+    matchesCategories(item, filters.categories) &&
+    matchesPlatforms(item, filters.platforms) &&
     matchesSearch(item, filters.query)
   );
-      }
+}
+
