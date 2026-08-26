@@ -21,7 +21,6 @@ type Form = {
   business_industry: string;
   business_address: string;
   whatsapp_number: string;
-  review_link: string;
   notification_email: string;
 };
 export function BusinessSettings() {
@@ -31,7 +30,6 @@ export function BusinessSettings() {
     business_industry: user?.business_industry ?? "",
     business_address: user?.business_address ?? "",
     whatsapp_number: user?.whatsapp_number ?? "",
-    review_link: user?.review_link ?? "",
     notification_email: user?.notification_email || user?.email || "",
   });
   const [form, setForm] = useState<Form>(fromUser);
@@ -44,7 +42,6 @@ export function BusinessSettings() {
         business_industry: sanitizeInput(values.business_industry),
         business_address: sanitizeInput(values.business_address),
         whatsapp_number: sanitizeInput(values.whatsapp_number),
-        review_link: sanitizeInput(values.review_link),
         notification_email: sanitizeEmail(values.notification_email),
       });
       await refreshUser();
@@ -96,17 +93,6 @@ export function BusinessSettings() {
               value={form.whatsapp_number}
               onChange={(e) => set("whatsapp_number", e.target.value)}
               placeholder="+27 or 0XX XXX XXXX"
-              style={fieldStyle}
-            />
-          </Field>
-          <Field
-            label="Review link"
-            note="This link is used in review request automations. Paste your Google Maps review URL here."
-          >
-            <input
-              value={form.review_link}
-              onChange={(e) => set("review_link", e.target.value)}
-              placeholder="https://g.page/r/your-google-review-link"
               style={fieldStyle}
             />
           </Field>
