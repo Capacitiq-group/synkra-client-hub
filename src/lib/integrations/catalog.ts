@@ -13,9 +13,9 @@
  *   every logo legible.
  */
 
-import { Mail, type LucideIcon } from "lucide-react";
+import { Mail, Star, type LucideIcon } from "lucide-react";
 
-export const INTEGRATION_CATEGORIES = ["Communication", "CRM"] as const;
+export const INTEGRATION_CATEGORIES = ["Communication", "CRM", "Reviews"] as const;
 
 export type IntegrationCategory = (typeof INTEGRATION_CATEGORIES)[number];
 
@@ -103,6 +103,24 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
       "https://res.cloudinary.com/dewvhnks3/image/upload/v1787420665/HubSpot-Logo_xqgtan.png",
     // HubSpot's mark is charcoal + orange, so it needs a light neutral chip.
     logoBg: "#F5F5F3",
+  },
+  {
+    key: "review_destinations",
+    name: "Review destinations",
+    category: "Reviews",
+    summary: "Collect reviews on Google, HelloPeter, or your own website widget.",
+    description:
+      "Review requests are outbound emails carrying your review links, so any destination with a public review URL works with the existing automation. Add and order your destinations in Settings → Business. Nothing is ever published to a platform on your customer's behalf.",
+    availability: "built_in",
+    requiresPaidPlan: false,
+    notes: [
+      "Included on every plan — it uses the platform email you already have.",
+      "Supports Google, HelloPeter, and your own website review widget.",
+    ],
+    keywords: ["review", "reviews", "google", "hellopeter", "rating", "feedback", "testimonial"],
+    icon: Star,
+    iconColor: "var(--text-primary)",
+    iconBg: "var(--bg-primary)",
   },
 ];
 
