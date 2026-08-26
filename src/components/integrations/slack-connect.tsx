@@ -11,6 +11,15 @@ import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
 import { INTEGRATIONS_PAID_PLAN_NOTE } from "@/lib/plans";
 
 const NANGO_HOST = "https://nango.synkra.co.za";
+// Self-hosted Nango's Connect UI is meant to live on its own host, separate
+// from the API/dashboard host — nango.synkra.co.za sends
+// X-Frame-Options: SAMEORIGIN (correctly, since it's the admin dashboard and
+// shouldn't be embeddable), which blocks any attempt to iframe it from a
+// different origin like ours. The CSP already allow-lists this host
+// (frame-src/connect-src include connect.synkra.co.za alongside
+// nango.synkra.co.za), so this is where NANGO_PUBLIC_CONNECT_URL should be
+// pointed on the server side.
+const NANGO_CONNECT_HOST = "https://connect.synkra.co.za";
 
 /**
  * Shared Slack connect flow, used by both the integrations directory card and
@@ -64,7 +73,7 @@ export function useSlackConnect(onConnected?: () => void) {
         // session token against Nango's cloud, which has never heard of it,
         // and shows a generic "session expired" error. See:
         // https://github.com/NangoHQ/nango/issues/5432
-        baseURL: NANGO_HOST,
+        baseURL: NANGO_CONNECT_HOST,
         apiURL: NANGO_HOST,
         onEvent: (event) => {
           // Keep the button disabled for the *whole* popup lifetime, not just
