@@ -219,6 +219,9 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
 
   const visible = useMemo(() => {
     return INTEGRATIONS.filter((item) => {
+      // Built-in capabilities (AI, webhooks, messaging) are not connectable
+      // platforms, so the directory only lists real integrations.
+      if (item.hiddenFromDirectory) return false;
       if (!matchesQuery(item, queryText)) return false;
       if (activeCategory && item.category !== activeCategory) return false;
       if (activeStatus) {
@@ -372,7 +375,9 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
           <FilterMenu
             label="All categories"
             value={activeCategory}
-            options={INTEGRATION_CATEGORIES.map((category) => ({
+            options={INTEGRATION_CATEGORIES.filter((category) =>
+              INTEGRATIONS.some((item) => !item.hiddenFromDirectory && item.category === category),
+            ).map((category) => ({
               value: category,
               label: category,
             }))}
@@ -520,4 +525,5 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
     </div>
   );
           }
-      
+
+                         
