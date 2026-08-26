@@ -63,6 +63,12 @@ export interface IntegrationDefinition {
   requiresPaidPlan?: boolean;
   /** False when the platform is declared but not connectable yet. */
   available?: boolean;
+  /**
+   * Capability that runs inside Synkra and is not something a user connects.
+   * It stays available to workflows, templates and the Apps filter, but it is
+   * not listed in the integrations directory.
+   */
+  hiddenFromDirectory?: boolean;
 }
 
 export const INTEGRATIONS: IntegrationDefinition[] = [
@@ -91,6 +97,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     iconColor: "var(--state-info)",
     includedOnEveryPlan: true,
     available: true,
+    hiddenFromDirectory: true,
   },
   {
     key: "webhook",
@@ -103,6 +110,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     iconColor: "var(--accent-green)",
     includedOnEveryPlan: true,
     available: true,
+    hiddenFromDirectory: true,
   },
   {
     key: "slack",
@@ -114,6 +122,8 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     notes: ["Connected through Slack OAuth", "Available on paid plans"],
     icon: Hash,
     iconColor: "#E01E5A",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1787655163/1000116191-removebg-preview_k0jbmj.png",
     requiresPaidPlan: true,
     available: true,
   },
@@ -127,6 +137,8 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     notes: ["Connected through HubSpot OAuth", "Available on paid plans"],
     icon: Building2,
     iconColor: "#FF7A59",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1787755331/1000116508-removebg-preview_o5rdkh.png",
     endpoint: "hubspot",
     requiresPaidPlan: true,
     available: true,
@@ -143,6 +155,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     iconColor: "#25D366",
     requiresPaidPlan: true,
     available: true,
+    hiddenFromDirectory: true,
   },
   {
     key: "sms",
@@ -156,6 +169,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     iconColor: "var(--state-warning)",
     requiresPaidPlan: true,
     available: true,
+    hiddenFromDirectory: true,
   },
 ];
 
@@ -206,4 +220,5 @@ export function resolveIntegrationState(
   if (item.requiresPaidPlan && !planAllows) return "locked";
   return "disconnected";
 }
+
   
