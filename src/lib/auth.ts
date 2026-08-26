@@ -13,6 +13,8 @@ export interface AuthUser {
   business_address?: string;
   whatsapp_number?: string;
   review_link?: string;
+  /** JSON array of review destinations; review_link stays as legacy fallback. */
+  review_destinations?: unknown;
   notification_email?: string;
   is_tester?: boolean;
   user_type: "beta" | "paid";
