@@ -34,7 +34,7 @@ export interface IntegrationDefinition {
   /** Paid-plan gating. Every external platform requires a paid plan. */
   requiresPaidPlan: boolean;
   /** Only set when a real connect endpoint exists. */
-  endpoint?: "hubspot";
+  endpoint?: "hubspot" | "slack";
   /** Extra facts shown in the detail dialog. */
   notes?: string[];
   /** Search aliases, so "chat" finds Slack. */
@@ -69,16 +69,18 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     key: "slack",
     name: "Slack",
     category: "Communication",
-    summary: "Listed for visibility. Slack automation is not built yet.",
+    summary: "Connect your workspace so workflows can watch and act on channel messages.",
     description:
-      "Slack will let workflows post updates into your team channels. The automation is not implemented yet: this entry exists so you can see it is planned. Nothing is sent to Slack today and there is no connect flow.",
-    availability: "not_yet",
-    // Kept true so the listing states the same paid-plan requirement as every
-    // other external platform once the automation ships.
+      "Connecting Slack lets workflows start from channel activity — new messages, questions nobody answered, and once-a-day digests. Connecting opens Slack's authorisation window. Workflows only see the channels you add the Synkra bot to.",
+    availability: "available",
+    // Unchanged platform rule: connecting any external app requires a paid plan.
     requiresPaidPlan: true,
+    endpoint: "slack",
     notes: [
-      "No message sending, webhook handling, or automation logic exists yet.",
-      "When it ships it will require a paid plan, like every other platform connection.",
+      "Connect uses Slack OAuth in a popup window.",
+      "Requires a paid plan, like every other platform connection.",
+      "Only channels the Synkra bot has been added to are visible to workflows.",
+      "Two of the three Slack templates use AI credits; the digest and triage templates are AI-powered.",
     ],
     keywords: ["chat", "messaging", "channels", "team"],
     logoUrl:
@@ -87,6 +89,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     // disappear on the dark app surface, so it specifically needs white behind it.
     logoBg: "#FFFFFF",
   },
+
   {
     key: "hubspot",
     name: "HubSpot",
@@ -173,4 +176,4 @@ export function statusColor(tone: StatusTone): string {
     default:
       return "var(--text-muted)";
   }
-}
+      }
