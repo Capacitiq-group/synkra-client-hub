@@ -52,15 +52,20 @@ export interface IntegrationDefinition {
 export const INTEGRATIONS: IntegrationDefinition[] = [
   {
     key: "email",
-    name: "Email sending",
+    name: "Email",
     category: "Communication",
-    summary: "Platform email delivery used by any workflow that sends mail.",
+    summary: "Send email from your workflows using your business address.",
     description:
-      "Synkra sends workflow email on your behalf from your business address. Nothing to connect — it is part of the platform and is already active on your account.",
+      "Synkra sends workflow email on your behalf from your business address. Nothing to connect — email is a platform capability and is already active on your account. Support for connecting your own provider (such as Gmail or Outlook) is planned.",
     availability: "built_in",
     requiresPaidPlan: false,
-    notes: ["Included on every plan.", "Monthly email volume is limited by your plan."],
-    keywords: ["mail", "smtp", "notification"],
+    notes: [
+      "Included on every plan.",
+      "Monthly email volume is limited by your plan.",
+      "Connecting your own email provider (Gmail, Outlook) is planned.",
+    ],
+    keywords: ["mail", "email", "smtp", "notification", "gmail", "outlook"],
+
     icon: Mail,
     iconColor: "var(--text-primary)",
     iconBg: "var(--bg-primary)",
@@ -135,9 +140,10 @@ export function findIntegration(key?: string | undefined): IntegrationDefinition
 export function matchesQuery(item: IntegrationDefinition, query: string): boolean {
   const text = query.trim().toLowerCase();
   if (!text) return true;
-  if (item.name.toLowerCase().includes(text)) return true;
-  return (item.keywords ?? []).some((keyword) => keyword.toLowerCase().includes(text));
+  const haystack = [item.name, item.category, item.summary, ...(item.keywords ?? [])];
+  return haystack.some((value) => value.toLowerCase().includes(text));
 }
+
 
 export type StatusTone = "success" | "warning" | "error" | "muted";
 
@@ -177,3 +183,36 @@ export function statusColor(tone: StatusTone): string {
       return "var(--text-muted)";
   }
       }
+
+/**
+ * Simplified card state. One value drives both the primary CTA and the single
+ * status line, so the same information is never repeated in badges.
+ * Plan/connection rules are unchanged — this only reshapes presentation.
+ */
+export type IntegrationStateKind =
+  | "included"
+  | "connected"
+  | "error"
+  | "locked"
+  | "disconnected"
+  | "unavailable";
+
+export const INTEGRATION_STATUS_FILTERS: { value: IntegrationStateKind; label: string }[] = [
+  { value: "connected", label: "Connected" },
+  { value: "disconnected", label: "Not connected" },
+  { value: "locked", label: "Requires paid plan" },
+  { value: "included", label: "Included" },
+];
+
+export function resolveIntegrationState(
+  item: IntegrationDefinition,
+  planAllows: boolean,
+  recordStatus?: string | undefined,
+): IntegrationStateKind {
+  if (item.availability === "not_yet") return "unavailable";
+  if (item.availability === "built_in") return "included";
+  if (recordStatus === "connected") return "connected";
+  if (recordStatus === "error") return "error";
+  if (item.requiresPaidPlan && !planAllows) return "locked";
+  return "disconnected";
+}
