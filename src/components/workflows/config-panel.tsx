@@ -14,6 +14,11 @@ import {
 } from "@/lib/workflow/describe";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { PlainField, VariableField } from "./variables-popover";
+import { SlackChannelPicker } from "./slack-channel-picker";
+
+/** Trigger types whose config is "pick a Slack channel". */
+const SLACK_TRIGGERS = ["slack_message_received", "slack_unanswered_check", "slack_daily_digest"];
+
 
 /** One-tap starting points for the most common things people extract. */
 const EXTRACT_PRESETS: { name: string; description: string }[] = [
@@ -696,6 +701,81 @@ export function ConfigPanel({
         </>
       )}
 
+      {SLACK_TRIGGERS.includes(subtype) && (
+        <>
+          <SlackChannelPicker
+            channelId={text("channel_id")}
+            onChange={(v) => set("channel_id", v)}
+          />
+          {subtype === "slack_unanswered_check" && (
+            <PlainField
+              label="Flag as unanswered after _ hours"
+              type="number"
+              value={text("unanswered_after_hours", "4")}
+              onChange={(v) => set("unanswered_after_hours", Number(v) || 0)}
+              hint="We only flag a question once nobody has replied for this many hours."
+            />
+          )}
+        </>
+      )}
+
+      {subtype === "classify_message_ai" && (
+        <>
+          <VariableField
+            label="Message to classify"
+            multiline
+            value={text("message")}
+            variables={variables}
+            onChange={(v) => set("message", v)}
+          />
+          <PlainField
+            label="Categories"
+            value={((config["categories"] as string[] | undefined) ?? []).join(", ")}
+            placeholder="urgent - needs immediate attention, normal - no action needed"
+            onChange={(value) =>
+              set(
+                "categories",
+                value
+                  .split(",")
+                  .map((v) => v.trim())
+                  .filter(Boolean),
+              )
+            }
+            hint="List the categories you want, separated by commas. The AI picks exactly one of them."
+          />
+          <PlainField
+            label="Save result as"
+            value={text("output_variable", "classification")}
+            onChange={(v) => set("output_variable", v)}
+          />
+        </>
+      )}
+
+      {subtype === "send_notification" && (
+        <>
+          <VariableField
+            label="Title"
+            value={text("title")}
+            variables={variables}
+            onChange={(v) => set("title", v)}
+          />
+          <VariableField
+            label="Body"
+            multiline
+            value={text("body")}
+            variables={variables}
+            onChange={(v) => set("body", v)}
+          />
+          <VariableField
+            label="Link (optional)"
+            value={text("link")}
+            variables={variables}
+            onChange={(v) => set("link", v)}
+            hint="Where clicking the notification should take you, for example /dashboard/activity."
+          />
+        </>
+      )}
+
       {(subtype === "if_else" || subtype === "filter") && (
         <>
           <VariableField
@@ -721,5 +801,6 @@ export function ConfigPanel({
         </>
       )}
     </div>
+
   );
 }
