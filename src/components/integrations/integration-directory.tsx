@@ -14,6 +14,7 @@ import {
   testIntegration,
 } from "@/lib/workflow/api";
 import { usePlanUsage } from "@/hooks/usePlanUsage";
+import { SlackConnectButton } from "@/components/integrations/slack-connect";
 import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
 import { INTEGRATIONS_PAID_PLAN_NOTE, integrationsAllowed } from "@/lib/plans";
 import {
@@ -32,6 +33,8 @@ type IntegrationRecord = {
   status?: string;
   error_message?: string;
   connected_email?: string;
+  /** Slack stores the workspace name here; HubSpot the portal name. */
+  display_name?: string;
 };
 
 export interface DirectorySearch {
@@ -148,7 +151,9 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
    * reflects that decision, so a stale client tier can never open the flow.
    */
   const connect = async (item: IntegrationDefinition) => {
-    if (!item.endpoint) return;
+    // Slack has its own popup flow (see SlackConnectButton); this is the
+    // redirect-based OAuth path used by HubSpot.
+    if (item.endpoint !== "hubspot") return;
     const token = pb.authStore.token;
     if (!token) {
       toast.error("Your session has expired. Please sign in again.");
@@ -228,6 +233,7 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
         </Button>
       );
     }
+    if (item.key === "slack") return <SlackConnectButton />;
     return <Button onClick={() => void connect(item)}>Connect</Button>;
   };
 
@@ -354,6 +360,11 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
                             {record.error_message}
                           </p>
                         )}
+                        {record?.status === "connected" && record.display_name && (
+                          <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                            Workspace: {record.display_name}
+                          </p>
+                        )}
                         {record?.status === "connected" && record.connected_email && (
                           <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
                             Connected as: {record.connected_email}
@@ -427,4 +438,5 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
     </div>
   );
       }
-      
+
+        
