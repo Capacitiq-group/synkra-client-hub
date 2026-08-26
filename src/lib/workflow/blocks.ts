@@ -1,4 +1,5 @@
 import {
+  Bell,
   Clock,
   Database,
   FileText,
@@ -9,10 +10,12 @@ import {
   MessageCircle,
   MessageSquare,
   Scissors,
+  Hash,
   Search,
   Send,
   Smartphone,
   Sparkles,
+  Tags,
   Timer,
   type LucideIcon,
 } from "lucide-react";
@@ -30,6 +33,8 @@ export interface BlockDefinition {
   section: "TRIGGERS" | "ACTIONS" | "LOGIC";
   usesCredits?: boolean;
   comingSoon?: boolean;
+  /** Catalog key of an integration that must be connected before this works. */
+  requiresIntegration?: string;
   /**
    * One-line, jargon-free explainer shown under the block title inside the
    * config panel. Written for someone with no technical background.
@@ -81,6 +86,45 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     color: "var(--accent-green)",
     section: "TRIGGERS",
     defaultConfig: { channel: "resend_inbound", match_all: true },
+  },
+  {
+    key: "slack_message_received",
+    configHint: "Starts this workflow whenever someone posts a new message in the Slack channel you pick.",
+    kind: "trigger",
+    subtype: "slack_message_received",
+    label: "New Slack message",
+    description: "Fires when a new message is posted in a Slack channel",
+    icon: Hash,
+    color: "var(--accent-green)",
+    section: "TRIGGERS",
+    requiresIntegration: "slack",
+    defaultConfig: { channel_id: "" },
+  },
+  {
+    key: "slack_unanswered_check",
+    configHint: "Starts this workflow when a question in your Slack channel has gone unanswered for too long.",
+    kind: "trigger",
+    subtype: "slack_unanswered_check",
+    label: "Unanswered Slack question",
+    description: "Fires when a question in a Slack channel has had no reply",
+    icon: Hash,
+    color: "var(--accent-green)",
+    section: "TRIGGERS",
+    requiresIntegration: "slack",
+    defaultConfig: { channel_id: "", unanswered_after_hours: 4 },
+  },
+  {
+    key: "slack_daily_digest",
+    configHint: "Runs once a day and collects that day's messages from the Slack channel you pick.",
+    kind: "trigger",
+    subtype: "slack_daily_digest",
+    label: "Daily Slack digest",
+    description: "Runs once a day over a Slack channel's messages",
+    icon: Hash,
+    color: "var(--accent-green)",
+    section: "TRIGGERS",
+    requiresIntegration: "slack",
+    defaultConfig: { channel_id: "" },
   },
   {
     key: "send_email",
@@ -209,6 +253,31 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     defaultConfig: { to: "", body: "" },
   },
   {
+    key: "classify_message_ai",
+    configHint: "Reads a message and puts it into one of the categories you list, so later steps can act on the result.",
+    kind: "action",
+    subtype: "classify_message_ai",
+    label: "Classify with AI",
+    description: "Sorts a message into categories you define",
+    icon: Tags,
+    color: "#8B5CF6",
+    section: "ACTIONS",
+    usesCredits: true,
+    defaultConfig: { message: "", categories: [], output_variable: "classification" },
+  },
+  {
+    key: "send_notification",
+    configHint: "Puts a notification in your Synkra dashboard, so you see it next time you are in the app.",
+    kind: "action",
+    subtype: "send_notification",
+    label: "Send in-app notification",
+    description: "Creates a notification inside the Synkra dashboard",
+    icon: Bell,
+    color: "var(--state-info)",
+    section: "ACTIONS",
+    defaultConfig: { title: "", body: "", link: "" },
+  },
+  {
     key: "if_else",
     configHint: "Check something and remember the result, so later steps and messages can refer to it.",
     kind: "logic",
@@ -285,4 +354,5 @@ export function createBlock(definition: BlockDefinition): WorkflowBlock {
     }
 
 
-  
+
+    
