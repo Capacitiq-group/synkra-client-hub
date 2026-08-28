@@ -584,6 +584,69 @@
       ]
     },
     {
+      "name": "student_verifications",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        },
+        {
+          "name": "document",
+          "type": "file",
+          "maxSelect": 1,
+          "maxSize": 10485760,
+          "mimeTypes": [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+          ]
+        },
+        {
+          "name": "institution_name",
+          "type": "text"
+        },
+        {
+          "name": "document_year",
+          "type": "text"
+        },
+        {
+          "name": "name_on_document",
+          "type": "text"
+        },
+        {
+          "name": "verification_method",
+          "type": "select",
+          "required": true,
+          "values": [
+            "academic_email",
+            "document_upload"
+          ]
+        },
+        {
+          "name": "reviewed_by",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_student_verifications_user` ON `student_verifications` (`user_id`)",
+        "CREATE INDEX `idx_student_verifications_status` ON `student_verifications` (`status`)"
+      ]
+    },
+    {
       "name": "billing_subscriptions",
       "type": "base",
       "serverOnly": true,
@@ -1172,6 +1235,20 @@
     }
   ],
   "userFields": [
+    {
+      "name": "student_verified",
+      "type": "bool"
+    },
+    {
+      "name": "student_verification_status",
+      "type": "select",
+      "values": [
+        "none",
+        "pending",
+        "approved",
+        "rejected"
+      ]
+    },
     {
       "name": "business_name",
       "type": "text"

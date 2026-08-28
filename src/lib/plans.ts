@@ -42,6 +42,14 @@ export interface PlanLimits {
    * external platform. There is NO cap on how many a paid tier may connect.
    */
   integrations: boolean;
+  /**
+   * Amount in ZAR knocked off priceZar for a verified student (see
+   * student_verified on the user record). 0 for tiers with no discount
+   * (free has nothing to discount). Verification itself — academic email
+   * or admin-approved document — never happens here; this is only ever
+   * the amount, applied via getEffectivePriceZar below.
+   */
+  studentDiscountZar: number;
 }
 
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
@@ -62,6 +70,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whatsapp: 0,
     voiceMinutes: 0,
     integrations: false,
+    studentDiscountZar: 0,
   },
   basic: {
     tier: "basic",
@@ -80,6 +89,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whatsapp: 50,
     voiceMinutes: 15,
     integrations: true,
+    studentDiscountZar: 50,
   },
   pro: {
     tier: "pro",
@@ -98,6 +108,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whatsapp: 75,
     voiceMinutes: 15,
     integrations: true,
+    studentDiscountZar: 100,
   },
 };
 
@@ -121,6 +132,17 @@ export function getPlanName(tier: unknown): string {
 
 export function getPlanPrice(tier: unknown): number {
   return getPlanLimits(tier).priceZar;
+}
+
+/**
+ * The price actually charged: full priceZar, or priceZar minus
+ * studentDiscountZar when the buyer is a verified student. Never goes
+ * negative even if a future discount somehow exceeded the price.
+ */
+export function getEffectivePriceZar(tier: unknown, isStudentVerified: boolean): number {
+  const plan = getPlanLimits(tier);
+  if (!isStudentVerified) return plan.priceZar;
+  return Math.max(0, plan.priceZar - plan.studentDiscountZar);
 }
 
 /** The next tier up, or null when already on the highest plan. */

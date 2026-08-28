@@ -50,6 +50,8 @@ Fields added on top of PocketBase's built-in auth fields:
 | `onboarding_completed`                                                                                            | bool                                 |                                                                                         |
 | `onboarding_step`                                                                                                 | number                               |                                                                                         |
 | **`tier`**                                                                                                        | select `free` \| `basic` \| `pro`    | Plan tier. Read by `@/lib/plans` (`normalizeTier`); drives every limit including seats. |
+| **`student_verified`**                                                                                            | bool                                  | Section 4 (28 Aug 2026). Drives `getEffectivePriceZar()` — the only thing that actually affects what a student is charged. Server-owned: set only by `resolveOrCreateUser()` (`.ac.za` email at signup) or by an admin approving a `student_verifications` row. |
+| **`student_verification_status`**                                                                                 | select `none` \| `pending` \| `approved` \| `rejected` | Display-only status for the user's own settings page. `student_verified` is the field that actually matters for pricing; this is UI convenience, not itself trusted for billing. |
 | **`billing_period_start`**                                                                                        | date                                 | Start of the current monthly counting window.                                           |
 | **`executions_used_this_month`**                                                                                  | number                               | Incremented by `startExecution()` only.                                                 |
 | **`ai_ops_used_this_month`**                                                                                      | number                               | AI operation counter.                                                                   |
@@ -225,6 +227,49 @@ Purpose: one row per connected platform per user.
 | `display_name` | text | |
 | `last_tested_at` | date | |
 | `error_message` | text | |
+
+## `student_verifications` (base, server-only)
+
+Purpose: Section 4 of the 28 Aug 2026 handover — the student discount
+program. One row per verification attempt (a user can have more than one
+if a first upload is rejected and they try again). This collection only
+ever records the *attempt*; the actual entitlement lives on the `users`
+record itself (`student_verified`, `student_verification_status`), which
+is what `getEffectivePriceZar()` in `plans.ts` actually reads at
+checkout/billing time — never this collection directly.
+
+Two ways to reach `student_verified: true`, and this collection is only
+involved in one of them:
+
+- **Academic email** (`.ac.za`): decided entirely at account-creation time
+  in `resolveOrCreateUser()` (billing.server.ts). No document, no AI call,
+  no row in this collection at all.
+- **Document upload**: goes through synkra-core's `/student-verification/submit`
+  endpoint, which reads the document (PyMuPDF for real-text PDFs, the AI
+  vision layer for images/scanned PDFs — see that service's own docstring
+  for the current live limitation with a text-only Ollama model), and
+  either auto-approves (all of: year matches current year, name on the
+  document plausibly matches the account name, and the AI's own
+  `is_higher_education` check says yes) or leaves it `pending` for manual
+  review via `/admin` on this app.
+
+| Field                 | Type                                                    | Notes                                                                 |
+| --------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `user_id`              | text, required                                            | `users.id`.                                                             |
+| `status`               | select `pending` \| `approved` \| `rejected`, required    | Set by synkra-core, or by an admin via the approve/reject endpoints.    |
+| `document`             | file (PDF/JPEG/PNG/WebP, max 10MB)                        | The uploaded proof. Not present for the academic-email path.           |
+| `institution_name`     | text                                                       | AI-extracted, shown to the admin reviewing a pending case.              |
+| `document_year`        | text                                                       | AI-extracted. Auto-approval requires this to equal the current year.   |
+| `name_on_document`     | text                                                       | AI-extracted. Auto-approval requires this to plausibly match the account's registered name. |
+| `verification_method`  | select `academic_email` \| `document_upload`, required    |                                                                          |
+| `reviewed_by`          | text                                                       | Admin's user id, set only when a human approved/rejected a pending case. |
+
+Indexes:
+
+- `idx_student_verifications_user`: on `user_id` — an admin or the owning
+  user's own settings page can list a user's verification history.
+- `idx_student_verifications_status`: on `status` — the admin panel's
+  pending-review list filters on this.
 
 ## `execution_pack_purchases` (base, server-only)
 

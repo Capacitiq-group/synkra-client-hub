@@ -71,6 +71,14 @@ function PlanCard({
           {plan.priceZar === 0 ? "Free" : `${formatZar(plan.priceCents)}/mo`}
         </span>
       </div>
+      {plan.studentDiscountApplied && (
+        <span
+          className="mt-1 inline-block text-[12px] font-medium"
+          style={{ color: "var(--accent-green)" }}
+        >
+          Student discount applied
+        </span>
+      )}
       <ul className="mt-4 space-y-2">
         {plan.highlights.map((item) => (
           <li key={item} className="flex items-start gap-2 text-[13px]">
@@ -85,7 +93,6 @@ function PlanCard({
 
 function CheckoutPage() {
   const { plan } = Route.useSearch();
-  const plans = planOptions();
   const [tier, setTier] = useState<PlanTier>(plan ?? "basic");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -93,6 +100,10 @@ function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activated, setActivated] = useState(false);
+
+  // Recomputed on every keystroke — cheap, pure, client-side preview only.
+  // The actual charge is always recomputed server-side in createCheckout.
+  const plans = planOptions(email);
 
   const selected = plans.find((item) => item.tier === tier);
 

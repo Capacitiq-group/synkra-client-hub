@@ -5,6 +5,7 @@ import { ReviewDestinationsSettings } from "@/components/settings/review-destina
 import { NotificationsSettings } from "@/components/settings/notifications-settings";
 import { UsageSettings } from "@/components/settings/usage-settings";
 import { BillingSettings } from "@/components/settings/billing-settings";
+import { StudentVerificationSettings } from "@/components/settings/student-verification-settings";
 import { WorkspaceSettings } from "@/components/settings/workspace-settings";
 
 type SettingsTab =
@@ -118,7 +119,14 @@ function SettingsPage() {
         )}
         {tab === "workspace" && <WorkspaceSettings />}
         {tab === "usage" && <UsageSettings />}
-        {tab === "billing" && <BillingSettings />}
+        {tab === "billing" && (
+          <>
+            <BillingSettings />
+            <div className="mt-4">
+              <StudentVerificationSettings />
+            </div>
+          </>
+        )}
         {tab === "notifications" && <NotificationsSettings />}
       </div>
     </div>

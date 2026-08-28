@@ -1,52 +1,43 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect } from "react";
-
-/** Public registration is closed during pre-launch. */
-export const APPLY_URL = "https://www.synkra.co.za/apply";
 
 /**
- * Synkra is in pre-launch: there is no public registration. Anyone who lands
- * on /sign-up (or the legacy /signup path) is sent to the public application
- * and referral entry point instead. The redirect happens in beforeLoad so it
- * runs on the server and on the client before any form can render.
+ * Public registration re-opened 28 Aug 2026.
+ *
+ * /signup is not a separate form — it sends the visitor straight into the
+ * existing /checkout flow, which already does everything "sign up" needs:
+ * pick a plan (free or paid), create the PocketBase account, verify via a
+ * single-use magic-link email (the same mechanism as sign-in), and for paid
+ * tiers take payment through Paystack before activating. See
+ * src/lib/billing/billing.server.ts (createCheckout, resolveOrCreateUser,
+ * issueMagicLink) for the authoritative flow — nothing new was built here on
+ * purpose, since that path is already tested and idempotent.
+ *
+ * Deliberately not linked from the landing page or anywhere else in the app
+ * yet — reachable only by navigating to /signup or /checkout directly. The
+ * external APPLY_URL redirect this replaced is preserved below only as a
+ * quick way to revert if needed.
  */
+// const APPLY_URL = "https://www.synkra.co.za/apply";
+/** Still exported: login.tsx links here and is deliberately left untouched. */
+export const APPLY_URL = "https://www.synkra.co.za/apply";
+
 export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
-      { title: "Apply for Synkra early access" },
+      { title: "Sign up — Synkra" },
       {
         name: "description",
-        content:
-          "Synkra is in pre-launch. Apply for early access or refer a business at synkra.co.za/apply.",
+        content: "Create your Synkra account and activate your workspace in minutes.",
       },
-      { property: "og:title", content: "Apply for Synkra early access" },
+      { property: "og:title", content: "Sign up — Synkra" },
       {
         property: "og:description",
-        content:
-          "Synkra is in pre-launch. Apply for early access or refer a business at synkra.co.za/apply.",
+        content: "Create your Synkra account and activate your workspace in minutes.",
       },
       { name: "robots", content: "noindex" },
     ],
   }),
   beforeLoad: () => {
-    throw redirect({ href: APPLY_URL, reloadDocument: true });
+    throw redirect({ to: "/checkout" });
   },
-  component: SignUpRedirect,
 });
-
-function SignUpRedirect() {
-  // Defensive fallback: if the route ever renders (e.g. a client navigation
-  // that skipped the redirect), leave immediately. No form is ever shown.
-  useEffect(() => {
-    window.location.replace(APPLY_URL);
-  }, []);
-
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center px-6 text-center text-sm"
-      style={{ color: "var(--text-muted)" }}
-    >
-      Redirecting you to the Synkra application page…
-    </div>
-  );
-}
