@@ -7,6 +7,7 @@
 import {
   PLAN_LIMITS,
   getPlanLimits,
+  getEffectivePriceZar,
   integrationsAllowed,
   normalizeTier,
   INTEGRATIONS_PAID_PLAN_NOTE,
@@ -24,9 +25,21 @@ export function isPurchasableTier(value: unknown): value is PurchasableTier {
   return (PURCHASABLE_TIERS as readonly string[]).includes(String(value));
 }
 
-/** Plan price in cents, derived from plans.ts. */
-export function priceCents(tier: unknown): number {
-  return Math.round(getPlanLimits(tier).priceZar * 100);
+/**
+ * Plan price in cents, derived from plans.ts. `isStudentVerified` is always
+ * determined server-side (a .ac.za email at signup, or an existing account's
+ * student_verified field) — never trust a boolean supplied by the browser.
+ */
+export function priceCents(tier: unknown, isStudentVerified = false): number {
+  return Math.round(getEffectivePriceZar(tier, isStudentVerified) * 100);
+}
+
+/** Server-side-only heuristic for a brand-new signup with no account yet:
+ * a South African academic email is sufficient on its own. An existing
+ * user's actual student_verified field always takes precedence over this
+ * once an account exists — see createCheckout in billing.server.ts. */
+export function looksLikeAcademicEmail(email: string): boolean {
+  return email.trim().toLowerCase().endsWith(".ac.za");
 }
 
 export function formatZar(cents: number): string {
@@ -42,19 +55,28 @@ export interface PlanOption {
   priceZar: number;
   priceCents: number;
   purchasable: boolean;
+  studentDiscountApplied: boolean;
   highlights: string[];
 }
 
-/** The plan cards shown on the checkout page, built from plans.ts only. */
-export function planOptions(): PlanOption[] {
+/** The plan cards shown on the checkout page, built from plans.ts only.
+ * Pass an email to preview the student discount live as the buyer types —
+ * this is a UI preview only; the actual charge is always recomputed
+ * server-side in createCheckout, never trusted from here. */
+export function planOptions(email?: string): PlanOption[] {
+  const isStudentVerified = Boolean(email && looksLikeAcademicEmail(email));
   return (Object.keys(PLAN_LIMITS) as PlanTier[]).map((tier) => {
     const p = PLAN_LIMITS[tier];
+    const effectivePriceZar = isStudentVerified
+      ? Math.max(0, p.priceZar - p.studentDiscountZar)
+      : p.priceZar;
     return {
       tier,
       name: p.name,
-      priceZar: p.priceZar,
-      priceCents: priceCents(tier),
+      priceZar: effectivePriceZar,
+      priceCents: priceCents(tier, isStudentVerified),
       purchasable: isPurchasableTier(tier),
+      studentDiscountApplied: isStudentVerified && p.studentDiscountZar > 0,
       highlights: [
         `${p.executions.toLocaleString("en-ZA")} executions / month`,
         `${p.activeWorkflows} active workflows`,

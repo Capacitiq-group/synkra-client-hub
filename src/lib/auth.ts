@@ -27,6 +27,9 @@ export interface AuthUser {
   credit_workflows_used: number;
   /** Subscription tier — see src/lib/plans.ts for the limits attached to it. */
   tier?: "free" | "basic" | "pro";
+  /** Section 4 (28 Aug 2026) — drives getEffectivePriceZar(). Server-owned. */
+  student_verified?: boolean;
+  student_verification_status?: "none" | "pending" | "approved" | "rejected";
   executions_used_this_month?: number;
   ai_ops_used_this_month?: number;
   storage_used_mb?: number;

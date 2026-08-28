@@ -85,7 +85,7 @@ async function findByField(pb: PocketBase, collection: string, field: string, va
 export async function resolveOrCreateUser(
   pb: PocketBase,
   input: { email: string; name?: string; phone?: string },
-): Promise<{ userId: string; created: boolean; name: string }> {
+): Promise<{ userId: string; created: boolean; name: string; studentVerified: boolean }> {
   const existing = await findByField(pb, "users", "email", input.email);
   if (existing) {
     const patch: Record<string, unknown> = {};
@@ -98,12 +98,20 @@ export async function resolveOrCreateUser(
       userId: str(existing, "id"),
       created: false,
       name: input.name || str(existing, "name"),
+      studentVerified: Boolean(asRecord(existing)["student_verified"]),
     };
   }
 
   // Password login is not used for these accounts — they sign in with a magic
   // link — so the password is random and never disclosed to anyone.
   const password = randomBytes(24).toString("base64url");
+  // Section 4 (student discount, 28 Aug 2026): a South African academic
+  // email is sufficient on its own for the student discount — no document
+  // upload or AI verification needed for this path. Anyone signing up with
+  // any other email can still qualify by uploading a document afterwards
+  // (student-verification-settings.tsx -> synkra-core's AI + admin-review
+  // flow), which does not run here.
+  const isAcademicEmail = input.email.toLowerCase().endsWith(".ac.za");
   const record = await pb.collection("users").create({
     email: input.email,
     emailVisibility: false,
@@ -116,8 +124,19 @@ export async function resolveOrCreateUser(
     user_type: "paid",
     onboarding_completed: false,
     onboarding_step: 0,
+    ...(isAcademicEmail
+      ? {
+          student_verified: true,
+          student_verification_status: "approved",
+        }
+      : {}),
   });
-  return { userId: record.id, created: true, name: input.name || str(asRecord(record), "name") };
+  return {
+    userId: record.id,
+    created: true,
+    name: input.name || str(asRecord(record), "name"),
+    studentVerified: isAcademicEmail,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -316,7 +335,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
   const pb = await adminClient();
   const reference = `SYN-${tier.toUpperCase()}-${randomUUID()}`;
 
-  const { userId } = await resolveOrCreateUser(pb, {
+  const { userId, studentVerified } = await resolveOrCreateUser(pb, {
     email,
     name,
     ...(input.phone ? { phone: input.phone } : {}),
@@ -351,7 +370,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     throw new BillingError("not_configured", "Card payments are not available right now.");
   }
 
-  const amountCents = priceCents(tier);
+  const amountCents = priceCents(tier, studentVerified);
   const checkout = await pb.collection("billing_checkouts").create({
     reference,
     user_id: userId,
@@ -674,7 +693,7 @@ export async function getBillingOverview(userId: string): Promise<BillingOvervie
   return {
     tier,
     planName: getPlanName(tier),
-    priceCents: priceCents(tier),
+    priceCents: priceCents(tier, Boolean(user["student_verified"])),
     subscription: subscriptionRow
       ? {
           status: str(subscriptionRow, "status"),
