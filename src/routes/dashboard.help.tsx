@@ -73,11 +73,11 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   },
   {
     question: "What happens when my email credits run out?",
-    answer: "Email automations pause automatically. You receive a warning at 20 percent remaining. When your trial ends in September paid plans launch with higher limits and top-up options. You will receive an email before your trial ends.",
+    answer: "Email automations pause automatically once you hit your plan's monthly limit. You receive a warning at 20 percent remaining. Upgrading to a paid plan (Basic or Pro, from your Billing settings) raises your limits immediately — no waiting for a renewal.",
     category: "Billing & Credits",
   },
   {
-    question: "How do I connect Google Calendar or Sheets?",
+    question: "How do I connect Slack, HubSpot, or Zoho Books?",
     answer: "Integrations require a paid plan — upgrade to connect. On a paid plan, go to Settings and open the Integrations tab, then click Connect next to the service. You will be asked to sign in and authorise access. There is no limit on how many platforms a paid plan can connect. Free accounts keep every other free feature, but cannot connect external platforms.",
     category: "Account & Settings",
   },
@@ -163,7 +163,7 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   },
   {
     question: "How many workflows can I have active at once?",
-    answer: "During your free trial you can have unlimited workflows. Your only limit is 2000 total workflow runs per month and 100 emails per month.",
+    answer: "The free plan allows 5 active workflows and 500 workflow runs per month, with 300 emails included. Basic raises this to 25 active workflows and 15,000 runs a month, Pro to 100 active workflows and 35,000 runs. Check Settings → Billing to see your plan's exact limits and current usage.",
     category: "Billing & Credits",
   },
   {
@@ -173,7 +173,7 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   },
   {
     question: "Can I use Synkra to send automated WhatsApp messages?",
-    answer: "Not yet. WhatsApp automation is coming in September 2026 when we launch our full platform. Your current free trial includes email automation only.",
+    answer: "Yes — sending WhatsApp messages from a workflow is available now on Basic and Pro plans, as a Send WhatsApp action block. Triggering a workflow from an incoming WhatsApp message isn't built yet; if you need that, email hello@synkra.co.za and let us know — that's what we prioritise next.",
     category: "Getting Started",
   },
   {
