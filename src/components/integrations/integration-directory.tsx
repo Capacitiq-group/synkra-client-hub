@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { toast } from "sonner";
@@ -11,11 +11,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import pb from "@/lib/pocketbase";
 import {
   disconnectIntegration,
-  integrationConnectUrl,
   testIntegration,
 } from "@/lib/workflow/api";
 import { usePlanUsage } from "@/hooks/usePlanUsage";
 import { SlackConnectButton } from "@/components/integrations/slack-connect";
+import { HubspotConnectButton } from "@/components/integrations/hubspot-connect";
+import { ZohoConnectButton } from "@/components/integrations/zoho-connect";
 import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
 import { INTEGRATIONS_PAID_PLAN_NOTE, integrationsAllowed } from "@/lib/plans";
 import {
@@ -30,14 +31,7 @@ import {
   type IntegrationStateKind,
 } from "@/lib/integrations/catalog";
 
-type IntegrationRecord = {
-  id: string;
-  status?: string;
-  error_message?: string;
-  connected_email?: string;
-  /** Slack stores the workspace name here; HubSpot the portal name. */
-  display_name?: string;
-};
+import { useIntegrationsMap, type IntegrationRecord } from "@/hooks/useIntegrations";
 
 export interface DirectorySearch {
   q?: string | undefined;
@@ -168,20 +162,7 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
   const usage = usePlanUsage();
   const planAllows = usage.data ? integrationsAllowed(usage.data.tier) : true;
 
-  const query = useQuery({
-    queryKey: ["integrations", user?.id],
-    enabled: Boolean(user),
-    queryFn: async () => {
-      if (!user) return {} as Record<string, IntegrationRecord>;
-      const records = await pb
-        .collection("integrations")
-        .getFullList({ filter: pb.filter("user_id = {:userId}", { userId: user.id }) });
-      return Object.fromEntries(records.map((record) => [record["type"], record])) as Record<
-        string,
-        IntegrationRecord
-      >;
-    },
-  });
+  const query = useIntegrationsMap();
 
   const setSearch = (next: Partial<DirectorySearch>) => {
     void navigate({
@@ -250,8 +231,10 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
    * reflects that decision, so a stale client tier can never open the flow.
    */
   const connect = async (item: IntegrationDefinition) => {
-    // Slack has its own popup flow (see SlackConnectButton); this is the
-    // redirect-based OAuth path used by HubSpot.
+    // Slack, HubSpot, and Zoho all now use their own popup flow (see
+    // SlackConnectButton / HubspotConnectButton / ZohoConnectButton
+    // above) — this redirect-based path is currently unreachable, kept
+    // only as a shape for a future integration that isn't Nango-based.
     if (item.endpoint !== "hubspot") return;
     const token = pb.authStore.token;
     if (!token) {
@@ -272,7 +255,11 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
       toast.error("Could not verify your plan. Please try again.");
       return;
     }
-    window.location.assign(integrationConnectUrl(item.endpoint, user.id));
+    // Slack, HubSpot, and Zoho all use their own popup button above —
+    // this fallback is unreachable today. Left as a clear error rather
+    // than removed, so a future integration added without its own
+    // popup component fails loudly instead of silently.
+    toast.error(`${item.name} doesn't have a connect flow wired up yet.`);
   };
 
   const test = async (item: IntegrationDefinition) => {
@@ -322,6 +309,8 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
       );
     }
     if (item.key === "slack") return <SlackConnectButton />;
+    if (item.key === "hubspot") return <HubspotConnectButton />;
+    if (item.key === "zoho") return <ZohoConnectButton />;
     return <Button onClick={() => void connect(item)}>Connect</Button>;
   };
 

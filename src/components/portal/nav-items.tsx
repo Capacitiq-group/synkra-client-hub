@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  CheckCircle2,
   Database,
   HelpCircle,
   Home,
@@ -22,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: Home, exact: true },
   { label: "Workflows", to: "/dashboard/workflows", icon: Zap },
   { label: "Activity", to: "/dashboard/activity", icon: Activity },
+  { label: "Approvals", to: "/dashboard/approvals", icon: CheckCircle2 },
   { label: "Saved data", to: "/dashboard/data", icon: Database },
   { label: "Integrations", to: "/dashboard/integrations", icon: Plug },
   { label: "Notifications", to: "/dashboard/notifications", icon: Bell },

@@ -1,5 +1,7 @@
 import {
   Bell,
+  Braces,
+  Building2,
   Clock,
   Database,
   FileText,
@@ -17,6 +19,8 @@ import {
   Sparkles,
   Tags,
   Timer,
+  TrendingUp,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import type { BlockKind, WorkflowBlock } from "./types";
@@ -35,6 +39,15 @@ export interface BlockDefinition {
   comingSoon?: boolean;
   /** Catalog key of an integration that must be connected before this works. */
   requiresIntegration?: string;
+  /**
+   * OAuth scopes this block needs on that integration's connection.
+   * The block library / config panel diffs this against the
+   * connection's granted scopes (integrations.scopes) and prompts a
+   * reauthorize flow if anything's missing, instead of letting the
+   * block silently fail at run time. See
+   * docs/integrations/scopes-and-custom-workflows.md.
+   */
+  requiredScopes?: string[];
   /**
    * One-line, jargon-free explainer shown under the block title inside the
    * config panel. Written for someone with no technical background.
@@ -125,6 +138,44 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     section: "TRIGGERS",
     requiresIntegration: "slack",
     defaultConfig: { channel_id: "" },
+  },
+  {
+    key: "hubspot_new_contact",
+    configHint: "Starts this workflow whenever a new contact is created in HubSpot.",
+    kind: "trigger",
+    subtype: "hubspot_event",
+    label: "New HubSpot contact",
+    description: "Fires when a contact is created in HubSpot",
+    icon: Building2,
+    color: "var(--accent-green)",
+    section: "TRIGGERS",
+    requiresIntegration: "hubspot",
+    requiredScopes: ["crm.objects.contacts.read"],
+    defaultConfig: { subscription_type: "contact.creation", match_all: true },
+  },
+  {
+    key: "hubspot_deal_stage_changed",
+    configHint: "Starts this workflow when a deal moves to the pipeline stage you pick.",
+    kind: "trigger",
+    subtype: "hubspot_event",
+    label: "Deal stage changed",
+    description: "Fires when a HubSpot deal's stage is updated",
+    icon: TrendingUp,
+    color: "var(--accent-green)",
+    section: "TRIGGERS",
+    requiresIntegration: "hubspot",
+    requiredScopes: ["crm.objects.deals.read"],
+    // match_all: false + a variable/operator/value condition is exactly
+    // the evaluate_condition() shape hubspot_webhook.py already uses for
+    // filter/if_else — "trigger.dealstage" is the changed deal's new
+    // stage on the enriched event payload.
+    defaultConfig: {
+      subscription_type: "deal.propertyChange",
+      match_all: false,
+      variable: "trigger.dealstage",
+      operator: "equals",
+      value: "",
+    },
   },
   {
     key: "send_email",
@@ -276,6 +327,122 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     color: "var(--state-info)",
     section: "ACTIONS",
     defaultConfig: { title: "", body: "", link: "" },
+  },
+  {
+    key: "hubspot_find_contact",
+    configHint: "Looks up an existing HubSpot contact by email — useful before deciding whether to create or update one.",
+    kind: "action",
+    subtype: "hubspot_find_contact",
+    label: "Find HubSpot contact",
+    description: "Looks up a HubSpot contact by email",
+    icon: Building2,
+    color: "#FF7A59",
+    section: "ACTIONS",
+    requiresIntegration: "hubspot",
+    requiredScopes: ["crm.objects.contacts.read"],
+    defaultConfig: { email: "", output_variable: "hubspot_contact" },
+  },
+  {
+    key: "hubspot_create_contact",
+    configHint: "Creates a new contact in HubSpot with the details you fill in.",
+    kind: "action",
+    subtype: "hubspot_create_contact",
+    label: "Create HubSpot contact",
+    description: "Creates a new contact in HubSpot",
+    icon: UserPlus,
+    color: "#FF7A59",
+    section: "ACTIONS",
+    requiresIntegration: "hubspot",
+    requiredScopes: ["crm.objects.contacts.write"],
+    defaultConfig: { properties: { email: "" }, output_variable: "hubspot_contact" },
+  },
+  {
+    key: "hubspot_update_contact",
+    configHint: "Updates fields on an existing HubSpot contact.",
+    kind: "action",
+    subtype: "hubspot_update_contact",
+    label: "Update HubSpot contact",
+    description: "Updates an existing HubSpot contact's details",
+    icon: Building2,
+    color: "#FF7A59",
+    section: "ACTIONS",
+    requiresIntegration: "hubspot",
+    requiredScopes: ["crm.objects.contacts.write"],
+    defaultConfig: { contact_id: "", properties: {}, output_variable: "hubspot_contact" },
+  },
+  {
+    key: "hubspot_find_deal",
+    configHint: "Looks up an existing HubSpot deal by name.",
+    kind: "action",
+    subtype: "hubspot_find_deal",
+    label: "Find HubSpot deal",
+    description: "Looks up a HubSpot deal by name",
+    icon: TrendingUp,
+    color: "#FF7A59",
+    section: "ACTIONS",
+    requiresIntegration: "hubspot",
+    requiredScopes: ["crm.objects.deals.read"],
+    defaultConfig: { deal_name: "", output_variable: "hubspot_deal" },
+  },
+  {
+    key: "hubspot_create_deal",
+    configHint: "Creates a new deal in HubSpot — set the pipeline and stage you want it to start in.",
+    kind: "action",
+    subtype: "hubspot_create_deal",
+    label: "Create HubSpot deal",
+    description: "Creates a new deal in HubSpot",
+    icon: TrendingUp,
+    color: "#FF7A59",
+    section: "ACTIONS",
+    requiresIntegration: "hubspot",
+    requiredScopes: ["crm.objects.deals.write"],
+    defaultConfig: { properties: { dealname: "" }, output_variable: "hubspot_deal" },
+  },
+  {
+    key: "hubspot_update_deal",
+    configHint: "Updates fields on an existing HubSpot deal — e.g. moving it to a new stage.",
+    kind: "action",
+    subtype: "hubspot_update_deal",
+    label: "Update HubSpot deal",
+    description: "Updates an existing HubSpot deal's details",
+    icon: TrendingUp,
+    color: "#FF7A59",
+    section: "ACTIONS",
+    requiresIntegration: "hubspot",
+    requiredScopes: ["crm.objects.deals.write"],
+    defaultConfig: { deal_id: "", properties: {}, output_variable: "hubspot_deal" },
+  },
+  {
+    key: "hubspot_add_note",
+    configHint: "Logs a note on a HubSpot contact's timeline.",
+    kind: "action",
+    subtype: "hubspot_add_note",
+    label: "Add HubSpot note",
+    description: "Adds a note to a HubSpot contact's timeline",
+    icon: FileText,
+    color: "#FF7A59",
+    section: "ACTIONS",
+    requiresIntegration: "hubspot",
+    requiredScopes: ["crm.objects.contacts.write"],
+    defaultConfig: { contact_id: "", note_body: "" },
+  },
+  {
+    key: "custom_api_call",
+    configHint: "For anything the ready-made blocks above don't cover — call any endpoint on a connected platform directly. If it needs a permission you haven't granted yet, you'll be asked to authorize it.",
+    kind: "action",
+    subtype: "custom_api_call",
+    label: "Custom action",
+    description: "Calls any endpoint on a connected platform — not limited to the blocks above",
+    icon: Braces,
+    color: "var(--text-muted)",
+    section: "ACTIONS",
+    // No fixed requiresIntegration/requiredScopes — both are chosen per
+    // use in the config panel (which platform, which endpoint), and the
+    // panel writes the resulting scope requirement onto the block
+    // instance's `required_scopes` (WorkflowBlock, not this static
+    // definition) rather than here. See
+    // docs/integrations/scopes-and-custom-workflows.md.
+    defaultConfig: { integration: "", method: "GET", endpoint: "", body: {}, output_variable: "api_response" },
   },
   {
     key: "if_else",

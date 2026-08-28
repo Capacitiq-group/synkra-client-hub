@@ -21,6 +21,7 @@
 import {
   Bot,
   Building2,
+  DollarSign,
   Globe,
   Hash,
   Mail,
@@ -35,6 +36,7 @@ export const INTEGRATION_CATEGORIES = [
   "Messaging",
   "Automation",
   "AI",
+  "Finance",
 ] as const;
 
 export type IntegrationCategory = (typeof INTEGRATION_CATEGORIES)[number];
@@ -140,6 +142,19 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     logoUrl:
       "https://res.cloudinary.com/dewvhnks3/image/upload/v1787755331/1000116508-removebg-preview_o5rdkh.png",
     endpoint: "hubspot",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "zoho",
+    name: "Zoho Books",
+    category: "Finance",
+    summary: "Cash-flow digests, overdue tracking and customer health, straight from your books.",
+    description:
+      "Connect Zoho Books so Synkra can read invoices, payments, expenses and contacts to power finance workflows — weekly cash-flow digests, payment reminders and churn alerts — and write back notes once a reminder's been sent. Nothing is ever emailed or updated in Zoho without your one-click approval first.",
+    notes: ["Connected through Zoho OAuth", "Available on paid plans"],
+    icon: DollarSign,
+    iconColor: "#E42527",
     requiresPaidPlan: true,
     available: true,
   },

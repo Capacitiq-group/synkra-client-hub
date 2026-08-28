@@ -10,6 +10,15 @@ export interface WorkflowBlock {
   description?: string | undefined;
   config: Record<string, unknown>;
   next?: string | null | undefined;
+  /**
+   * Scopes this specific block instance needs on its integration's
+   * connection, beyond BLOCK_DEFINITIONS' static `requiredScopes`.
+   * Mainly for custom_api_call, where the scope depends on which
+   * endpoint the user picked, not the block type itself — the config
+   * panel fills this in when the user selects/confirms an endpoint.
+   * See docs/integrations/scopes-and-custom-workflows.md.
+   */
+  required_scopes?: string[] | undefined;
 }
 
 export interface WorkflowRecordShape {
