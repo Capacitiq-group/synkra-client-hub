@@ -179,6 +179,63 @@ export function VariableField({
   );
 }
 
+/**
+ * For config values that are objects rather than strings — HubSpot
+ * block `properties`, custom_api_call's `body`. Edited as raw JSON
+ * text; invalid JSON is kept in local state (so the user isn't fighting
+ * the field while mid-edit) and only written up via onChange once it
+ * parses, with an inline error shown otherwise.
+ */
+export function JsonField({
+  label,
+  value,
+  onChange,
+  hint,
+}: {
+  label: string;
+  value: Record<string, unknown>;
+  onChange: (value: Record<string, unknown>) => void;
+  hint?: string;
+}) {
+  const [text, setText] = useState(() => JSON.stringify(value ?? {}, null, 2));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setText(JSON.stringify(value ?? {}, null, 2));
+  }, [JSON.stringify(value)]);
+
+  return (
+    <div>
+      <label
+        className="mb-1.5 block"
+        style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}
+      >
+        {label}
+      </label>
+      <textarea
+        value={text}
+        rows={5}
+        spellCheck={false}
+        onChange={(e) => {
+          const next = e.target.value;
+          setText(next);
+          try {
+            const parsed = JSON.parse(next || "{}");
+            setError(null);
+            onChange(parsed);
+          } catch {
+            setError("Not valid JSON yet — keeps your last valid version until this parses.");
+          }
+        }}
+        className="synkra-focus"
+        style={{ ...fieldStyle, resize: "vertical", fontFamily: "monospace", fontSize: 12 }}
+      />
+      {error && <p style={{ fontSize: 12, color: "var(--state-warning)", marginTop: 4 }}>{error}</p>}
+      {!error && hint && <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{hint}</p>}
+    </div>
+  );
+}
+
 export function PlainField({
   label,
   value,

@@ -6,6 +6,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import pb from "@/lib/pocketbase";
 import { webhookUrlFor, inboundEmailAddressForUser } from "@/lib/workflow/api";
 import { OPERATORS, blockSubtype, definitionFor } from "@/lib/workflow/blocks";
+import { useIntegrationsMap } from "@/hooks/useIntegrations";
+import { missingScopes, integrationConnected } from "@/lib/workflow/scopes";
+import { HubspotConnectButton, HubspotReauthorizeButton } from "@/components/integrations/hubspot-connect";
+import { SlackConnectButton } from "@/components/integrations/slack-connect";
 import {
   availableVariableOptions,
   extractFieldEntries,
@@ -13,7 +17,7 @@ import {
   toFieldKey,
 } from "@/lib/workflow/describe";
 import type { WorkflowBlock } from "@/lib/workflow/types";
-import { PlainField, VariableField } from "./variables-popover";
+import { PlainField, VariableField, JsonField } from "./variables-popover";
 import { SlackChannelPicker } from "./slack-channel-picker";
 
 /** Trigger types whose config is "pick a Slack channel". */
@@ -446,10 +450,55 @@ export function ConfigPanel({
   const config = block.config ?? {};
   const set = (key: string, value: unknown) => onChange(block.id, { ...config, [key]: value });
   const text = (key: string, fallback = "") => String(config[key] ?? fallback);
+  const obj = (key: string): Record<string, unknown> => {
+    const v = config[key];
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  };
   const subtype = blockSubtype(block);
   const definition = definitionFor(block);
   const configHint = definition?.configHint;
   const configNote = definition?.configNote;
+
+  const { data: integrations = {} } = useIntegrationsMap();
+  const requiresIntegration = definition?.requiresIntegration;
+  const connected = integrationConnected(requiresIntegration, integrations);
+  const needsMoreScopes = missingScopes(definition, block, integrations[requiresIntegration ?? ""]);
+
+  const requirementsBanner = () => {
+    if (!requiresIntegration) return null;
+    if (!connected) {
+      return (
+        <div
+          className="flex items-center justify-between gap-3 rounded-md p-3"
+          style={{ backgroundColor: "var(--bg-elevated)", border: "1px solid var(--state-warning)" }}
+        >
+          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+            This block needs {requiresIntegration} connected to run.
+          </p>
+          {requiresIntegration === "hubspot" && <HubspotConnectButton label="Connect" />}
+          {requiresIntegration === "slack" && <SlackConnectButton label="Connect" />}
+        </div>
+      );
+    }
+    if (needsMoreScopes.length > 0) {
+      return (
+        <div
+          className="flex items-center justify-between gap-3 rounded-md p-3"
+          style={{ backgroundColor: "var(--bg-elevated)", border: "1px solid var(--state-warning)" }}
+        >
+          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+            This block needs additional {requiresIntegration} permissions ({needsMoreScopes.join(", ")}) that
+            haven't been granted yet.
+          </p>
+          {/* Only hubspot has a /reauthorize endpoint today — see
+              docs/integrations/scopes-and-custom-workflows.md for
+              extending this to slack and future platforms. */}
+          {requiresIntegration === "hubspot" && <HubspotReauthorizeButton missingScopes={needsMoreScopes} />}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-auto p-4">
@@ -465,6 +514,8 @@ export function ConfigPanel({
           <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>{configNote}</p>
         )}
       </div>
+
+      {requirementsBanner()}
 
       {subtype === "webhook" && <WebhookUrlField workflowId={workflowId} />}
 
@@ -798,6 +849,169 @@ export function ConfigPanel({
               onChange={(v) => set("value", v)}
             />
           )}
+        </>
+      )}
+
+      {subtype === "hubspot_new_contact" && (
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          No setup needed — this fires for every new HubSpot contact once connected.
+        </p>
+      )}
+
+      {subtype === "hubspot_deal_stage_changed" && (
+        <VariableField
+          label="Only when the new stage is"
+          hint="Leave blank to fire on any stage change, or set a specific stage's internal name (e.g. closedwon)."
+          value={text("value")}
+          variables={variables}
+          onChange={(v) => {
+            set("value", v);
+            set("match_all", v.trim() === "");
+          }}
+        />
+      )}
+
+      {subtype === "hubspot_find_contact" && (
+        <>
+          <VariableField
+            label="Email"
+            value={text("email")}
+            variables={variables}
+            onChange={(v) => set("email", v)}
+          />
+          <PlainField
+            label="Store result as"
+            value={text("output_variable", "hubspot_contact")}
+            onChange={(v) => set("output_variable", v)}
+            hint="Reference this later as {{hubspot_contact}} (or whatever name you pick)."
+          />
+        </>
+      )}
+
+      {(subtype === "hubspot_create_contact" || subtype === "hubspot_update_contact") && (
+        <>
+          {subtype === "hubspot_update_contact" && (
+            <VariableField
+              label="Contact ID"
+              value={text("contact_id")}
+              variables={variables}
+              onChange={(v) => set("contact_id", v)}
+            />
+          )}
+          <JsonField
+            label="Properties"
+            value={obj("properties")}
+            onChange={(v) => set("properties", v)}
+            hint='HubSpot contact property names to values, e.g. {"email": "{{trigger.email}}", "firstname": "{{trigger.name}}"}. Variables work inside the string values.'
+          />
+          <PlainField
+            label="Store result as"
+            value={text("output_variable", "hubspot_contact")}
+            onChange={(v) => set("output_variable", v)}
+          />
+        </>
+      )}
+
+      {subtype === "hubspot_find_deal" && (
+        <>
+          <VariableField
+            label="Deal name"
+            value={text("deal_name")}
+            variables={variables}
+            onChange={(v) => set("deal_name", v)}
+          />
+          <PlainField
+            label="Store result as"
+            value={text("output_variable", "hubspot_deal")}
+            onChange={(v) => set("output_variable", v)}
+          />
+        </>
+      )}
+
+      {(subtype === "hubspot_create_deal" || subtype === "hubspot_update_deal") && (
+        <>
+          {subtype === "hubspot_update_deal" && (
+            <VariableField
+              label="Deal ID"
+              value={text("deal_id")}
+              variables={variables}
+              onChange={(v) => set("deal_id", v)}
+            />
+          )}
+          <JsonField
+            label="Properties"
+            value={obj("properties")}
+            onChange={(v) => set("properties", v)}
+            hint='e.g. {"dealname": "{{trigger.company}} deal", "pipeline": "default", "dealstage": "appointmentscheduled"}'
+          />
+          <PlainField
+            label="Store result as"
+            value={text("output_variable", "hubspot_deal")}
+            onChange={(v) => set("output_variable", v)}
+          />
+        </>
+      )}
+
+      {subtype === "hubspot_add_note" && (
+        <>
+          <VariableField
+            label="Contact ID"
+            value={text("contact_id")}
+            variables={variables}
+            onChange={(v) => set("contact_id", v)}
+          />
+          <VariableField
+            label="Note"
+            multiline
+            value={text("note_body")}
+            variables={variables}
+            onChange={(v) => set("note_body", v)}
+          />
+        </>
+      )}
+
+      {subtype === "custom_api_call" && (
+        <>
+          <PlainField
+            label="Platform"
+            value={text("integration")}
+            onChange={(v) => set("integration", v)}
+            options={[
+              { value: "", label: "Choose a connected platform…" },
+              ...Object.entries(integrations)
+                .filter(([, record]) => record.status === "connected")
+                .map(([key]) => ({ value: key, label: key.charAt(0).toUpperCase() + key.slice(1) })),
+            ]}
+            hint="Only platforms you've connected show up here — connect more under Settings → Integrations."
+          />
+          <PlainField
+            label="Method"
+            value={text("method", "GET")}
+            onChange={(v) => set("method", v)}
+            options={["GET", "POST", "PATCH", "PUT", "DELETE"].map((m) => ({ value: m, label: m }))}
+          />
+          <VariableField
+            label="Endpoint"
+            value={text("endpoint")}
+            variables={variables}
+            onChange={(v) => set("endpoint", v)}
+            placeholder="crm/v3/objects/companies"
+            hint="Relative path on the platform's API — check its API docs for what's available."
+          />
+          {text("method", "GET") !== "GET" && (
+            <JsonField label="Body" value={obj("body")} onChange={(v) => set("body", v)} />
+          )}
+          <PlainField
+            label="Store result as"
+            value={text("output_variable", "api_response")}
+            onChange={(v) => set("output_variable", v)}
+          />
+          <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            If this call needs a permission you haven't granted yet, it will fail with a clear
+            error when tested — reconnect the platform under Settings → Integrations to add it.
+            Automatic per-endpoint permission checking isn't available for custom calls yet, only
+            for the ready-made blocks above.
+          </p>
         </>
       )}
     </div>

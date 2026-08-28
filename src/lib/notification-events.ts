@@ -11,7 +11,7 @@
 export type NotificationSeverity = "info" | "success" | "warning" | "error";
 
 /** The categories a notification can be filtered by in the UI. */
-export type NotificationGroup = "runs" | "billing" | "reports" | "product";
+export type NotificationGroup = "runs" | "billing" | "reports" | "product" | "finance";
 
 export interface NotificationEventMeta {
   /** Stable machine value written to `event_type`. */
@@ -62,6 +62,52 @@ export const NOTIFICATION_EVENTS = {
     severity: "info",
     group: "product",
     fallbackLink: "/dashboard/help",
+  },
+  // Zoho Books finance workflows (workflows/zoho/*.py in synkra-core).
+  // The three "*_ready"-style types below are pending_approvals items —
+  // they always link to /dashboard/approvals, where the one-click
+  // approve/reject action actually lives.
+  zoho_cashflow_digest: {
+    type: "zoho_cashflow_digest",
+    label: "Cash-flow digest",
+    severity: "info",
+    group: "finance",
+    fallbackLink: "/dashboard/integrations",
+  },
+  zoho_churn_detector: {
+    type: "zoho_churn_detector",
+    label: "Customer going quiet",
+    severity: "warning",
+    group: "finance",
+    fallbackLink: "/dashboard/integrations",
+  },
+  zoho_contact_dedupe: {
+    type: "zoho_contact_dedupe",
+    label: "Contact data quality",
+    severity: "warning",
+    group: "finance",
+    fallbackLink: "/dashboard/integrations",
+  },
+  zoho_invoice_reminder: {
+    type: "zoho_invoice_reminder",
+    label: "Payment reminder ready",
+    severity: "warning",
+    group: "finance",
+    fallbackLink: "/dashboard/approvals",
+  },
+  zoho_customer_checkin: {
+    type: "zoho_customer_checkin",
+    label: "Check-in email ready",
+    severity: "warning",
+    group: "finance",
+    fallbackLink: "/dashboard/approvals",
+  },
+  zoho_contact_datafix: {
+    type: "zoho_contact_datafix",
+    label: "Contact fix ready",
+    severity: "info",
+    group: "finance",
+    fallbackLink: "/dashboard/approvals",
   },
 } as const satisfies Record<string, NotificationEventMeta>;
 

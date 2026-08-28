@@ -70,8 +70,48 @@ export function inboundEmailAddressForUser(userId: string): string {
 }
 
 
-export function integrationConnectUrl(type: "hubspot", userId: string) {
-  return `${API_BASE}/integrations/${type}/connect?user_id=${encodeURIComponent(userId)}`;
+/**
+ * HubSpot connect flow (Nango-hosted) — same shape as the Slack functions
+ * below. Replaces the old redirect-based integrationConnectUrl()/GET
+ * /integrations/hubspot/connect, which no longer exists now that HubSpot
+ * is on Nango too (see routers/integrations_hubspot.py).
+ */
+export async function createHubspotConnectSession(userId: string): Promise<string> {
+  const response = await post("/integrations/hubspot/connect", { user_id: userId });
+  if (!response.ok) throw new Error(`HubSpot connect failed with status ${response.status}`);
+  const data = (await response.json()) as { session_token?: string };
+  if (!data.session_token) throw new Error("HubSpot connect did not return a session token");
+  return data.session_token;
+}
+
+export async function fetchHubspotStatus(
+  userId: string,
+): Promise<{ connected: boolean; portal_id?: number; scopes?: string[] }> {
+  const response = await post("/integrations/hubspot/status", { user_id: userId });
+  if (!response.ok) throw new Error(`HubSpot status failed with status ${response.status}`);
+  return (await response.json()) as { connected: boolean; portal_id?: number; scopes?: string[] };
+}
+
+/**
+ * Starts a reauthorize session for an already-connected platform,
+ * requesting additional scopes on top of what's currently granted — used
+ * when a workflow block needs a scope the connection doesn't have yet.
+ * `provider` must be a platform whose router exposes a /reauthorize
+ * endpoint (currently: hubspot — zoho doesn't have one yet).
+ */
+export async function createReauthorizeSession(
+  provider: "hubspot" | "zoho",
+  userId: string,
+  additionalScopes: string[],
+): Promise<string> {
+  const response = await post(`/integrations/${provider}/reauthorize`, {
+    user_id: userId,
+    additional_scopes: additionalScopes,
+  });
+  if (!response.ok) throw new Error(`Reauthorize failed with status ${response.status}`);
+  const data = (await response.json()) as { session_token?: string };
+  if (!data.session_token) throw new Error("Reauthorize did not return a session token");
+  return data.session_token;
 }
 
 /**
@@ -97,6 +137,49 @@ export async function fetchSlackStatus(
   const response = await post("/integrations/slack/status", { user_id: userId });
   if (!response.ok) throw new Error(`Slack status failed with status ${response.status}`);
   return (await response.json()) as { connected: boolean; team_name?: string };
+}
+
+/**
+ * Zoho Books connect flow (Nango-hosted) — identical shape to the Slack
+ * flow above, just a different provider_config_key server-side. See
+ * components/integrations/zoho-connect.tsx for the popup wiring.
+ */
+export async function createZohoConnectSession(userId: string): Promise<string> {
+  const response = await post("/integrations/zoho/connect", { user_id: userId });
+  if (!response.ok) throw new Error(`Zoho connect failed with status ${response.status}`);
+  const data = (await response.json()) as { session_token?: string };
+  if (!data.session_token) throw new Error("Zoho connect did not return a session token");
+  return data.session_token;
+}
+
+export async function fetchZohoStatus(
+  userId: string,
+): Promise<{ connected: boolean; organization_name?: string }> {
+  const response = await post("/integrations/zoho/status", { user_id: userId });
+  if (!response.ok) throw new Error(`Zoho status failed with status ${response.status}`);
+  return (await response.json()) as { connected: boolean; organization_name?: string };
+}
+
+export interface PendingApproval {
+  id: string;
+  type: string;
+  status: string;
+  subject: string;
+  body: string;
+  recipient_email: string;
+  recipient_name: string;
+}
+
+export async function approvePendingAction(approvalId: string, userId: string): Promise<{ status: string }> {
+  const response = await post(`/integrations/zoho/approvals/${approvalId}/approve`, { user_id: userId });
+  if (!response.ok) throw new Error(`Approve failed with status ${response.status}`);
+  return (await response.json()) as { status: string };
+}
+
+export async function rejectPendingAction(approvalId: string, userId: string): Promise<{ status: string }> {
+  const response = await post(`/integrations/zoho/approvals/${approvalId}/reject`, { user_id: userId });
+  if (!response.ok) throw new Error(`Reject failed with status ${response.status}`);
+  return (await response.json()) as { status: string };
 }
 
 export interface SlackChannel {

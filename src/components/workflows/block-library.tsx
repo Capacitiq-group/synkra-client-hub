@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { BLOCK_DEFINITIONS, type BlockDefinition } from "@/lib/workflow/blocks";
+import { useIntegrationsMap } from "@/hooks/useIntegrations";
+import { integrationConnected } from "@/lib/workflow/scopes";
 
 const SECTIONS: BlockDefinition["section"][] = ["TRIGGERS", "ACTIONS", "LOGIC"];
 
@@ -11,6 +13,7 @@ export function BlockLibrary({
   hasTrigger: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const { data: integrations = {} } = useIntegrationsMap();
 
   const matches = (definition: BlockDefinition) =>
     !query ||
@@ -56,6 +59,7 @@ export function BlockLibrary({
               </p>
               <div className="flex flex-col gap-2">
                 {items.map((definition) => {
+                  const notConnected = !integrationConnected(definition.requiresIntegration, integrations);
                   const disabled =
                     definition.comingSoon || (definition.kind === "trigger" && hasTrigger);
                   return (
@@ -89,6 +93,21 @@ export function BlockLibrary({
                         >
                           {definition.label}
                         </span>
+                        {notConnected && !disabled && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: "var(--state-warning)",
+                              border: "1px solid var(--state-warning)",
+                              borderRadius: 999,
+                              padding: "1px 6px",
+                              marginLeft: "auto",
+                            }}
+                          >
+                            Not connected
+                          </span>
+                        )}
                       </span>
                       <span
                         className="mt-1 block"
@@ -98,7 +117,9 @@ export function BlockLibrary({
                           ? "Coming soon"
                           : definition.kind === "trigger" && hasTrigger
                             ? "A workflow can only have one trigger"
-                            : definition.description}
+                            : notConnected
+                              ? `You can add this now — connect ${definition.requiresIntegration} before publishing.`
+                              : definition.description}
                       </span>
                     </button>
                   );

@@ -163,6 +163,7 @@ export type NotificationPath =
   | "/dashboard/workflows"
   | "/dashboard/data"
   | "/dashboard/integrations"
+  | "/dashboard/approvals"
   | "/dashboard/help"
   | "/dashboard/notifications"
   | "/dashboard/settings";
@@ -173,6 +174,7 @@ const ALLOWED_PATHS: NotificationPath[] = [
   "/dashboard/workflows",
   "/dashboard/data",
   "/dashboard/integrations",
+  "/dashboard/approvals",
   "/dashboard/help",
   "/dashboard/notifications",
   "/dashboard/settings",
