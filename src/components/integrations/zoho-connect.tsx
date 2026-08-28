@@ -6,7 +6,7 @@ import Nango from "@nangohq/frontend";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import pb from "@/lib/pocketbase";
-import { createZohoConnectSession, fetchZohoStatus } from "@/lib/workflow/api";
+import { createZohoConnectSession, createReauthorizeSession, fetchZohoStatus } from "@/lib/workflow/api";
 import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
 import { INTEGRATIONS_PAID_PLAN_NOTE } from "@/lib/plans";
 
@@ -17,15 +17,20 @@ const NANGO_HOST = "https://nango.synkra.co.za";
 const NANGO_CONNECT_HOST = "https://connect.synkra.co.za";
 
 /**
- * Zoho Books connect flow — identical shape to useSlackConnect. Kept as
- * its own copy rather than a shared generic hook for now, same call the
- * Slack component already made (see its comments) — worth extracting
- * once a third platform needs this exact shape.
+ * Zoho Books connect flow — identical shape to useSlackConnect/
+ * useHubspotConnect. Kept as its own copy rather than a shared generic
+ * hook, same call the other two components already made — worth
+ * extracting once a fourth platform needs this exact shape.
+ *
+ * `additionalScopes`, when given, switches this into the reauthorize
+ * flow instead of a fresh connect — same pattern as
+ * useHubspotConnect in hubspot-connect.tsx.
  */
-export function useZohoConnect(onConnected?: () => void) {
+export function useZohoConnect(onConnected?: () => void, additionalScopes?: string[]) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [connecting, setConnecting] = useState(false);
+  const isReauthorize = Boolean(additionalScopes?.length);
 
   const start = async () => {
     if (!user) return;
@@ -37,17 +42,25 @@ export function useZohoConnect(onConnected?: () => void) {
     }
     setConnecting(true);
     try {
-      const decision = (await checkIntegrationConnectFn({ data: { token } })) as unknown as {
-        ok: boolean;
-        message?: string;
-      };
-      if (!decision.ok) {
-        toast.error(decision.message || INTEGRATIONS_PAID_PLAN_NOTE);
-        setConnecting(false);
-        return;
+      // See hubspot-connect.tsx: a reauthorize only widens scopes on a
+      // connection already paid for, so the paid-plan gate only applies
+      // to a fresh connection.
+      if (!isReauthorize) {
+        const decision = (await checkIntegrationConnectFn({ data: { token } })) as unknown as {
+          ok: boolean;
+          message?: string;
+        };
+        if (!decision.ok) {
+          toast.error(decision.message || INTEGRATIONS_PAID_PLAN_NOTE);
+          setConnecting(false);
+          return;
+        }
       }
 
-      const sessionToken = await createZohoConnectSession(user.id);
+      const sessionToken = isReauthorize
+        ? await createReauthorizeSession("zoho", user.id, additionalScopes!)
+        : await createZohoConnectSession(user.id);
+
       const nango = new Nango({ host: NANGO_HOST });
       const connect = nango.openConnectUI({
         // See slack-connect.tsx: openConnectUI() never reads the
@@ -70,7 +83,11 @@ export function useZohoConnect(onConnected?: () => void) {
                 await queryClient.invalidateQueries({ queryKey: ["zoho-status", user.id] });
                 if (status.connected) {
                   toast.success(
-                    status.organization_name ? `Zoho Books connected — ${status.organization_name}` : "Zoho Books connected",
+                    isReauthorize
+                      ? "Zoho Books permissions updated"
+                      : status.organization_name
+                        ? `Zoho Books connected — ${status.organization_name}`
+                        : "Zoho Books connected",
                   );
                 } else {
                   toast.error("Zoho Books did not report a connection. Please try again.");
@@ -87,7 +104,11 @@ export function useZohoConnect(onConnected?: () => void) {
       });
       connect.setSessionToken(sessionToken);
     } catch {
-      toast.error("Could not start the Zoho Books connection. Please try again.");
+      toast.error(
+        isReauthorize
+          ? "Could not start the Zoho Books reauthorization. Please try again."
+          : "Could not start the Zoho Books connection. Please try again.",
+      );
       setConnecting(false);
     }
   };
@@ -106,6 +127,26 @@ export function ZohoConnectButton({
   return (
     <Button disabled={!canConnect || connecting} onClick={() => void start()}>
       {connecting ? "Opening Zoho Books…" : label}
+    </Button>
+  );
+}
+
+/**
+ * "This needs more permissions" prompt — shown by the workflow config
+ * panel when a block's requiredScopes aren't all present on the
+ * connection yet. Mirrors HubspotReauthorizeButton exactly.
+ */
+export function ZohoReauthorizeButton({
+  missingScopes,
+  onConnected,
+}: {
+  missingScopes: string[];
+  onConnected?: () => void;
+}) {
+  const { start, connecting, canConnect } = useZohoConnect(onConnected, missingScopes);
+  return (
+    <Button variant="secondary" disabled={!canConnect || connecting} onClick={() => void start()}>
+      {connecting ? "Requesting access…" : "Reauthorize to grant access"}
     </Button>
   );
 }
