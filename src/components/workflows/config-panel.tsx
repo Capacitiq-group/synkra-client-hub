@@ -10,6 +10,7 @@ import { useIntegrationsMap } from "@/hooks/useIntegrations";
 import { missingScopes, integrationConnected } from "@/lib/workflow/scopes";
 import { HubspotConnectButton, HubspotReauthorizeButton } from "@/components/integrations/hubspot-connect";
 import { SlackConnectButton } from "@/components/integrations/slack-connect";
+import { ZohoConnectButton, ZohoReauthorizeButton } from "@/components/integrations/zoho-connect";
 import {
   availableVariableOptions,
   extractFieldEntries,
@@ -477,6 +478,7 @@ export function ConfigPanel({
           </p>
           {requiresIntegration === "hubspot" && <HubspotConnectButton label="Connect" />}
           {requiresIntegration === "slack" && <SlackConnectButton label="Connect" />}
+          {requiresIntegration === "zoho" && <ZohoConnectButton label="Connect" />}
         </div>
       );
     }
@@ -490,10 +492,11 @@ export function ConfigPanel({
             This block needs additional {requiresIntegration} permissions ({needsMoreScopes.join(", ")}) that
             haven't been granted yet.
           </p>
-          {/* Only hubspot has a /reauthorize endpoint today — see
-              docs/integrations/scopes-and-custom-workflows.md for
-              extending this to slack and future platforms. */}
+          {/* hubspot and zoho both have /reauthorize endpoints now —
+              slack doesn't yet, see nango-integration-architecture.md's
+              checklist for extending this further. */}
           {requiresIntegration === "hubspot" && <HubspotReauthorizeButton missingScopes={needsMoreScopes} />}
+          {requiresIntegration === "zoho" && <ZohoReauthorizeButton missingScopes={needsMoreScopes} />}
         </div>
       );
     }
@@ -966,6 +969,116 @@ export function ConfigPanel({
             value={text("note_body")}
             variables={variables}
             onChange={(v) => set("note_body", v)}
+          />
+        </>
+      )}
+
+      {subtype === "send_slack_message" && (
+        <>
+          <SlackChannelPicker
+            channelId={text("channel_id")}
+            onChange={(v) => set("channel_id", v)}
+          />
+          <VariableField
+            label="Message"
+            multiline
+            value={text("text")}
+            variables={variables}
+            onChange={(v) => set("text", v)}
+          />
+        </>
+      )}
+
+      {subtype === "zoho_find_contact" && (
+        <>
+          <VariableField
+            label="Email"
+            value={text("email")}
+            variables={variables}
+            onChange={(v) => set("email", v)}
+          />
+          <PlainField
+            label="Store result as"
+            value={text("output_variable", "zoho_contact")}
+            onChange={(v) => set("output_variable", v)}
+            hint="Reference this later as {{zoho_contact}} (or whatever name you pick)."
+          />
+        </>
+      )}
+
+      {(subtype === "zoho_create_contact" || subtype === "zoho_update_contact") && (
+        <>
+          {subtype === "zoho_update_contact" && (
+            <VariableField
+              label="Contact ID"
+              value={text("contact_id")}
+              variables={variables}
+              onChange={(v) => set("contact_id", v)}
+            />
+          )}
+          <JsonField
+            label="Fields"
+            value={obj("fields")}
+            onChange={(v) => set("fields", v)}
+            hint='Zoho Books contact fields, e.g. {"contact_name": "{{trigger.company}}", "email": "{{trigger.email}}"}. Variables work inside the string values.'
+          />
+          {subtype === "zoho_create_contact" && (
+            <PlainField
+              label="Store result as"
+              value={text("output_variable", "zoho_contact")}
+              onChange={(v) => set("output_variable", v)}
+            />
+          )}
+        </>
+      )}
+
+      {subtype === "zoho_find_invoice" && (
+        <>
+          <VariableField
+            label="Invoice number"
+            value={text("invoice_number")}
+            variables={variables}
+            onChange={(v) => set("invoice_number", v)}
+          />
+          <PlainField
+            label="Store result as"
+            value={text("output_variable", "zoho_invoice")}
+            onChange={(v) => set("output_variable", v)}
+          />
+        </>
+      )}
+
+      {subtype === "zoho_create_invoice" && (
+        <>
+          <JsonField
+            label="Fields"
+            value={obj("fields")}
+            onChange={(v) => set("fields", v)}
+            hint='Needs at least customer_id and line_items, e.g. {"customer_id": "{{zoho_contact.contact_id}}", "line_items": [{"name": "Service", "rate": 100, "quantity": 1}]}'
+          />
+          <PlainField
+            label="Store result as"
+            value={text("output_variable", "zoho_invoice")}
+            onChange={(v) => set("output_variable", v)}
+          />
+        </>
+      )}
+
+      {subtype === "zoho_add_invoice_comment" && (
+        <>
+          <VariableField
+            label="Invoice ID"
+            value={text("invoice_id")}
+            variables={variables}
+            onChange={(v) => set("invoice_id", v)}
+          />
+          <VariableField
+            label="Comment"
+            multiline
+            value={text("comment")}
+            variables={variables}
+            onChange={(v) => set("comment", v)}
+            hint="Internal only — visible in the invoice's activity log, never on the customer-facing PDF."
           />
         </>
       )}
