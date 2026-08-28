@@ -155,6 +155,8 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     notes: ["Connected through Zoho OAuth", "Available on paid plans"],
     icon: DollarSign,
     iconColor: "#E42527",
+    logoUrl: "https://res.cloudinary.com/dewvhnks3/image/upload/v1787877216/1000116922-removebg-preview_vdhocb.png",
+    logoBg: "#FFFFFF",
     requiresPaidPlan: true,
     available: true,
   },
