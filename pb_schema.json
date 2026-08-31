@@ -220,7 +220,10 @@
             "google_calendar",
             "google_sheets",
             "openai",
-            "webhook"
+            "webhook",
+            "hubspot",
+            "slack",
+            "zoho"
           ]
         },
         {
@@ -251,6 +254,18 @@
         {
           "name": "connection_id",
           "type": "text"
+        },
+        {
+          "name": "zoho_cashflow_digest_enabled",
+          "type": "bool"
+        },
+        {
+          "name": "zoho_churn_detector_enabled",
+          "type": "bool"
+        },
+        {
+          "name": "zoho_contact_dedupe_enabled",
+          "type": "bool"
         }
       ]
     },
@@ -582,6 +597,100 @@
       "indexes": [
         "CREATE UNIQUE INDEX `idx_billing_payments_reference` ON `billing_payments` (`reference`)"
       ]
+    },
+    {
+      "name": "ghost_mailboxes",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "forward_to_email",
+          "type": "text",
+          "required": true
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_ghost_mailboxes_address` ON `ghost_mailboxes` (`address`)",
+        "CREATE INDEX `idx_ghost_mailboxes_user` ON `ghost_mailboxes` (`user_id`)"
+      ],
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null
+    },
+    {
+      "name": "pending_approvals",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "values": [
+            "zoho_invoice_reminder",
+            "zoho_customer_checkin",
+            "zoho_contact_datafix"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "pending",
+            "approved",
+            "sent",
+            "rejected"
+          ]
+        },
+        {
+          "name": "subject",
+          "type": "text"
+        },
+        {
+          "name": "body",
+          "type": "text"
+        },
+        {
+          "name": "recipient_email",
+          "type": "text"
+        },
+        {
+          "name": "recipient_name",
+          "type": "text"
+        },
+        {
+          "name": "zoho_followup",
+          "type": "json",
+          "maxSize": 2000000
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_pending_approvals_user` ON `pending_approvals` (`user_id`)",
+        "CREATE INDEX `idx_pending_approvals_status` ON `pending_approvals` (`status`)"
+      ],
+      "listRule": "user_id = @request.auth.id",
+      "viewRule": "user_id = @request.auth.id",
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null
     },
     {
       "name": "student_verifications",

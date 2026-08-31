@@ -437,6 +437,12 @@ export function ConfigPanel({
   onChange: (blockId: string, config: Record<string, unknown>) => void;
   workflowId?: string | undefined;
 }) {
+  // Must run before any early return - React hooks cannot be called
+  // conditionally. This was previously called after the `!block` check
+  // below, which meant the hook ran on some renders and not others
+  // (selecting vs. deselecting a block), a real rules-of-hooks violation
+  // that could corrupt hook state across re-renders.
+  const { data: integrations = {} } = useIntegrationsMap();
 
   if (!block) {
     return (
@@ -460,7 +466,6 @@ export function ConfigPanel({
   const configHint = definition?.configHint;
   const configNote = definition?.configNote;
 
-  const { data: integrations = {} } = useIntegrationsMap();
   const requiresIntegration = definition?.requiresIntegration;
   const connected = integrationConnected(requiresIntegration, integrations);
   const needsMoreScopes = missingScopes(definition, block, integrations[requiresIntegration ?? ""]);

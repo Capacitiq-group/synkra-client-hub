@@ -228,6 +228,61 @@ Purpose: one row per connected platform per user.
 | `last_tested_at` | date | |
 | `error_message` | text | |
 
+## `ghost_mailboxes` (base, server-only)
+
+Purpose: a real-looking `@in.synkra.co.za` email address for accounts
+that can't afford proper email hosting — anything sent to it relays to
+the owner's real personal inbox, and a compose endpoint lets them send
+from that identity. Fully server-only: the browser never talks to
+PocketBase directly for this, only through synkra-core's own
+`/ghost-mailboxes` endpoints (real bearer-token auth on every one — see
+that router's own docstring), which is why every rule here is null
+rather than user-scoped like `pending_approvals`.
+
+| Field              | Type            | Notes                                             |
+| ------------------ | ----------------- | ---------------------------------------------------- |
+| `user_id`           | text, required     | `users.id`.                                          |
+| `address`           | text, required     | Must end `@in.synkra.co.za` — enforced in the router, not here. |
+| `forward_to_email`  | text, required     | The owner's real inbox anything sent here relays to.  |
+
+Indexes:
+
+- `idx_ghost_mailboxes_address`: **unique** — an address can only ever belong to one account.
+- `idx_ghost_mailboxes_user`: on `user_id` — listing an account's own mailboxes.
+
+## `pending_approvals` (base, user-readable)
+
+Purpose: the AI-drafted-message approval queue. Every Zoho Books
+automation that has AI draft something customer-facing (invoice
+reminders, customer check-ins, contact data-quality fixes) writes here
+via `workflows/zoho/_shared.py`'s `submit_for_approval()` — one shared
+function, so there's exactly one place that creates these rows and
+exactly one place (`routers/integrations_zoho.py`'s
+`/approvals/{id}/approve`) that ever actually sends the message. Nothing
+is ever sent without a human clicking approve.
+
+Read directly by the frontend with the user's own auth token (see
+`useApprovals.ts`'s real-time subscription and `approvals-feed.ts`) —
+this is why, unlike most `server-only` collections in this file,
+`listRule`/`viewRule` scope to the owning user rather than being null.
+Writes only ever come from synkra-core's own service credentials.
+
+| Field             | Type                                                                    | Notes                                                                 |
+| ----------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `user_id`          | text, required                                                            | `users.id`.                                                             |
+| `type`             | select `zoho_invoice_reminder` \| `zoho_customer_checkin` \| `zoho_contact_datafix`, required | Doubles as the matching `notifications.event_type` for this row — see `notification-events.ts`. |
+| `status`           | select `pending` \| `approved` \| `sent` \| `rejected`, required          | `sent` and `approved` are distinct: `approved` briefly exists between the click and the send actually completing. |
+| `subject`          | text                                                                       | Empty for `zoho_contact_datafix`, which isn't an email.                 |
+| `body`              | text                                                                       | The AI-drafted message, shown as-is for review before sending.          |
+| `recipient_email`  | text                                                                       |                                                                          |
+| `recipient_name`   | text                                                                       |                                                                          |
+| `zoho_followup`    | json                                                                       | What to write back to Zoho once approved and sent — e.g. an invoice comment or a contact field fix. Structure varies by `type`. |
+
+Indexes:
+
+- `idx_pending_approvals_user`: on `user_id` — the approvals inbox query.
+- `idx_pending_approvals_status`: on `status` — filtering to pending items.
+
 ## `student_verifications` (base, server-only)
 
 Purpose: Section 4 of the 28 Aug 2026 handover — the student discount

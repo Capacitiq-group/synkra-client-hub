@@ -1,4 +1,5 @@
 import type { WorkflowBlock } from "./types";
+import pb from "@/lib/pocketbase";
 
 const API_BASE =
   (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.synkra.co.za";
@@ -215,5 +216,39 @@ export async function retryRun(
 ): Promise<void> {
   const response = await post(`/webhooks/run/${workflowId}`, inputData);
   if (!response.ok) throw new Error(`Retry failed with status ${response.status}`);
+}
+
+export interface ZohoAutomationToggles {
+  zoho_cashflow_digest_enabled?: boolean;
+  zoho_churn_detector_enabled?: boolean;
+  zoho_contact_dedupe_enabled?: boolean;
+}
+
+/**
+ * Unlike every other call in this file, this endpoint requires a real
+ * bearer token rather than a trusted user_id in the body - it's new
+ * code (28 Aug 2026), not the older pattern the rest of this file still
+ * uses. See routers/integrations_zoho.py's own docstring on this
+ * endpoint for why.
+ */
+export async function updateZohoAutomations(
+  toggles: ZohoAutomationToggles,
+): Promise<{ status: string; record: Record<string, unknown> }> {
+  const token = pb.authStore.token;
+  if (!token) throw new Error("You are signed out. Sign in again to continue.");
+
+  const response = await fetch(`${API_BASE}/integrations/zoho/automations`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(toggles),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Could not update automation settings (${response.status})${detail ? `: ${detail}` : ""}`);
+  }
+  return (await response.json()) as { status: string; record: Record<string, unknown> };
 }
   
