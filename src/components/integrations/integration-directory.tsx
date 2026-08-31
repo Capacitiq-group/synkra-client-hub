@@ -17,6 +17,7 @@ import { usePlanUsage } from "@/hooks/usePlanUsage";
 import { SlackConnectButton } from "@/components/integrations/slack-connect";
 import { HubspotConnectButton } from "@/components/integrations/hubspot-connect";
 import { ZohoConnectButton } from "@/components/integrations/zoho-connect";
+import { ZohoAutomationToggles } from "@/components/integrations/zoho-automation-toggles";
 import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
 import { INTEGRATIONS_PAID_PLAN_NOTE, integrationsAllowed } from "@/lib/plans";
 import {
@@ -502,6 +503,9 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
                       <li key={note}>{note}</li>
                     ))}
                   </ul>
+                )}
+                {selected.key === "zoho" && selectedRecord?.status === "connected" && (
+                  <ZohoAutomationToggles record={selectedRecord} />
                 )}
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   {detailActions(selected)}

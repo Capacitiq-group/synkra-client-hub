@@ -1,9 +1,40 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BLOCK_DEFINITIONS, type BlockDefinition } from "@/lib/workflow/blocks";
+import { INTEGRATIONS } from "@/lib/integrations/catalog";
 import { useIntegrationsMap } from "@/hooks/useIntegrations";
 import { integrationConnected } from "@/lib/workflow/scopes";
 
 const SECTIONS: BlockDefinition["section"][] = ["TRIGGERS", "ACTIONS", "LOGIC"];
+
+/** "Everyone" catches every block with no requiresIntegration (email, AI,
+ * webhooks, logic, ...) - these aren't gated to one platform, so they don't
+ * belong bucketed under any single integration's chip. */
+const EVERYONE = "__everyone__";
+
+/**
+ * Filter chips are derived from BLOCK_DEFINITIONS + the integration
+ * catalog, not hand-maintained. Every block already declares
+ * requiresIntegration (or doesn't); every integration already has a
+ * name and icon in catalog.ts. A new integration or a new block for an
+ * existing one shows up here automatically - nobody has to remember to
+ * add a category, which is exactly the maintenance trap that produces
+ * a long, unfiltered list in the first place as things grow.
+ */
+function useFilterChips() {
+  return useMemo(() => {
+    const present = new Set(BLOCK_DEFINITIONS.map((d) => d.requiresIntegration ?? EVERYONE));
+    const chips: Array<{ key: string; label: string; icon: (typeof INTEGRATIONS)[number]["icon"] | null }> = [];
+    if (present.has(EVERYONE)) {
+      chips.push({ key: EVERYONE, label: "Everyone", icon: null });
+    }
+    for (const integration of INTEGRATIONS) {
+      if (present.has(integration.key)) {
+        chips.push({ key: integration.key, label: integration.name, icon: integration.icon });
+      }
+    }
+    return chips;
+  }, []);
+}
 
 export function BlockLibrary({
   onAdd,
@@ -13,16 +44,20 @@ export function BlockLibrary({
   hasTrigger: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const [activeChip, setActiveChip] = useState<string | null>(null);
   const { data: integrations = {} } = useIntegrationsMap();
+  const chips = useFilterChips();
 
-  const matches = (definition: BlockDefinition) =>
-    !query ||
-    definition.label.toLowerCase().includes(query.toLowerCase()) ||
-    definition.description.toLowerCase().includes(query.toLowerCase());
+  const matches = (definition: BlockDefinition) => {
+    if (activeChip && (definition.requiresIntegration ?? EVERYONE) !== activeChip) return false;
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return definition.label.toLowerCase().includes(q) || definition.description.toLowerCase().includes(q);
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="p-3">
+      <div className="space-y-2 p-3">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -38,6 +73,47 @@ export function BlockLibrary({
             padding: "8px 10px",
           }}
         />
+        {chips.length > 1 && (
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter blocks by platform">
+            <button
+              type="button"
+              onClick={() => setActiveChip(null)}
+              className="synkra-focus rounded-full"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                padding: "3px 10px",
+                border: `1px solid ${activeChip === null ? "var(--accent-green)" : "var(--border-default)"}`,
+                color: activeChip === null ? "var(--accent-green)" : "var(--text-muted)",
+                backgroundColor: activeChip === null ? "var(--bg-elevated)" : "transparent",
+              }}
+            >
+              All
+            </button>
+            {chips.map((chip) => {
+              const active = activeChip === chip.key;
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => setActiveChip(active ? null : chip.key)}
+                  className="synkra-focus flex items-center gap-1 rounded-full"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    padding: "3px 10px",
+                    border: `1px solid ${active ? "var(--accent-green)" : "var(--border-default)"}`,
+                    color: active ? "var(--accent-green)" : "var(--text-muted)",
+                    backgroundColor: active ? "var(--bg-elevated)" : "transparent",
+                  }}
+                >
+                  {chip.icon && <chip.icon size={11} aria-hidden="true" />}
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-3 pb-4">

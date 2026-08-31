@@ -16,6 +16,17 @@ export type IntegrationRecord = {
    * scope — see lib/workflow/scopes.ts.
    */
   scopes?: string[];
+  /**
+   * Section 6 (28 Aug 2026) - per-automation opt-in for the Zoho
+   * background jobs. Missing/undefined means disabled - connecting Zoho
+   * must never silently start any of these running against someone's
+   * real customer data. Only an explicit true turns one on - see
+   * scheduled/scheduler.py and routers/zoho_webhook.py on the backend,
+   * which apply this exact same "missing/null/false = disabled" rule.
+   */
+  zoho_cashflow_digest_enabled?: boolean;
+  zoho_churn_detector_enabled?: boolean;
+  zoho_contact_dedupe_enabled?: boolean;
 };
 
 /**
