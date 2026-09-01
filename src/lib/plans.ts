@@ -108,7 +108,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whatsapp: 75,
     voiceMinutes: 15,
     integrations: true,
-    studentDiscountZar: 100,
+    studentDiscountZar: 150,
   },
 };
 

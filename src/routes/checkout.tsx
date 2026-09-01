@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Loader2, Mail } from "lucide-react";
-import { createCheckoutFn } from "@/lib/billing/billing.functions";
+import { createCheckoutFn, requestMagicLinkFn } from "@/lib/billing/billing.functions";
 import { formatZar, planOptions, type PlanOption } from "@/lib/billing/config";
 import type { PlanTier } from "@/lib/plans";
 
@@ -100,6 +100,8 @@ function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activated, setActivated] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [resending, setResending] = useState(false);
 
   // Recomputed on every keystroke — cheap, pure, client-side preview only.
   // The actual charge is always recomputed server-side in createCheckout.
@@ -147,9 +149,35 @@ function CheckoutPage() {
             Your {selected?.name} workspace is ready. We sent a single-use sign-in link to {email}.
             It expires in 30 minutes.
           </p>
-          <Link to="/login" className="mt-6 inline-block text-[14px] underline">
-            Sign in with a password instead
-          </Link>
+          {/*
+            Checkout accounts don't have a real password — createCheckout
+            in billing.server.ts sets a random one that's never disclosed,
+            because sign-in for these accounts is magic-link only by
+            design. A "sign in with a password instead" link here would
+            send someone to a form they can never actually complete.
+          */}
+          {resent ? (
+            <p className="mt-6 text-[14px]" style={{ color: "var(--accent-green)" }}>
+              Sent. Check {email} again.
+            </p>
+          ) : (
+            <button
+              type="button"
+              disabled={resending}
+              onClick={async () => {
+                setResending(true);
+                try {
+                  await requestMagicLinkFn({ data: { email } });
+                } finally {
+                  setResending(false);
+                  setResent(true);
+                }
+              }}
+              className="mt-6 inline-block text-[14px] underline disabled:opacity-60"
+            >
+              {resending ? "Sending…" : "Didn't get it? Send the link again"}
+            </button>
+          )}
         </div>
       </main>
     );
