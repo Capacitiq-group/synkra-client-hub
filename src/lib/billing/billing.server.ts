@@ -84,13 +84,14 @@ async function findByField(pb: PocketBase, collection: string, field: string, va
  */
 export async function resolveOrCreateUser(
   pb: PocketBase,
-  input: { email: string; name?: string; phone?: string },
+  input: { email: string; name?: string; phone?: string; businessName?: string },
 ): Promise<{ userId: string; created: boolean; name: string; studentVerified: boolean }> {
   const existing = await findByField(pb, "users", "email", input.email);
   if (existing) {
     const patch: Record<string, unknown> = {};
     if (input.name && !str(existing, "name")) patch["name"] = input.name;
     if (input.phone && !str(existing, "phone")) patch["phone"] = input.phone;
+    if (input.businessName && !str(existing, "business_name")) patch["business_name"] = input.businessName;
     if (Object.keys(patch).length > 0) {
       await pb.collection("users").update(str(existing, "id"), patch);
     }
@@ -120,6 +121,7 @@ export async function resolveOrCreateUser(
     verified: true,
     name: input.name || input.email.split("@")[0],
     phone: input.phone ?? "",
+    business_name: input.businessName ?? "",
     tier: "free",
     user_type: "paid",
     onboarding_completed: false,
@@ -314,6 +316,8 @@ export interface CheckoutInput {
   email: string;
   name: string;
   phone?: string;
+  businessName?: string;
+  howHeard?: string;
   tier: PurchasableTier | "free";
   source?: string;
 }
@@ -331,13 +335,17 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
   const email = normalizeEmail(input.email);
   const name = input.name.trim().slice(0, 120);
   if (!name) throw new BillingError("invalid_name", "Enter your name.");
+  const businessName = input.businessName?.trim().slice(0, 120);
   const tier = normalizeTier(input.tier);
   const pb = await adminClient();
   const reference = `SYN-${tier.toUpperCase()}-${randomUUID()}`;
+  // Optional - a checkout shouldn't fail over this field, so no throw here.
+  const metadata = input.howHeard ? { how_heard: input.howHeard.trim().slice(0, 200) } : undefined;
 
   const { userId, studentVerified } = await resolveOrCreateUser(pb, {
     email,
     name,
+    ...(businessName ? { businessName } : {}),
     ...(input.phone ? { phone: input.phone } : {}),
   });
 
@@ -359,6 +367,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       status: "activated",
       source: input.source ?? "web",
       paid_at: new Date().toISOString(),
+      ...(metadata ? { metadata } : {}),
     });
     await applyEntitlement(pb, { userId, tier, reference });
     const link = await issueMagicLink(pb, { userId, email, purpose: "welcome" });
@@ -383,6 +392,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     provider: PROVIDER,
     status: "pending",
     source: input.source ?? "web",
+    ...(metadata ? { metadata } : {}),
   });
 
   try {

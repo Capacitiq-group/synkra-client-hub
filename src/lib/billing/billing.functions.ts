@@ -14,6 +14,8 @@ const checkoutSchema = z.object({
   email: z.string().min(5).max(200),
   name: z.string().min(1).max(120),
   phone: z.string().max(40).optional(),
+  businessName: z.string().min(1).max(120),
+  howHeard: z.string().max(200).optional(),
   tier: z.enum(["free", ...PURCHASABLE_TIERS]),
 });
 
@@ -63,8 +65,10 @@ export const createCheckoutFn = createServerFn({ method: "POST" })
         email: data.email,
         name: data.name,
         tier: data.tier,
+        businessName: data.businessName,
         source: "web",
         ...(data.phone ? { phone: data.phone } : {}),
+        ...(data.howHeard ? { howHeard: data.howHeard } : {}),
       }),
     );
   });

@@ -95,8 +95,10 @@ function CheckoutPage() {
   const { plan } = Route.useSearch();
   const [tier, setTier] = useState<PlanTier>(plan ?? "basic");
   const [name, setName] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [howHeard, setHowHeard] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activated, setActivated] = useState(false);
@@ -115,7 +117,14 @@ function CheckoutPage() {
     setBusy(true);
     try {
       const result = (await createCheckoutFn({
-        data: { email, name, tier: tier as "free" | "basic" | "pro", ...(phone ? { phone } : {}) },
+        data: {
+          email,
+          name,
+          businessName,
+          tier: tier as "free" | "basic" | "pro",
+          ...(phone ? { phone } : {}),
+          ...(howHeard ? { howHeard } : {}),
+        },
       })) as unknown as Result;
       if (!result.ok) {
         setError(result.message);
@@ -224,6 +233,21 @@ function CheckoutPage() {
             />
           </label>
           <label className="block text-[13px]">
+            <span style={{ color: "var(--text-secondary)" }}>Business name</span>
+            <input
+              required
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              maxLength={120}
+              className="mt-1 h-11 w-full rounded-lg px-3 text-[14px]"
+              style={{
+                border: "1px solid var(--border-default)",
+                backgroundColor: "var(--bg-base)",
+                color: "var(--text-primary)",
+              }}
+            />
+          </label>
+          <label className="block text-[13px]">
             <span style={{ color: "var(--text-secondary)" }}>Email address</span>
             <input
               required
@@ -252,6 +276,27 @@ function CheckoutPage() {
                 color: "var(--text-primary)",
               }}
             />
+          </label>
+          <label className="block text-[13px]">
+            <span style={{ color: "var(--text-secondary)" }}>How did you hear about us? (optional)</span>
+            <select
+              value={howHeard}
+              onChange={(e) => setHowHeard(e.target.value)}
+              className="mt-1 h-11 w-full rounded-lg px-3 text-[14px]"
+              style={{
+                border: "1px solid var(--border-default)",
+                backgroundColor: "var(--bg-base)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <option value="">Select an option</option>
+              <option value="google">Google search</option>
+              <option value="social">Social media</option>
+              <option value="referral">Referral from someone</option>
+              <option value="synkra_website">Synkra website / another Synkra product</option>
+              <option value="agency_client">I'm an existing Synkra Agency client</option>
+              <option value="other">Other</option>
+            </select>
           </label>
         </div>
 
