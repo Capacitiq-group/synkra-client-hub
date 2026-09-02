@@ -20,9 +20,28 @@ import {
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { PlainField, VariableField, JsonField } from "./variables-popover";
 import { SlackChannelPicker } from "./slack-channel-picker";
+import { LoopBodyEditor } from "./loop-body-editor";
 
 /** Trigger types whose config is "pick a Slack channel". */
 const SLACK_TRIGGERS = ["slack_message_received", "slack_unanswered_check", "slack_daily_digest"];
+
+/**
+ * Mirrors backend workflow_engine.py's _LIST_FETCHERS exactly — keep
+ * these two in sync. A resource showing here with nothing wired
+ * server-side would silently fail at run time with a clear error
+ * message rather than crash, but the point of listing them here is so
+ * the config panel never even offers a combination that can't work.
+ */
+const LIST_FETCH_RESOURCES: Record<string, { value: string; label: string }[]> = {
+  zoho: [
+    { value: "invoices", label: "Invoices" },
+    { value: "payments", label: "Customer payments" },
+    { value: "expenses", label: "Expenses" },
+    { value: "contacts", label: "Contacts" },
+  ],
+  hubspot: [{ value: "pipelines", label: "Pipelines" }],
+  slack: [{ value: "channels", label: "Channels" }],
+};
 
 
 /** One-tap starting points for the most common things people extract. */
@@ -437,6 +456,15 @@ export function ConfigPanel({
   onChange: (blockId: string, config: Record<string, unknown>) => void;
   workflowId?: string | undefined;
 }) {
+  // Must run before any early return - React hooks cannot be called
+  // conditionally. This was previously called after the `!block` check
+  // below, which meant the hook ran on some renders and not others
+  // (selecting vs. deselecting a block), a real rules-of-hooks violation
+  // that could corrupt hook state across re-renders.
+  const { data: integrations = {} } = useIntegrationsMap();
+  // Also must run before the early return below, same reason as above.
+  const [loopEditorOpen, setLoopEditorOpen] = useState(false);
+  useEffect(() => setLoopEditorOpen(false), [block?.id]);
 
   if (!block) {
     return (
@@ -460,7 +488,6 @@ export function ConfigPanel({
   const configHint = definition?.configHint;
   const configNote = definition?.configNote;
 
-  const { data: integrations = {} } = useIntegrationsMap();
   const requiresIntegration = definition?.requiresIntegration;
   const connected = integrationConnected(requiresIntegration, integrations);
   const needsMoreScopes = missingScopes(definition, block, integrations[requiresIntegration ?? ""]);
@@ -1125,6 +1152,212 @@ export function ConfigPanel({
             Automatic per-endpoint permission checking isn't available for custom calls yet, only
             for the ready-made blocks above.
           </p>
+        </>
+      )}
+
+      {subtype === "list_fetch" && (
+        <>
+          <PlainField
+            label="Platform"
+            value={text("platform")}
+            onChange={(v) => {
+              set("platform", v);
+              set("resource", "");
+            }}
+            options={[
+              { value: "", label: "Choose a connected platform…" },
+              ...Object.entries(integrations)
+                .filter(([, record]) => record.status === "connected")
+                .map(([key]) => ({ value: key, label: key.charAt(0).toUpperCase() + key.slice(1) })),
+            ]}
+          />
+          <PlainField
+            label="List"
+            value={text("resource")}
+            onChange={(v) => set("resource", v)}
+            options={
+              LIST_FETCH_RESOURCES[text("platform")] ?? [{ value: "", label: "Pick a platform first…" }]
+            }
+          />
+          <PlainField
+            label="Store result as"
+            value={text("output_variable")}
+            onChange={(v) => set("output_variable", v)}
+            hint="Reference this later as {{this_name}} — or plug it straight into a Narrow, Sort, Total, or Repeat block below."
+          />
+          <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            Only the lists shown above are supported today. For anything else, use a Custom action
+            block instead.
+          </p>
+        </>
+      )}
+
+      {subtype === "filter_list" && (
+        <>
+          <VariableField
+            label="List"
+            value={text("list_variable")}
+            variables={variables}
+            onChange={(v) => set("list_variable", v)}
+            placeholder="e.g. zoho_invoices"
+            hint="The name a Get a List block above stored its result as."
+          />
+          <VariableField
+            label="Field to check"
+            value={text("field")}
+            variables={variables}
+            onChange={(v) => set("field", v)}
+            placeholder="e.g. status"
+          />
+          <PlainField
+            label="Condition"
+            value={text("operator", "equals")}
+            onChange={(v) => set("operator", v)}
+            options={OPERATORS}
+          />
+          {!["is_empty", "is_not_empty"].includes(text("operator", "equals")) && (
+            <VariableField
+              label="Value"
+              value={text("value")}
+              variables={variables}
+              onChange={(v) => set("value", v)}
+            />
+          )}
+          <PlainField
+            label="Store result as"
+            value={text("output_variable")}
+            onChange={(v) => set("output_variable", v)}
+            hint="A new list containing only the matching items."
+          />
+        </>
+      )}
+
+      {subtype === "sort_list" && (
+        <>
+          <VariableField
+            label="List"
+            value={text("list_variable")}
+            variables={variables}
+            onChange={(v) => set("list_variable", v)}
+          />
+          <VariableField
+            label="Sort by field"
+            value={text("field")}
+            variables={variables}
+            onChange={(v) => set("field", v)}
+            placeholder="e.g. amount"
+          />
+          <PlainField
+            label="Order"
+            value={text("direction", "desc")}
+            onChange={(v) => set("direction", v)}
+            options={[
+              { value: "desc", label: "Highest first" },
+              { value: "asc", label: "Lowest first" },
+            ]}
+          />
+          <PlainField
+            label="Keep only the top"
+            value={text("limit", "")}
+            onChange={(v) => set("limit", v.trim() === "" ? null : Number(v))}
+            placeholder="Leave blank to keep everything"
+          />
+          <PlainField
+            label="Store result as"
+            value={text("output_variable")}
+            onChange={(v) => set("output_variable", v)}
+          />
+        </>
+      )}
+
+      {subtype === "aggregate_list" && (
+        <>
+          <VariableField
+            label="List"
+            value={text("list_variable")}
+            variables={variables}
+            onChange={(v) => set("list_variable", v)}
+          />
+          <PlainField
+            label="Calculation"
+            value={text("operation", "sum")}
+            onChange={(v) => set("operation", v)}
+            options={[
+              { value: "sum", label: "Total (sum)" },
+              { value: "average", label: "Average" },
+              { value: "count", label: "Count items" },
+            ]}
+          />
+          {text("operation", "sum") !== "count" && (
+            <VariableField
+              label="Field"
+              value={text("field")}
+              variables={variables}
+              onChange={(v) => set("field", v)}
+              placeholder="e.g. amount"
+            />
+          )}
+          <PlainField
+            label="Store result as"
+            value={text("output_variable")}
+            onChange={(v) => set("output_variable", v)}
+          />
+        </>
+      )}
+
+      {subtype === "for_each" && (
+        <>
+          <VariableField
+            label="List"
+            value={text("list_variable")}
+            variables={variables}
+            onChange={(v) => set("list_variable", v)}
+          />
+          <PlainField
+            label="Call each item"
+            value={text("item_variable", "item")}
+            onChange={(v) => set("item_variable", v)}
+            hint="Reference it inside this loop's steps as {{this_name}}, e.g. {{item.email}}."
+          />
+          <button
+            type="button"
+            onClick={() => setLoopEditorOpen(true)}
+            className="synkra-focus flex h-9 items-center justify-center gap-2 rounded-md text-[13px] font-medium"
+            style={{
+              border: "1px solid var(--border-default)",
+              color: "var(--text-primary)",
+              backgroundColor: "var(--bg-elevated)",
+            }}
+          >
+            Manage steps ({((config["blocks"] as WorkflowBlock[] | undefined) ?? []).length})
+          </button>
+          <PlainField
+            label="Collect a value from each item (optional)"
+            value={text("collect_variable")}
+            onChange={(v) => set("collect_variable", v)}
+            hint="Name of a variable set inside this loop's own steps, e.g. a Store information block's key."
+          />
+          {text("collect_variable").trim() !== "" && (
+            <PlainField
+              label="Store the collected list as"
+              value={text("output_list_variable")}
+              onChange={(v) => set("output_list_variable", v)}
+              hint="One entry per item processed, in order — usable by a Sort or Total block after this loop."
+            />
+          )}
+          <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            A Wait block isn't supported inside a loop yet.
+          </p>
+          {loopEditorOpen && (
+            <LoopBodyEditor
+              blocks={(config["blocks"] as WorkflowBlock[] | undefined) ?? []}
+              onSave={(nextBlocks) => {
+                set("blocks", nextBlocks);
+                setLoopEditorOpen(false);
+              }}
+              onClose={() => setLoopEditorOpen(false)}
+            />
+          )}
         </>
       )}
     </div>
