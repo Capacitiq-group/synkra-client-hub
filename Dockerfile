@@ -19,6 +19,28 @@ RUN npm install
 
 # Copy source and build
 COPY . .
+
+# Vite bakes VITE_-prefixed vars into the client bundle at BUILD time, not
+# runtime - setting them as ordinary Coolify environment variables on the
+# service does nothing for these, since npm run build never sees them. They
+# have to arrive as Docker build args instead (Coolify: set these under the
+# service's "Build Variables", not "Environment Variables") and get
+# re-exported as ENV here so `npm run build` below can actually read them.
+ARG VITE_POCKETBASE_URL
+ARG VITE_APP_URL
+ARG VITE_APP_NAME
+ARG VITE_API_URL
+ARG VITE_LOOM_VIDEO_TEMPLATES
+ARG VITE_LOOM_VIDEO_BUILDER
+ARG VITE_LOOM_VIDEO_LOGS
+ENV VITE_POCKETBASE_URL=${VITE_POCKETBASE_URL}
+ENV VITE_APP_URL=${VITE_APP_URL}
+ENV VITE_APP_NAME=${VITE_APP_NAME}
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_LOOM_VIDEO_TEMPLATES=${VITE_LOOM_VIDEO_TEMPLATES}
+ENV VITE_LOOM_VIDEO_BUILDER=${VITE_LOOM_VIDEO_BUILDER}
+ENV VITE_LOOM_VIDEO_LOGS=${VITE_LOOM_VIDEO_LOGS}
+
 RUN npm run build
 
 # Production stage
@@ -26,15 +48,13 @@ FROM node:22-slim AS runner
 
 WORKDIR /app
 
-# Copy built app and node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/server-runtime ./server-runtime
+# vite.config.ts now uses the nitro/vite plugin with the node-server preset,
+# which bundles all runtime dependencies into .output itself - node_modules
+# is not needed here at all (previously copied, no longer necessary).
+COPY --from=builder /app/.output ./.output
 
-# For TanStack Start / Nitro
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["node", "./server-runtime/node-entry.mjs"]
+CMD ["node", ".output/server/index.mjs"]
