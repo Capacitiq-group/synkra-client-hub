@@ -19,6 +19,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ApiCheckoutRouteImport } from './routes/api.checkout'
 import { Route as AuthMagicRouteImport } from './routes/auth.magic'
 import { Route as CheckoutReturnRouteImport } from './routes/checkout_.return'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
@@ -88,6 +89,11 @@ const SignUpRoute = SignUpRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
+  id: '/api/checkout',
+  path: '/api/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthMagicRoute = AuthMagicRouteImport.update({
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/sign-up': typeof SignUpRoute
   '/signup': typeof SignupRoute
+  '/api/checkout': typeof ApiCheckoutRoute
   '/auth/magic': typeof AuthMagicRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/dashboard/activity': typeof DashboardActivityRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/sign-up': typeof SignUpRoute
   '/signup': typeof SignupRoute
+  '/api/checkout': typeof ApiCheckoutRoute
   '/auth/magic': typeof AuthMagicRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/dashboard/activity': typeof DashboardActivityRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/sign-up': typeof SignUpRoute
   '/signup': typeof SignupRoute
+  '/api/checkout': typeof ApiCheckoutRoute
   '/auth/magic': typeof AuthMagicRoute
   '/checkout_/return': typeof CheckoutReturnRoute
   '/dashboard/activity': typeof DashboardActivityRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/sign-up'
     | '/signup'
+    | '/api/checkout'
     | '/auth/magic'
     | '/checkout/return'
     | '/dashboard/activity'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/sign-up'
     | '/signup'
+    | '/api/checkout'
     | '/auth/magic'
     | '/checkout/return'
     | '/dashboard/activity'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/sign-up'
     | '/signup'
+    | '/api/checkout'
     | '/auth/magic'
     | '/checkout_/return'
     | '/dashboard/activity'
@@ -402,6 +414,7 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   SignUpRoute: typeof SignUpRoute
   SignupRoute: typeof SignupRoute
+  ApiCheckoutRoute: typeof ApiCheckoutRoute
   AuthMagicRoute: typeof AuthMagicRoute
   CheckoutReturnRoute: typeof CheckoutReturnRoute
   ResetPasswordConfirmRoute: typeof ResetPasswordConfirmRouteWithChildren
@@ -482,6 +495,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/checkout': {
+      id: '/api/checkout'
+      path: '/api/checkout'
+      fullPath: '/api/checkout'
+      preLoaderRoute: typeof ApiCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/magic': {
@@ -682,6 +702,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   SignUpRoute: SignUpRoute,
   SignupRoute: SignupRoute,
+  ApiCheckoutRoute: ApiCheckoutRoute,
   AuthMagicRoute: AuthMagicRoute,
   CheckoutReturnRoute: CheckoutReturnRoute,
   ResetPasswordConfirmRoute: ResetPasswordConfirmRouteWithChildren,

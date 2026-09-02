@@ -320,6 +320,35 @@ export interface CheckoutInput {
   howHeard?: string;
   tier: PurchasableTier | "free";
   source?: string;
+  // Populated only by the new machine-to-machine /api/checkout entry point
+  // (called from synkra--web-main, which now owns the actual checkout UI -
+  // see that repo's src/lib/checkout.functions.ts). Not present when this
+  // is called from this repo's own fallback checkout.tsx form, which still
+  // uses the older simple monthly-only, no-addons flow.
+  billingPeriod?: "monthly" | "annual";
+  // Authoritative, pre-computed amount from web-main's pricing.ts - trusted
+  // here specifically because this whole struct only reaches createCheckout
+  // via either (a) this repo's own server-side handler.ts calling it
+  // directly, or (b) the new API route, itself gated on the X-Synkra-Secret
+  // header - never directly from a browser. See pricing.ts's own comment:
+  // "the server recomputes it from the raw selection before any payment
+  // handoff. Never trust a client-submitted total." That recompute is
+  // exactly what produces this value, on web-main's side, before it ever
+  // reaches here.
+  amountCentsOverride?: number;
+  pricingVersion?: string;
+  addons?: { id: string; quantity: number; label: string }[];
+  studentVerified?: boolean;
+  // Optional here so the existing fallback checkout.tsx flow (unchanged,
+  // doesn't collect these) and startUpgradeFn keep working exactly as
+  // before. The new /api/checkout route's own zod schema is what actually
+  // enforces termsAccepted === true as mandatory - see that route.
+  // consent_records rows are only written when these are present.
+  marketingConsent?: boolean;
+  termsAccepted?: boolean;
+  termsVersion?: string;
+  privacyVersion?: string;
+  consentIp?: string;
 }
 
 export interface CheckoutResult {
@@ -339,17 +368,76 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
   const tier = normalizeTier(input.tier);
   const pb = await adminClient();
   const reference = `SYN-${tier.toUpperCase()}-${randomUUID()}`;
-  // Optional - a checkout shouldn't fail over this field, so no throw here.
-  const metadata = input.howHeard ? { how_heard: input.howHeard.trim().slice(0, 200) } : undefined;
 
-  const { userId, studentVerified } = await resolveOrCreateUser(pb, {
+  // Everything here is optional - a checkout shouldn't fail over any of it,
+  // so this is assembled without throwing. Kept in billing_checkouts'
+  // existing metadata json field rather than new top-level columns, so no
+  // schema change was needed for billing period / pricing version / addons.
+  const metadataFields: Record<string, unknown> = {};
+  if (input.howHeard) metadataFields["how_heard"] = input.howHeard.trim().slice(0, 200);
+  if (input.billingPeriod) metadataFields["billing_period"] = input.billingPeriod;
+  if (input.pricingVersion) metadataFields["pricing_version"] = input.pricingVersion;
+  if (input.addons && input.addons.length > 0) metadataFields["addons"] = input.addons;
+  const metadata = Object.keys(metadataFields).length > 0 ? metadataFields : undefined;
+
+  const { userId, studentVerified: existingStudentVerified } = await resolveOrCreateUser(pb, {
     email,
     name,
     ...(businessName ? { businessName } : {}),
     ...(input.phone ? { phone: input.phone } : {}),
   });
+  // Prefer the caller's own studentVerified determination when given (the
+  // new /api/checkout route passes this through from web-main, which asked
+  // the question directly in its own step 2) - resolveOrCreateUser's is
+  // only the .ac.za-email heuristic and only applies to brand-new accounts.
+  const studentVerified = input.studentVerified ?? existingStudentVerified;
 
   await upsertCustomer(pb, { userId, email, name, ...(input.phone ? { phone: input.phone } : {}) });
+
+  // Terms acceptance is mandatory wherever it's actually being collected
+  // (enforced by the caller's own schema - see /api/checkout's zod schema),
+  // but createCheckout itself only records what it's given, so the
+  // untouched fallback checkout.tsx flow (which doesn't collect this at
+  // all) isn't affected either way.
+  if (input.termsAccepted !== undefined || input.marketingConsent !== undefined) {
+    const consentRows: Array<Record<string, unknown>> = [];
+    if (input.termsAccepted !== undefined) {
+      consentRows.push({
+        user_id: userId,
+        checkout_reference: reference,
+        consent_type: "terms_and_privacy",
+        granted: input.termsAccepted,
+        policy_version: `terms:${input.termsVersion ?? "unknown"};privacy:${input.privacyVersion ?? "unknown"}`,
+        granted_at: new Date().toISOString(),
+        ...(input.consentIp ? { ip_address: input.consentIp } : {}),
+      });
+    }
+    if (input.marketingConsent !== undefined) {
+      consentRows.push({
+        user_id: userId,
+        checkout_reference: reference,
+        consent_type: "marketing",
+        granted: input.marketingConsent,
+        policy_version: "",
+        granted_at: new Date().toISOString(),
+        ...(input.consentIp ? { ip_address: input.consentIp } : {}),
+      });
+    }
+    // consent_records is append-only, same pattern as agency_usage_events -
+    // never update an existing row, always write a new one, so the audit
+    // trail is a full history rather than a single overwritable boolean.
+    // NEEDS CREATING on the live PocketBase instance - see this repo's
+    // README for the field list. Logged rather than thrown on failure so a
+    // missing collection can never block someone completing a real
+    // purchase; the checkout itself is the priority.
+    for (const row of consentRows) {
+      try {
+        await pb.collection("consent_records").create(row);
+      } catch (err) {
+        console.error("Failed to write consent_records row (collection may not exist yet):", err);
+      }
+    }
+  }
 
   // The free plan costs nothing, so there is nothing to charge: provision the
   // account immediately and send the sign-in link.
@@ -379,7 +467,12 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     throw new BillingError("not_configured", "Card payments are not available right now.");
   }
 
-  const amountCents = priceCents(tier, studentVerified);
+  // amountCentsOverride, when present, is the authoritative figure computed
+  // by web-main's pricing.ts (annual/student/addon math this repo doesn't
+  // duplicate) - see the CheckoutInput comment on that field for why it's
+  // trusted here. Falls back to this repo's own simpler monthly-only
+  // pricing for the untouched fallback checkout.tsx flow.
+  const amountCents = input.amountCentsOverride ?? priceCents(tier, studentVerified);
   const checkout = await pb.collection("billing_checkouts").create({
     reference,
     user_id: userId,
