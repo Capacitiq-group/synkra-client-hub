@@ -429,6 +429,8 @@ export function UsageSettings() {
             display={`${formatNumber(emailsUsed)} / ${formatNumber(limits.emails)}`}
             onUpgrade={handleUpgrade}
             canUpgrade={canUpgrade}
+            onBuyAddOn={handleBuyAddOn("emails")}
+            addonKind="emails"
           />
           <UsageCard
             label="Storage"
