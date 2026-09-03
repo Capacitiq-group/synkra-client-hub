@@ -121,7 +121,7 @@ export async function signUp(
     const emailSent = await sendNotificationEmail({
       to: cleanEmail,
       subject: "Welcome to Synkra",
-      body: `Hi ${userData.name || "there"},\n\nYour Synkra client portal account is ready.\n\nSign in here: https://client.synkra.co.za/login\n\nInside the portal you can activate ready-to-run automation templates, connect your business details, and watch every workflow run in the activity log.\n\nSynkra`,
+      body: `Hi ${userData.name || "there"},\n\nYour Synkra client portal account is ready.\n\nSign in here: ${typeof window !== "undefined" ? window.location.origin : "https://flow.synkra.co.za"}/login\n\nInside the portal you can activate ready-to-run automation templates, connect your business details, and watch every workflow run in the activity log.\n\nSynkra`,
     });
 
     return { success: true, emailSent, user: result as unknown as AuthUser };

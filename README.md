@@ -1,6 +1,6 @@
 # Synkra Client Hub
 
-You are building the Synkra client portal. This is a separate Lovable project from the landing page. It deploys at client.synkra.co.za. Every Synkra client logs in here regardless of whether they are a beta user from the Synkra for Her programme or a future paying customer.
+You are building the Synkra client portal. This is a separate Lovable project from the landing page. It deploys at flow.synkra.co.za. Every Synkra client logs in here regardless of whether they are a beta user from the Synkra for Her programme or a future paying customer.
 
 
 
@@ -50,7 +50,7 @@ Create a .env.example file:
 
 VITE_POCKETBASE_URL=https://pb.synkra.co.za
 
-VITE_APP_URL=https://client.synkra.co.za
+VITE_APP_URL=https://flow.synkra.co.za
 
 VITE_APP_NAME=Synkra
 
