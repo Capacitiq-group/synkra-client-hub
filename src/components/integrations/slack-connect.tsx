@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import pb from "@/lib/pocketbase";
 import { createSlackConnectSession, fetchSlackStatus } from "@/lib/workflow/api";
+import { confirmConnectionWithRetry } from "@/lib/workflow/connect-retry";
 import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
 import { INTEGRATIONS_PAID_PLAN_NOTE } from "@/lib/plans";
 
@@ -87,7 +88,7 @@ export function useSlackConnect(onConnected?: () => void) {
           if (event.type === "connect") {
             void (async () => {
               try {
-                const status = await fetchSlackStatus(user.id);
+                const status = await confirmConnectionWithRetry(() => fetchSlackStatus(user.id));
                 await queryClient.invalidateQueries({ queryKey: ["integrations", user.id] });
                 await queryClient.invalidateQueries({ queryKey: ["slack-status", user.id] });
                 await queryClient.invalidateQueries({ queryKey: ["slack-channels", user.id] });
