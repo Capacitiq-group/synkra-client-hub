@@ -12,6 +12,7 @@ import {
   fetchHubspotStatus,
 } from "@/lib/workflow/api";
 import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
+import { confirmConnectionWithRetry } from "@/lib/workflow/connect-retry";
 import { INTEGRATIONS_PAID_PLAN_NOTE } from "@/lib/plans";
 
 // Same two-host split as slack-connect.tsx — see that file's comments for
@@ -82,7 +83,7 @@ export function useHubspotConnect(onConnected?: () => void, additionalScopes?: s
           if (event.type === "connect") {
             void (async () => {
               try {
-                const status = await fetchHubspotStatus(user.id);
+                const status = await confirmConnectionWithRetry(() => fetchHubspotStatus(user.id));
                 await queryClient.invalidateQueries({ queryKey: ["integrations", user.id] });
                 if (status.connected) {
                   toast.success(isReauthorize ? "HubSpot permissions updated" : "HubSpot connected");

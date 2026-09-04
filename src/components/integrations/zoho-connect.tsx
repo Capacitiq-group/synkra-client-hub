@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import pb from "@/lib/pocketbase";
 import { createZohoConnectSession, createReauthorizeSession, fetchZohoStatus } from "@/lib/workflow/api";
 import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
+import { confirmConnectionWithRetry } from "@/lib/workflow/connect-retry";
 import { INTEGRATIONS_PAID_PLAN_NOTE } from "@/lib/plans";
 
 // Same two self-hosted Nango hosts as Slack (see slack-connect.tsx and
@@ -78,7 +79,7 @@ export function useZohoConnect(onConnected?: () => void, additionalScopes?: stri
           if (event.type === "connect") {
             void (async () => {
               try {
-                const status = await fetchZohoStatus(user.id);
+                const status = await confirmConnectionWithRetry(() => fetchZohoStatus(user.id));
                 await queryClient.invalidateQueries({ queryKey: ["integrations", user.id] });
                 await queryClient.invalidateQueries({ queryKey: ["zoho-status", user.id] });
                 if (status.connected) {
