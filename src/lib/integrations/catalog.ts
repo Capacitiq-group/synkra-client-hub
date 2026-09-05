@@ -21,12 +21,21 @@
 import {
   Bot,
   Building2,
+  Calendar,
+  CheckSquare,
+  ClipboardList,
   DollarSign,
   Globe,
   Hash,
+  KanbanSquare,
   Mail,
   MessageCircle,
+  Notebook,
+  ShoppingBag,
   Smartphone,
+  Table2,
+  Target,
+  Trello,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +46,10 @@ export const INTEGRATION_CATEGORIES = [
   "Automation",
   "AI",
   "Finance",
+  "Commerce",
+  "Forms",
+  "Scheduling",
+  "Productivity",
 ] as const;
 
 export type IntegrationCategory = (typeof INTEGRATION_CATEGORIES)[number];
@@ -57,8 +70,16 @@ export interface IntegrationDefinition {
   iconBg?: string;
   logoUrl?: string;
   logoBg?: string;
-  /** OAuth endpoint name, when Synkra brokers the connection itself. */
-  endpoint?: "hubspot";
+  /**
+   * OAuth endpoint name, when Synkra brokers the connection itself —
+   * matches the `/integrations/{endpoint}` router prefix on the API.
+   * Any key not equal to "hubspot", "slack", or "zoho" is routed through
+   * the generic connect flow (see components/integrations/generic-connect.tsx)
+   * rather than a bespoke per-provider component.
+   */
+  endpoint?: string;
+  /** Tally has no OAuth — the user pastes an API key instead. */
+  authMethod?: "oauth" | "api_key";
   /** Runs on Synkra's own infrastructure — nothing to connect. */
   includedOnEveryPlan?: boolean;
   /** Connecting this platform needs a paid plan. */
@@ -155,8 +176,45 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     notes: ["Connected through Zoho OAuth", "Available on paid plans"],
     icon: DollarSign,
     iconColor: "#E42527",
-    logoUrl: "https://res.cloudinary.com/dewvhnks3/image/upload/v1787877216/1000116922-removebg-preview_vdhocb.png",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1787877216/1000116922-removebg-preview_vdhocb.png",
     logoBg: "#FFFFFF",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "clickup",
+    name: "ClickUp",
+    category: "Automation",
+    summary: "Turn incoming requests into tasks, and let ClickUp activity kick off workflows.",
+    description:
+      "Connect ClickUp so workflows can create and update tasks in the lists you choose, and so a change in ClickUp (a task created, moved or commented on) can start a workflow of its own. Enabling this integration doesn't turn on any template by itself — each template still needs to be switched on individually.",
+    notes: ["Connected through ClickUp OAuth", "Available on paid plans"],
+    icon: CheckSquare,
+    iconColor: "#7B68EE",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788201412/1000117702-removebg-preview_tpyxm3.png",
+    logoBg: "#FFFFFF",
+    endpoint: "clickup",
+    authMethod: "oauth",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "notion",
+    name: "Notion",
+    category: "Automation",
+    summary: "Read and update Notion databases, and start workflows from new database rows.",
+    description:
+      "Connect Notion so workflows can read from and write to the databases you explicitly share with Synkra inside Notion, and so a new row in a shared database can start a workflow. Only databases you share with the Synkra connection are visible here — that sharing step happens inside Notion itself, in addition to the OAuth connection.",
+    notes: ["Connected through Notion OAuth", "You must also share each database with Synkra inside Notion", "Available on paid plans"],
+    icon: Notebook,
+    iconColor: "#000000",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788201412/1000117703-removebg-preview_bdhz7m.png",
+    logoBg: "#FFFFFF",
+    endpoint: "notion",
+    authMethod: "oauth",
     requiresPaidPlan: true,
     available: true,
   },
@@ -187,6 +245,168 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     requiresPaidPlan: true,
     available: true,
     hiddenFromDirectory: true,
+  },
+  {
+    key: "shopify",
+    name: "Shopify",
+    category: "Commerce",
+    summary: "Catalogue audits, inventory risk and customer value reports powered by AI.",
+    description:
+      "Connect your Shopify store so Synkra can analyse products, inventory and orders — surfacing catalogue quality issues, stockout risk and customer value, none of which Shopify Flow does natively.",
+    notes: ["Connected through Shopify OAuth", "Available on paid plans", "Read-only — no template writes back to your store"],
+    icon: ShoppingBag,
+    iconColor: "#95BF47",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788338003/1000118000-removebg-preview_nyxh32.png",
+    logoBg: "#FFFFFF",
+    endpoint: "shopify",
+    authMethod: "oauth",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "typeform",
+    name: "Typeform",
+    category: "Forms",
+    summary: "AI qualification, screening and feedback digests from your form responses.",
+    description:
+      "Connect Typeform so Synkra can score and qualify new responses against your own criteria, screen applications, and summarise recurring themes across a form's answers.",
+    notes: ["Connected through Typeform OAuth", "Available on paid plans"],
+    icon: ClipboardList,
+    iconColor: "#262627",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788338003/1000118001-removebg-preview_g5lhnq.png",
+    logoBg: "#FFFFFF",
+    endpoint: "typeform",
+    authMethod: "oauth",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "tally",
+    name: "Tally",
+    category: "Forms",
+    summary: "AI submission qualification and screening from your Tally forms.",
+    description:
+      "Connect Tally with an API key so Synkra can qualify submissions, screen applications and produce feedback digests. Tally's API keys are account-wide — see the connection dialog for details.",
+    notes: ["Connected with a Tally API key, not OAuth", "The key inherits your full Tally account access", "Available on paid plans"],
+    icon: ClipboardList,
+    iconColor: "#000000",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788338153/1000118004-removebg-preview_f9o4cr.png",
+    logoBg: "#FFFFFF",
+    endpoint: "tally",
+    authMethod: "api_key",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "calendly",
+    name: "Calendly",
+    category: "Scheduling",
+    summary: "AI meeting debriefs, no-show follow-ups and recurring meeting intelligence.",
+    description:
+      "Connect Calendly so Synkra can summarise completed meetings, draft personalised no-show follow-ups, and spot recurring topics and objections across your bookings.",
+    notes: ["Connected through Calendly OAuth", "Available on paid plans"],
+    icon: Calendar,
+    iconColor: "#006BFF",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788338153/1000118005-removebg-preview_h90ec7.png",
+    logoBg: "#FFFFFF",
+    endpoint: "calendly",
+    authMethod: "oauth",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "xero",
+    name: "Xero",
+    category: "Finance",
+    summary: "Receivables risk, invoice review and customer payment-behaviour reports.",
+    description:
+      "Connect Xero so Synkra can analyse outstanding invoices, payments and contacts — surfacing collection risk and payment-behaviour patterns your accounting workflows don't.",
+    notes: ["Connected through Xero OAuth", "Uses Xero's granular accounting scopes", "Available on paid plans"],
+    icon: DollarSign,
+    iconColor: "#13B5EA",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788338396/1000118008-removebg-preview_xe1zbr.png",
+    logoBg: "#FFFFFF",
+    endpoint: "xero",
+    authMethod: "oauth",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "airtable",
+    name: "Airtable",
+    category: "Productivity",
+    summary: "AI data-quality audits and record escalation across your bases.",
+    description:
+      "Connect Airtable so Synkra can audit records for inconsistencies and duplicates, and flag records that need human attention — with an optional write-back of the review result.",
+    notes: ["Connected through Airtable OAuth", "Available on paid plans"],
+    icon: Table2,
+    iconColor: "#FFBF00",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788338465/1000118009-removebg-preview_vfabtd.png",
+    logoBg: "#FFFFFF",
+    endpoint: "airtable",
+    authMethod: "oauth",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "monday",
+    name: "Monday.com",
+    category: "Productivity",
+    summary: "AI project health, workload risk and blocker escalation reports.",
+    description:
+      "Connect Monday.com so Synkra can read your boards and turn item status, dates and updates into project health reports, workload risk reviews and blocker escalations.",
+    notes: ["Connected through Monday.com OAuth", "Available on paid plans"],
+    icon: KanbanSquare,
+    iconColor: "#FF3D57",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788338396/1000118010-removebg-preview_fa4rq8.png",
+    logoBg: "#FFFFFF",
+    endpoint: "monday",
+    authMethod: "oauth",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "asana",
+    name: "Asana",
+    category: "Productivity",
+    summary: "AI project risk reviews, task handoffs and overdue-work triage.",
+    description:
+      "Connect Asana so Synkra can analyse tasks, dependencies and discussion to surface project risk, draft handoff briefs, and triage overdue work by likely cause.",
+    notes: ["Connected through Asana OAuth", "Available on paid plans"],
+    icon: Trello,
+    iconColor: "#F06A6A",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788338395/ASAN-1325de11_tyu9of.png",
+    logoBg: "#FFFFFF",
+    endpoint: "asana",
+    authMethod: "oauth",
+    requiresPaidPlan: true,
+    available: true,
+  },
+  {
+    key: "pipedrive",
+    name: "Pipedrive",
+    category: "CRM",
+    summary: "AI deal health reviews, sales call briefs and stalled-deal analysis.",
+    description:
+      "Connect Pipedrive so Synkra can assess deal momentum and risk, brief you before a sales call, and identify why a deal has stalled — sales intelligence on top of your pipeline, not another follow-up sequence.",
+    notes: ["Connected through Pipedrive OAuth", "Available on paid plans"],
+    icon: Target,
+    iconColor: "#000000",
+    logoUrl:
+      "https://res.cloudinary.com/dewvhnks3/image/upload/v1788338395/pipedrivecrm_123_logo_1708948064_nrwju_lpvkcd.png",
+    logoBg: "#FFFFFF",
+    endpoint: "pipedrive",
+    authMethod: "oauth",
+    requiresPaidPlan: true,
+    available: true,
   },
 ];
 
