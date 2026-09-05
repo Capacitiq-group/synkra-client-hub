@@ -17,6 +17,24 @@ import { usePlanUsage } from "@/hooks/usePlanUsage";
 import { SlackConnectButton } from "@/components/integrations/slack-connect";
 import { HubspotConnectButton } from "@/components/integrations/hubspot-connect";
 import { ZohoConnectButton } from "@/components/integrations/zoho-connect";
+import { GenericConnectButton } from "@/components/integrations/generic-connect";
+import { TallyConnectButton } from "@/components/integrations/tally-connect";
+
+// Providers that use the shared Nango-based generic connect flow instead
+// of a bespoke component — everything built with
+// oauth_integration_factory.py server-side. Add a new launch integration
+// here, not as another `if (item.key === ...)` branch below, unless it
+// genuinely needs its own popup logic the way Slack/HubSpot/Zoho do.
+// ClickUp and Notion fit here too, despite having their own extra picker
+// endpoints (spaces/lists, databases) server-side — those are config-panel
+// concerns, not connect-button concerns, so they don't need their own
+// bespoke connect component either. Neither platform has real OAuth
+// scopes (see docs/integrations/clickup-notion-integration.md §3), so
+// there's nothing about them that would justify one.
+const GENERIC_OAUTH_PROVIDERS = [
+  "shopify", "typeform", "calendly", "xero", "airtable", "monday", "asana", "pipedrive",
+  "clickup", "notion",
+];
 import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
 import { INTEGRATIONS_PAID_PLAN_NOTE, integrationsAllowed } from "@/lib/plans";
 import {
@@ -311,6 +329,10 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
     if (item.key === "slack") return <SlackConnectButton />;
     if (item.key === "hubspot") return <HubspotConnectButton />;
     if (item.key === "zoho") return <ZohoConnectButton />;
+    if (item.key === "tally") return <TallyConnectButton />;
+    if (GENERIC_OAUTH_PROVIDERS.includes(item.key)) {
+      return <GenericConnectButton providerKey={item.key} />;
+    }
     return <Button onClick={() => void connect(item)}>Connect</Button>;
   };
 
