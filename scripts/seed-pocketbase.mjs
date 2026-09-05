@@ -24,6 +24,10 @@ import { dirname, join } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 /** Canonical schema, shared with src/lib/setup/createCollections.ts. */
 const SCHEMA = JSON.parse(readFileSync(join(here, "..", "pb_schema.json"), "utf8"));
+/** Same template library the portal ships (src/lib/setup/seedTemplates.ts). */
+const TEMPLATES = JSON.parse(
+  readFileSync(join(here, "..", "src", "lib", "setup", "templates.json"), "utf8"),
+);
 
 const url = process.env.POCKETBASE_URL || "http://167.86.106.152:8093";
 const adminEmail = process.env.PB_ADMIN_EMAIL || "";
@@ -105,6 +109,39 @@ async function provisionCollections(pb) {
   }
 }
 
+
+/**
+ * Upserts every workflow template into `workflow_templates`, matched on
+ * template_id. Templates added to src/lib/setup/templates.json therefore reach
+ * the live portal on the next deploy, without anyone re-running /setup.
+ */
+async function syncTemplates(pb) {
+  let created = 0;
+  let updated = 0;
+  for (const template of TEMPLATES) {
+    const payload = {
+      ...template,
+      blocks: JSON.stringify(template.blocks),
+      integrations_required: JSON.stringify(template.integrations_required),
+    };
+    let existing = null;
+    try {
+      existing = await pb
+        .collection("workflow_templates")
+        .getFirstListItem(pb.filter("template_id = {:id}", { id: template.template_id }));
+    } catch {
+      existing = null;
+    }
+    if (existing) {
+      await pb.collection("workflow_templates").update(existing.id, payload);
+      updated += 1;
+    } else {
+      await pb.collection("workflow_templates").create(payload);
+      created += 1;
+    }
+  }
+  log("workflow templates synced", `${created} created, ${updated} updated, ${TEMPLATES.length} total`);
+}
 
 function log(step, detail = "") {
   console.log(`[seed] ${step}${detail ? ` - ${detail}` : ""}`);
@@ -208,7 +245,10 @@ async function main() {
     log("portal user created", ownerEmail);
   }
 
-  // 4. Prove the credentials actually work.
+  // 4. Workflow templates shown in the portal's Templates tab.
+  await syncTemplates(pb);
+
+  // 5. Prove the credentials actually work.
   const check = new PocketBase(url);
   await check.collection("users").authWithPassword(ownerEmail, ownerPassword);
   log("verified portal login", ownerEmail);
