@@ -100,7 +100,7 @@ export async function fetchHubspotStatus(
  * endpoint (currently: hubspot — zoho doesn't have one yet).
  */
 export async function createReauthorizeSession(
-  provider: "hubspot" | "zoho",
+  provider: string,
   userId: string,
   additionalScopes: string[],
 ): Promise<string> {
@@ -160,6 +160,49 @@ export async function fetchZohoStatus(
   return (await response.json()) as { connected: boolean; organization_name?: string };
 }
 
+/**
+ * Generic connect flow (Nango-hosted) for every launch integration built
+ * with routers/oauth_integration_factory.py on the backend — Shopify,
+ * Typeform, Calendly, Xero, Airtable, Monday.com, Asana, Pipedrive.
+ * Same two-step shape as the Slack/Zoho functions above (session token,
+ * then a /status call once the popup reports success), just parametrized
+ * by provider instead of one copy per platform. See
+ * components/integrations/generic-connect.tsx for the popup wiring.
+ */
+export async function createProviderConnectSession(provider: string, userId: string): Promise<string> {
+  const response = await post(`/integrations/${provider}/connect`, { user_id: userId });
+  if (!response.ok) throw new Error(`${provider} connect failed with status ${response.status}`);
+  const data = (await response.json()) as { session_token?: string };
+  if (!data.session_token) throw new Error(`${provider} connect did not return a session token`);
+  return data.session_token;
+}
+
+export async function fetchProviderStatus(
+  provider: string,
+  userId: string,
+): Promise<{ connected: boolean; display_name?: string; scopes?: string[] }> {
+  const response = await post(`/integrations/${provider}/status`, { user_id: userId });
+  if (!response.ok) throw new Error(`${provider} status failed with status ${response.status}`);
+  return (await response.json()) as { connected: boolean; display_name?: string; scopes?: string[] };
+}
+
+/**
+ * Tally's connect flow is not OAuth — the user pastes an API key, which
+ * is verified against a live Tally call before being stored (see
+ * routers/integrations_tally.py). No popup, no session token.
+ */
+export async function connectTallyApiKey(
+  userId: string,
+  apiKey: string,
+): Promise<{ connected: boolean; display_name?: string }> {
+  const response = await post("/integrations/tally/connect", { user_id: userId, api_key: apiKey });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail || `Tally connect failed with status ${response.status}`);
+  }
+  return (await response.json()) as { connected: boolean; display_name?: string };
+}
+
 export interface PendingApproval {
   id: string;
   type: string;
@@ -195,6 +238,69 @@ export async function fetchSlackChannels(userId: string): Promise<SlackChannel[]
   if (!response.ok) throw new Error(`Slack channels failed with status ${response.status}`);
   const data = (await response.json()) as { channels?: SlackChannel[] };
   return data.channels ?? [];
+}
+
+// ClickUp/Notion connect/status/test/disconnect/reauthorize all go through
+// the generic createProviderConnectSession/fetchProviderStatus functions
+// above (see generic-connect.tsx) — both platforms are factory-based now,
+// same as Shopify/Airtable/etc. Only their provider-specific picker
+// endpoints need dedicated functions here.
+
+export interface ClickupSpace {
+  id: string;
+  name: string;
+}
+
+export interface ClickupList {
+  id: string;
+  name: string;
+  folder: string | null;
+}
+
+/** Populates the two-step "which ClickUp list?" picker in the workflow config UI. */
+export async function fetchClickupSpaces(userId: string): Promise<ClickupSpace[]> {
+  const response = await fetch(`${API_BASE}/integrations/clickup/spaces?user_id=${encodeURIComponent(userId)}`);
+  if (!response.ok) throw new Error(`ClickUp spaces failed with status ${response.status}`);
+  const data = (await response.json()) as { spaces?: ClickupSpace[] };
+  return data.spaces ?? [];
+}
+
+export async function fetchClickupLists(userId: string, spaceId: string): Promise<ClickupList[]> {
+  const response = await fetch(
+    `${API_BASE}/integrations/clickup/lists?user_id=${encodeURIComponent(userId)}&space_id=${encodeURIComponent(spaceId)}`,
+  );
+  if (!response.ok) throw new Error(`ClickUp lists failed with status ${response.status}`);
+  const data = (await response.json()) as { lists?: ClickupList[] };
+  return data.lists ?? [];
+}
+
+/**
+ * Called once, right after a workflow with a "New ClickUp event" trigger
+ * is published — idempotent, safe to call every publish.
+ */
+export async function ensureClickupWebhook(userId: string): Promise<{ status: string }> {
+  const response = await post("/integrations/clickup/webhooks/ensure", { user_id: userId });
+  if (!response.ok) throw new Error(`ClickUp webhook setup failed with status ${response.status}`);
+  return (await response.json()) as { status: string };
+}
+
+export interface NotionDatabase {
+  id: string;
+  title: string;
+  url?: string;
+}
+
+/**
+ * Populates the "which Notion database?" picker. An empty array here
+ * usually means the account hasn't shared a database with the Synkra
+ * Notion integration yet — the frontend should explain that, not treat
+ * it as an error (see integrations_notion.py's /databases docstring).
+ */
+export async function fetchNotionDatabases(userId: string): Promise<NotionDatabase[]> {
+  const response = await fetch(`${API_BASE}/integrations/notion/databases?user_id=${encodeURIComponent(userId)}`);
+  if (!response.ok) throw new Error(`Notion databases failed with status ${response.status}`);
+  const data = (await response.json()) as { databases?: NotionDatabase[] };
+  return data.databases ?? [];
 }
 
 
