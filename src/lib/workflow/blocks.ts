@@ -258,19 +258,6 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     defaultConfig: { collection: "", filter: "", output_variable: "found_record" },
   },
   {
-    key: "generate_pdf",
-    comingSoon: true,
-    configHint: "Creates a PDF document from the details in this workflow.",
-    kind: "action",
-    subtype: "generate_pdf",
-    label: "Generate PDF",
-    description: "Creates a PDF document",
-    icon: FileText,
-    color: "var(--state-info)",
-    section: "ACTIONS",
-    defaultConfig: { template: "Invoice", fields: {} },
-  },
-  {
     key: "summarise_ai",
     configHint: "Turns a long piece of text into a short summary you can reuse in later steps and messages.",
     kind: "action",
@@ -311,6 +298,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "send_whatsapp",
+    comingSoon: true,
     configHint: "Sends a WhatsApp message.",
     kind: "action",
     subtype: "send_whatsapp",
@@ -323,6 +311,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "send_sms",
+    comingSoon: true,
     configHint: "Sends a text message.",
     kind: "action",
     subtype: "send_sms",
