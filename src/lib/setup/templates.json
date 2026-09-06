@@ -397,11 +397,25 @@
       {
         "id": "trigger_1",
         "type": "trigger",
-        "trigger_type": "slack_daily_digest",
-        "label": "Daily Slack digest",
-        "description": "Runs once a day and collects the day's messages from the channel you pick",
+        "trigger_type": "schedule",
+        "label": "Every day at 7am",
+        "description": "Runs automatically every morning at 7am South African time",
         "config": {
-          "channel_id": ""
+          "frequency": "daily",
+          "time": "07:00",
+          "timezone": "Africa/Johannesburg"
+        },
+        "next": "action_digest"
+      },
+      {
+        "id": "action_digest",
+        "type": "action",
+        "action_type": "slack_channel_digest",
+        "label": "Get Slack channel digest",
+        "description": "Gets the messages from a Slack channel from the last 24 hours",
+        "config": {
+          "channel_id": "",
+          "output_variable": "slack_messages"
         },
         "next": "action_1"
       },
@@ -412,7 +426,7 @@
         "label": "Summarise the day",
         "description": "Summarises text into a short overview",
         "config": {
-          "input": "{{trigger.message}}",
+          "input": "{{slack_messages}}",
           "max_words": 150,
           "output_variable": "digest_summary"
         },
