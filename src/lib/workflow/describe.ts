@@ -38,17 +38,26 @@ export function summariseConfig(block: WorkflowBlock): string | null {
       const fields = (config["expected_fields"] as string[] | undefined) ?? [];
       return fields.length ? `Expects: ${fields.join(", ")}` : null;
     }
+
     case "schedule":
       return `${String(config["frequency"] ?? "daily")} at ${String(config["time"] ?? "07:00")}`;
+
     case "email_received":
       if (config["match_all"]) return "Runs for every forwarded email";
       return config["variable"]
         ? `${String(config["variable"])} ${String(config["operator"] ?? "contains")} ${String(config["value"] ?? "")}`
         : null;
+
+    case "typeform_response_received":
+      return config["form_id"]
+        ? `Form ${String(config["form_id"])}`
+        : null;
+
     case "send_email":
       return config["to"] && config["subject"]
         ? `To ${String(config["to"])} with subject ${String(config["subject"])}`
         : null;
+
     case "wait": {
       const until = config["wait_until"];
       if (typeof until === "string" && until) return `Pauses until ${until}`;
@@ -56,34 +65,43 @@ export function summariseConfig(block: WorkflowBlock): string | null {
         ? `Pauses for ${String(config["duration"])} ${String(config["unit"] ?? "hours")}`
         : null;
     }
+
     case "save_information":
       return config["collection"] ? `Saves into ${String(config["collection"])}` : null;
+
     case "find_information":
       return config["collection"] ? `Looks in ${String(config["collection"])}` : null;
+
     case "generate_pdf":
       return config["template"]
         ? `Uses the ${String(config["template"])} template`
         : null;
+
     case "summarise_ai":
       return config["input"]
         ? `Summarises into {{${String(config["output_variable"] ?? "ai_summary")}}}`
         : null;
+
     case "generate_reply_ai":
       return config["message"]
         ? `Writes a ${String(config["tone"] ?? "Professional").toLowerCase()} reply`
         : null;
+
     case "extract_information_ai":
       return config["input"]
         ? `Extracts into {{${String(config["output_variable"] ?? "extracted")}}}`
         : null;
+
     case "send_whatsapp":
     case "send_sms":
       return config["to"] ? `Sends to ${String(config["to"])}` : null;
+
     case "if_else":
     case "filter":
       return config["variable"]
         ? `${String(config["variable"])} ${String(config["operator"] ?? "equals")} ${String(config["value"] ?? "")}`
         : null;
+
     default:
       return null;
   }
@@ -92,6 +110,7 @@ export function summariseConfig(block: WorkflowBlock): string | null {
 export function isConfigured(block: WorkflowBlock): boolean {
   const subtype = blockSubtype(block);
   const config = block.config ?? {};
+
   const filled = (key: string) => {
     const value = config[key];
     return value !== undefined && value !== null && String(value).trim() !== "";
@@ -100,37 +119,54 @@ export function isConfigured(block: WorkflowBlock): boolean {
   switch (subtype) {
     case "webhook":
       return true;
+
     case "schedule":
       return filled("frequency") && filled("time");
+
     case "email_received":
       // Forwarding is set up at account level; the trigger itself is always
       // runnable (either match-all or a criteria row).
       return Boolean(config["match_all"]) || filled("variable");
+
+    case "typeform_response_received":
+      return filled("form_id");
+
     case "send_email":
       return filled("to") && filled("subject") && filled("body");
+
     case "wait":
       return filled("wait_until") || filled("duration");
+
     case "save_information":
       return filled("collection");
+
     case "find_information":
       return filled("collection") && filled("filter");
+
     case "generate_pdf":
       return filled("template");
+
     case "summarise_ai":
       return filled("input");
+
     case "generate_reply_ai":
       return filled("message");
+
     case "extract_information_ai":
       return filled("input");
+
     case "send_whatsapp":
     case "send_sms":
       return filled("to") && filled("body");
+
     case "if_else":
     case "filter":
       return (
         filled("variable") &&
-        (["is_empty", "is_not_empty"].includes(String(config["operator"])) || filled("value"))
+        (["is_empty", "is_not_empty"].includes(String(config["operator"])) ||
+          filled("value"))
       );
+
     default:
       return Boolean(definitionFor(block));
   }
@@ -146,10 +182,13 @@ export function validateWorkflow(blocks: WorkflowBlock[]): ValidationResult {
   if (!blocks.some((b) => b.type === "trigger")) {
     return { ok: false, message: "Add a trigger to start your workflow." };
   }
+
   if (!blocks.some((b) => b.type === "action")) {
     return { ok: false, message: "Add at least one action after your trigger." };
   }
+
   const unconfigured = blocks.find((b) => !isConfigured(b));
+
   if (unconfigured) {
     return {
       ok: false,
@@ -157,6 +196,7 @@ export function validateWorkflow(blocks: WorkflowBlock[]): ValidationResult {
       blockId: unconfigured.id,
     };
   }
+
   return { ok: true };
 }
 
@@ -172,8 +212,13 @@ export interface VariableOption {
 
 /** Turns a raw field name such as customer_email into "Customer email". */
 export function humanizeFieldName(field: string): string {
-  const words = field.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").trim();
+  const words = field
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim();
+
   if (!words) return field;
+
   return words.charAt(0).toUpperCase() + words.slice(1).toLowerCase();
 }
 
@@ -217,19 +262,29 @@ function payloadFieldLabel(field: string): string {
 /** Reads a trigger's expected fields, tolerating a comma-separated string. */
 export function triggerFields(block: WorkflowBlock): string[] {
   const raw = (block.config ?? {})["expected_fields"];
-  if (Array.isArray(raw)) return raw.map((v) => String(v).trim()).filter(Boolean);
-  if (typeof raw === "string")
+
+  if (Array.isArray(raw)) {
+    return raw.map((v) => String(v).trim()).filter(Boolean);
+  }
+
+  if (typeof raw === "string") {
     return raw
       .split(",")
       .map((v) => v.trim())
       .filter(Boolean);
+  }
+
   return [];
 }
 
 /** Reads an extract-with-AI block's field definitions as name -> description. */
 export function extractFieldEntries(block: WorkflowBlock): Array<[string, string]> {
   const raw = (block.config ?? {})["fields"];
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return [];
+  }
+
   return Object.entries(raw as Record<string, unknown>).map(([name, description]) => [
     name,
     String(description ?? ""),
@@ -247,98 +302,115 @@ export function extractFieldEntries(block: WorkflowBlock): Array<[string, string
 const TYPEFORM_TRIGGER_VARIABLES: VariableOption[] = [
   {
     token: "{{trigger.event_id}}",
-    label: "Event ID",
+    label: "Typeform event ID",
     description: "The unique ID of the Typeform webhook event.",
   },
   {
     token: "{{trigger.event_type}}",
     label: "Event type",
-    description: "The Typeform event type. For submissions this is form_response.",
+    description: "The Typeform event type that started this workflow.",
   },
   {
     token: "{{trigger.form_id}}",
-    label: "Form ID",
-    description: "The Typeform form that received the response.",
+    label: "Typeform form ID",
+    description: "The ID of the Typeform form that received the response.",
   },
   {
     token: "{{trigger.token}}",
     label: "Response token",
-    description: "The unique Typeform response token.",
-  },
-  {
-    token: "{{trigger.response_id}}",
-    label: "Response ID",
-    description: "The Typeform response ID when supplied.",
+    description: "The unique token identifying the submitted Typeform response.",
   },
   {
     token: "{{trigger.response_url}}",
     label: "Response URL",
-    description: "The Typeform URL associated with the response.",
+    description: "The URL for the submitted Typeform response.",
   },
   {
     token: "{{trigger.submitted_at}}",
     label: "Submitted at",
-    description: "The date and time the response was submitted.",
+    description: "The timestamp when the response was submitted.",
   },
   {
     token: "{{trigger.landed_at}}",
     label: "Landed at",
-    description: "The date and time the respondent opened the form.",
+    description: "The timestamp when the respondent landed on the form.",
   },
   {
     token: "{{trigger.hidden}}",
     label: "Hidden fields",
-    description: "Hidden fields included with the Typeform response.",
-  },
-  {
-    token: "{{trigger.calculated}}",
-    label: "Calculated values",
-    description: "Calculated values returned by Typeform.",
-  },
-  {
-    token: "{{trigger.variables}}",
-    label: "Form variables",
-    description: "Variables returned by Typeform.",
-  },
-  {
-    token: "{{trigger.definition}}",
-    label: "Form definition",
-    description: "The Typeform definition associated with the response.",
-  },
-  {
-    token: "{{trigger.fields}}",
-    label: "Form fields",
-    description: "The fields defined on the Typeform.",
+    description: "The hidden values supplied with the Typeform response.",
   },
   {
     token: "{{trigger.answers}}",
-    label: "Answers",
-    description: "Flattened answers from the submitted Typeform.",
+    label: "Typeform answers",
+    description: "The submitted answers, keyed by their Typeform question titles.",
+  },
+];
+
+/**
+ * Trigger variables for the Tally webhook trigger, following the same
+ * provider-specific contract as TYPEFORM_TRIGGER_VARIABLES above.
+ */
+const TALLY_TRIGGER_VARIABLES: VariableOption[] = [
+  {
+    token: "{{trigger.event_id}}",
+    label: "Tally event ID",
+    description: "The unique ID of the Tally webhook event.",
   },
   {
-    token: "{{trigger.answers_raw}}",
-    label: "Raw answers",
-    description: "The original Typeform answers array.",
+    token: "{{trigger.event_type}}",
+    label: "Event type",
+    description: "The Tally webhook event type.",
   },
   {
-    token: "{{trigger.answers_by_ref}}",
-    label: "Answers by field reference",
-    description: "Answers indexed by Typeform field reference.",
+    token: "{{trigger.created_at}}",
+    label: "Event created at",
+    description: "When Tally created the webhook event.",
   },
   {
-    token: "{{trigger.answers_by_title}}",
-    label: "Answers by question",
-    description: "Answers indexed by the Typeform question title.",
+    token: "{{trigger.response_id}}",
+    label: "Response ID",
+    description: "The ID of the Tally response.",
   },
   {
-    token: "{{trigger.form_response}}",
-    label: "Full form response",
-    description: "The original Typeform form_response object.",
+    token: "{{trigger.submission_id}}",
+    label: "Submission ID",
+    description: "The ID of the Tally submission.",
   },
   {
-    token: "{{trigger.ending}}",
-    label: "Ending",
-    description: "The ending configuration returned by Typeform.",
+    token: "{{trigger.respondent_id}}",
+    label: "Respondent ID",
+    description: "The ID of the respondent who submitted the form.",
+  },
+  {
+    token: "{{trigger.form_id}}",
+    label: "Tally form ID",
+    description: "The ID of the Tally form that received the submission.",
+  },
+  {
+    token: "{{trigger.form_name}}",
+    label: "Tally form name",
+    description: "The name of the Tally form.",
+  },
+  {
+    token: "{{trigger.submission_pdf_url}}",
+    label: "Submission PDF",
+    description: "The URL for the PDF version of the submission.",
+  },
+  {
+    token: "{{trigger.submission_preview_url}}",
+    label: "Submission preview",
+    description: "The URL for the Tally submission preview.",
+  },
+  {
+    token: "{{trigger.fields}}",
+    label: "All submitted fields",
+    description: "The original Tally fields array received from the webhook.",
+  },
+  {
+    token: "{{trigger.answers}}",
+    label: "Tally answers",
+    description: "Submitted answers keyed by the Tally field labels.",
   },
 ];
 
@@ -346,6 +418,9 @@ export function knownTriggerVariables(triggerType: string): VariableOption[] {
   switch (triggerType) {
     case "typeform_response_received":
       return TYPEFORM_TRIGGER_VARIABLES;
+
+    case "tally_form_submitted":
+      return TALLY_TRIGGER_VARIABLES;
 
     default:
       return [];
@@ -396,10 +471,7 @@ export function availableVariableOptions(
   blocks
     .filter((block) => block.type === "trigger")
     .forEach((block) => {
-      const providerVariables =
-        knownTriggerVariables(
-          block.trigger_type ?? "",
-        );
+      const providerVariables = knownTriggerVariables(block.trigger_type ?? "");
 
       providerVariables.forEach(push);
 
@@ -431,29 +503,21 @@ export function availableVariableOptions(
       }
     });
 
-  const before = blocks.slice(
-    0,
-    Math.max(upToIndex, 0),
-  );
+  const before = blocks.slice(0, Math.max(upToIndex, 0));
 
   before.forEach((block) => {
     if (block.type === "trigger") return;
 
-    const output =
-      (block.config ?? {})["output_variable"];
+    const output = (block.config ?? {})["output_variable"];
 
-    if (
-      typeof output !== "string" ||
-      !output
-    ) {
+    if (typeof output !== "string" || !output) {
       return;
     }
 
     const subtype = blockSubtype(block);
 
     if (subtype === "extract_information_ai") {
-      const fields =
-        extractFieldEntries(block);
+      const fields = extractFieldEntries(block);
 
       fields
         .filter(
@@ -461,24 +525,18 @@ export function availableVariableOptions(
             name.trim() &&
             !name.startsWith("__new_"),
         )
-        .forEach(
-          ([name, description]) =>
-            push({
-              token: `{{${output}.${name}}}`,
-              label:
-                description.trim() ||
-                humanizeFieldName(name),
-              description:
-                `Pulled out of the text by the "${block.label}" step.`,
-            }),
+        .forEach(([name, description]) =>
+          push({
+            token: `{{${output}.${name}}}`,
+            label: description.trim() || humanizeFieldName(name),
+            description: `Pulled out of the text by the "${block.label}" step.`,
+          }),
         );
 
       push({
         token: `{{${output}}}`,
-        label:
-          "Everything the AI pulled out",
-        description:
-          `All the details found by the "${block.label}" step, together.`,
+        label: "Everything the AI pulled out",
+        description: `All the details found by the "${block.label}" step, together.`,
       });
 
       return;
@@ -515,48 +573,33 @@ export function availableVariables(
   blocks: WorkflowBlock[],
   upToIndex: number,
 ): string[] {
-  return availableVariableOptions(
-    blocks,
-    upToIndex,
-  ).map((option) => option.token);
+  return availableVariableOptions(blocks, upToIndex).map((option) => option.token);
 }
 
 /** Sample payload used to pre-populate the test modal. */
 export function sampleInputFor(
   blocks: WorkflowBlock[],
 ): Record<string, unknown> {
-  const trigger = blocks.find(
-    (b) => b.type === "trigger",
-  );
+  const trigger = blocks.find((b) => b.type === "trigger");
 
   if (!trigger) return {};
 
-  if (
-    trigger.trigger_type === "schedule"
-  ) {
+  if (trigger.trigger_type === "schedule") {
     return {
       trigger: "schedule",
     };
   }
 
-  if (
-    trigger.trigger_type ===
-    "typeform_response_received"
-  ) {
+  if (trigger.trigger_type === "typeform_response_received") {
     return {
       trigger: {
         event_id: "sample-event-id",
         event_type: "form_response",
-        form_id: String(
-          trigger.config["form_id"] ?? "sample-form-id",
-        ),
+        form_id: String(trigger.config["form_id"] ?? "sample-form-id"),
         token: "sample-response-token",
-        response_url:
-          "https://example.typeform.com/responses/sample",
-        submitted_at:
-          new Date().toISOString(),
-        landed_at:
-          new Date().toISOString(),
+        response_url: "https://example.typeform.com/responses/sample",
+        submitted_at: new Date().toISOString(),
+        landed_at: new Date().toISOString(),
         hidden: {},
         answers: {
           Email: "sample@example.com",
@@ -567,27 +610,21 @@ export function sampleInputFor(
   }
 
   const fields =
-    (trigger.config[
-      "expected_fields"
-    ] as string[] | undefined) ?? [];
+    (trigger.config["expected_fields"] as string[] | undefined) ?? [];
 
   const payload: Record<string, string> = {};
 
   fields.forEach((field) => {
     if (field.includes("email")) {
-      payload[field] =
-        "sample@example.com";
+      payload[field] = "sample@example.com";
     } else if (field.includes("phone")) {
-      payload[field] =
-        "+27820000000";
+      payload[field] = "+27820000000";
     } else if (field.includes("amount")) {
       payload[field] = "1500.00";
     } else if (field.includes("date")) {
-      payload[field] =
-        new Date().toISOString();
+      payload[field] = new Date().toISOString();
     } else {
-      payload[field] =
-        `Sample ${field.replace(/_/g, " ")}`;
+      payload[field] = `Sample ${field.replace(/_/g, " ")}`;
     }
   });
 
