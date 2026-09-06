@@ -622,7 +622,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   // ————————————————————————————————————————————————————————————
   {
     key: "typeform_response_received",
-    configHint: "Starts this workflow when someone submits the Typeform you pick. You'll paste this workflow's webhook URL into that form's Connect panel in Typeform.",
+    configHint: "Starts this workflow when someone submits the Typeform you pick. Synkra registers the connection with Typeform for you when you publish, so there is nothing to paste.",
     kind: "trigger",
     subtype: "typeform_response_received",
     label: "New Typeform response",
@@ -714,6 +714,8 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   // ————————————————————————————————————————————————————————————
   {
     key: "calendly_meeting_completed",
+    // No receiver exists in synkra-core yet, so this trigger cannot fire.
+    comingSoon: true,
     configHint: "Starts this workflow when a scheduled meeting finishes. You'll paste this workflow's webhook URL into your Calendly organization's webhook subscriptions.",
     kind: "trigger",
     subtype: "calendly_meeting_completed",
@@ -728,6 +730,8 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "calendly_no_show",
+    // No receiver exists in synkra-core yet, so this trigger cannot fire.
+    comingSoon: true,
     configHint: "Starts this workflow when an invitee is marked as a no-show for a Calendly meeting.",
     kind: "trigger",
     subtype: "calendly_no_show",
@@ -788,6 +792,8 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   // ————————————————————————————————————————————————————————————
   {
     key: "xero_invoice_changed",
+    // No receiver exists in synkra-core yet, so this trigger cannot fire.
+    comingSoon: true,
     configHint: "Starts this workflow when an invoice is created or updated in Xero. You'll add this workflow's webhook URL as a subscription in your Xero app's webhook settings.",
     kind: "trigger",
     subtype: "xero_invoice_changed",

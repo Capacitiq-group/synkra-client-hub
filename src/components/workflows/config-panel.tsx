@@ -561,11 +561,12 @@ export function ConfigPanel({
 
       {requirementsBanner()}
 
-      {[
-        "webhook",
-        "typeform_response_received",
-        "tally_submission_received",
-      ].includes(subtype) && (
+      {/*
+        Only triggers whose receiver URL a user must paste somewhere show a
+        copyable URL. Typeform is registered automatically through its API at
+        publish time, so showing the generic run URL there would be wrong.
+      */}
+      {["webhook", "tally_submission_received"].includes(subtype) && (
         <WebhookUrlField
           workflowId={workflowId}
           subtype={subtype}
