@@ -13,6 +13,7 @@ import {
   ensureClickupWebhook,
   ensureAsanaWebhook,
   ensureMondayWebhook,
+  ensureTypeformWebhook,
 } from "@/lib/workflow/api";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { BlockLibrary } from "./block-library";
@@ -41,6 +42,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
 
   useEffect(() => {
     if (!existing || loaded.current) return;
+
     loaded.current = true;
     setName(existing.name);
     setBlocks(existing.blocks ?? []);
@@ -51,33 +53,48 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
     () => blocks.find((b) => b.id === selectedId) ?? null,
     [blocks, selectedId],
   );
+
   const hasTrigger = blocks.some((b) => b.type === "trigger");
 
   const mutate = (updater: (current: WorkflowBlock[]) => WorkflowBlock[]) => {
     dirty.current = true;
+
     setBlocks((current) => {
       const next = updater(current);
-      return next.map((block, index) => ({ ...block, next: next[index + 1]?.id ?? null }));
+
+      return next.map((block, index) => ({
+        ...block,
+        next: next[index + 1]?.id ?? null,
+      }));
     });
   };
 
   const addBlock = (definition: BlockDefinition, index?: number) => {
     const block = createBlock(definition);
-    // Client-side guard for immediate feedback only. The authoritative step
-    // limit is enforced again on the server when the workflow is saved.
+
     if (definition.kind !== "trigger") {
-      const decision = checkStepsAllowed(planUsage?.tier, countWorkflowSteps(blocks) + 1);
+      const decision = checkStepsAllowed(
+        planUsage?.tier,
+        countWorkflowSteps(blocks) + 1,
+      );
+
       if (!decision.allowed) {
-        toast.error(decision.message ?? "Step limit reached for your plan.");
+        toast.error(
+          decision.message ?? "Step limit reached for your plan.",
+        );
         return;
       }
     }
+
     mutate((current) => {
       const position = index ?? current.length;
       const next = [...current];
+
       next.splice(Math.min(position, next.length), 0, block);
+
       return next;
     });
+
     setSelectedId(block.id);
     setMobileTab("config");
   };
@@ -86,7 +103,9 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
     async (silent = false) => {
       if (!user) return;
       if (!blocks.length) return;
+
       setSaving(true);
+
       try {
         const record = await saveWorkflowDraft({
           ...(savedId ? { workflowId: savedId } : {}),
@@ -94,12 +113,20 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           name,
           blocks,
         });
+
         setSavedId(record.id);
         setLastSaved(new Date());
         dirty.current = false;
-        if (!silent) toast.success("Workflow saved");
+
+        if (!silent) {
+          toast.success("Workflow saved");
+        }
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not save workflow");
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not save workflow",
+        );
       } finally {
         setSaving(false);
       }
@@ -109,20 +136,31 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (dirty.current) void save(true);
+      if (dirty.current) {
+        void save(true);
+      }
     }, 30000);
+
     return () => clearInterval(interval);
   }, [save]);
 
   const publish = async () => {
     const validation = validateWorkflow(blocks);
+
     if (!validation.ok) {
       toast.error(validation.message ?? "Workflow is not ready");
-      if (validation.blockId) setSelectedId(validation.blockId);
+
+      if (validation.blockId) {
+        setSelectedId(validation.blockId);
+      }
+
       return;
     }
+
     if (!user) return;
+
     setSaving(true);
+
     try {
       const record = await saveWorkflowDraft({
         ...(savedId ? { workflowId: savedId } : {}),
@@ -131,46 +169,95 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
         blocks,
         status: "published",
       });
+
       setSavedId(record.id);
+
       const trigger = blocks.find((b) => b.type === "trigger");
-      // Registration is a best-effort call for every trigger type: the execution
-      // paths read workflows directly by id/user, so a failure here is non-fatal.
+
       try {
         await registerWorkflow({
           workflowId: record.id,
           userId: user.id,
           blocks,
-          trigger: { type: trigger?.trigger_type ?? "webhook", config: trigger?.config ?? {} },
+          trigger: {
+            type: trigger?.trigger_type ?? "webhook",
+            config: trigger?.config ?? {},
+          },
         });
       } catch (registerError) {
-        console.warn("Workflow registration failed (non-fatal)", registerError);
+        console.warn(
+          "Workflow registration failed (non-fatal)",
+          registerError,
+        );
       }
-      // Ensures a real webhook exists on the trigger's provider side —
-      // best-effort, same reasoning as registerWorkflow above: a
-      // failure here means this trigger won't actually fire until the
-      // user re-publishes, not that the publish itself failed. Keyed
-      // off the just-published trigger's type, one branch per provider
-      // that needs an outbound webhook registered (clickup_event is
-      // account-wide; asana/monday are scoped to the specific
-      // project/board the block was configured against).
+
+      /*
+       * Provider webhook registration.
+       *
+       * These calls are intentionally keyed to the actual trigger type
+       * of the workflow being published. A workflow can therefore only
+       * provision the webhook it actually needs.
+       */
       try {
         const triggerType = trigger?.trigger_type;
         const triggerConfig = trigger?.config ?? {};
+
         if (triggerType === "clickup_event") {
           await ensureClickupWebhook(user.id);
-        } else if (triggerType === "asana_task_stage_changed" && triggerConfig["project_gid"]) {
-          await ensureAsanaWebhook(user.id, triggerConfig["project_gid"] as string);
-        } else if (triggerType === "monday_item_changed" && triggerConfig["board_id"]) {
-          await ensureMondayWebhook(user.id, triggerConfig["board_id"] as string);
+        } else if (
+          triggerType === "asana_task_stage_changed" &&
+          typeof triggerConfig["project_gid"] === "string" &&
+          triggerConfig["project_gid"].trim()
+        ) {
+          await ensureAsanaWebhook(
+            user.id,
+            triggerConfig["project_gid"],
+          );
+        } else if (
+          triggerType === "monday_item_changed" &&
+          typeof triggerConfig["board_id"] === "string" &&
+          triggerConfig["board_id"].trim()
+        ) {
+          await ensureMondayWebhook(
+            user.id,
+            triggerConfig["board_id"],
+          );
+        } else if (
+          triggerType === "typeform_response_received" &&
+          typeof triggerConfig["form_id"] === "string" &&
+          triggerConfig["form_id"].trim()
+        ) {
+          await ensureTypeformWebhook(
+            user.id,
+            triggerConfig["form_id"],
+          );
         }
       } catch (webhookError) {
-        console.warn("Provider webhook registration failed (non-fatal)", webhookError);
+        /*
+         * Registration failure must not turn a successfully persisted
+         * workflow into a misleading failed publish. The warning is
+         * retained so the failure is visible during development and
+         * debugging.
+         */
+        console.warn(
+          "Provider webhook registration failed (non-fatal)",
+          webhookError,
+        );
       }
+
       dirty.current = false;
+
       toast.success("Workflow published");
-      void navigate({ to: "/dashboard/workflows" });
+
+      void navigate({
+        to: "/dashboard/workflows",
+      });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not publish workflow");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not publish workflow",
+      );
     } finally {
       setSaving(false);
     }
@@ -185,16 +272,27 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
     >
       <header
         className="flex items-center gap-3 px-4"
-        style={{ height: 56, borderBottom: panelBorder }}
+        style={{
+          height: 56,
+          borderBottom: panelBorder,
+        }}
       >
         <button
           type="button"
-          onClick={() => navigate({ to: "/dashboard/workflows" })}
+          onClick={() =>
+            navigate({
+              to: "/dashboard/workflows",
+            })
+          }
           aria-label="Back to workflows"
           className="synkra-focus rounded-sm"
         >
-          <ArrowLeft size={16} style={{ color: "var(--text-muted)" }} />
+          <ArrowLeft
+            size={16}
+            style={{ color: "var(--text-muted)" }}
+          />
         </button>
+
         <input
           value={name}
           onChange={(e) => {
@@ -203,11 +301,27 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           }}
           aria-label="Workflow name"
           className="synkra-focus min-w-0 flex-1 rounded-sm bg-transparent"
-          style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: "var(--text-primary)",
+          }}
         />
-        <span className="hidden sm:inline" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {saving ? "Saving" : lastSaved ? `Saved ${lastSaved.toLocaleTimeString("en-ZA")}` : ""}
+
+        <span
+          className="hidden sm:inline"
+          style={{
+            fontSize: 12,
+            color: "var(--text-muted)",
+          }}
+        >
+          {saving
+            ? "Saving"
+            : lastSaved
+              ? `Saved ${lastSaved.toLocaleTimeString("en-ZA")}`
+              : ""}
         </span>
+
         <button
           type="button"
           onClick={() => void save()}
@@ -222,6 +336,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           <Save size={13} aria-hidden="true" />
           Save
         </button>
+
         <button
           type="button"
           onClick={() => setTesting(true)}
@@ -236,6 +351,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           <Play size={13} aria-hidden="true" />
           Test
         </button>
+
         <button
           type="button"
           onClick={() => void publish()}
@@ -253,38 +369,57 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
         </button>
       </header>
 
-      {/* Desktop three panel layout */}
       <div className="hidden min-h-0 flex-1 md:flex">
         <aside
           className="h-full min-h-0 shrink-0 overflow-hidden"
-          style={{ width: 240, borderRight: panelBorder }}
+          style={{
+            width: 240,
+            borderRight: panelBorder,
+          }}
           aria-label="Block library"
         >
-          <BlockLibrary onAdd={(definition) => addBlock(definition)} hasTrigger={hasTrigger} />
+          <BlockLibrary
+            onAdd={(definition) => addBlock(definition)}
+            hasTrigger={hasTrigger}
+          />
         </aside>
+
         <main className="h-full min-h-0 min-w-0 flex-1 overflow-auto">
           <BuilderCanvas
             blocks={blocks}
             selectedId={selectedId}
             onSelect={setSelectedId}
             onRemove={(id) => {
-              mutate((current) => current.filter((b) => b.id !== id));
+              mutate((current) =>
+                current.filter((b) => b.id !== id),
+              );
+
               setSelectedId((v) => (v === id ? null : v));
             }}
             onReorder={(from, to) =>
               mutate((current) => {
                 const next = [...current];
                 const [moved] = next.splice(from, 1);
-                if (moved) next.splice(to, 0, moved);
+
+                if (moved) {
+                  next.splice(to, 0, moved);
+                }
+
                 return next;
               })
             }
-            onDropDefinition={(definition, index) => addBlock(definition, index)}
+            onDropDefinition={(definition, index) =>
+              addBlock(definition, index)
+            }
           />
         </main>
+
         <aside
           className="h-full min-h-0 shrink-0 overflow-hidden"
-          style={{ width: 320, borderLeft: panelBorder }}
+          style={{
+            width: 320,
+            borderLeft: panelBorder,
+          }}
           aria-label="Block configuration"
         >
           <ConfigPanel
@@ -292,13 +427,18 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
             block={selectedBlock}
             workflowId={savedId ?? workflowId}
             onChange={(id, config) =>
-              mutate((current) => current.map((b) => (b.id === id ? { ...b, config } : b)))
+              mutate((current) =>
+                current.map((b) =>
+                  b.id === id
+                    ? { ...b, config }
+                    : b,
+                ),
+              )
             }
           />
         </aside>
       </div>
 
-      {/* Mobile single panel with tabs */}
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
         <div className="min-h-0 flex-1 overflow-auto">
           {mobileTab === "library" && (
@@ -310,6 +450,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
               hasTrigger={hasTrigger}
             />
           )}
+
           {mobileTab === "canvas" && (
             <BuilderCanvas
               blocks={blocks}
@@ -319,31 +460,48 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
                 setMobileTab("config");
               }}
               onRemove={(id) => {
-                mutate((current) => current.filter((b) => b.id !== id));
+                mutate((current) =>
+                  current.filter((b) => b.id !== id),
+                );
+
                 setSelectedId((v) => (v === id ? null : v));
               }}
               onReorder={(from, to) =>
                 mutate((current) => {
                   const next = [...current];
                   const [moved] = next.splice(from, 1);
-                  if (moved) next.splice(to, 0, moved);
+
+                  if (moved) {
+                    next.splice(to, 0, moved);
+                  }
+
                   return next;
                 })
               }
-              onDropDefinition={(definition, index) => addBlock(definition, index)}
+              onDropDefinition={(definition, index) =>
+                addBlock(definition, index)
+              }
             />
           )}
+
           {mobileTab === "config" && (
             <ConfigPanel
               blocks={blocks}
               block={selectedBlock}
               workflowId={savedId ?? workflowId}
               onChange={(id, config) =>
-                mutate((current) => current.map((b) => (b.id === id ? { ...b, config } : b)))
+                mutate((current) =>
+                  current.map((b) =>
+                    b.id === id
+                      ? { ...b, config }
+                      : b,
+                  ),
+                )
               }
             />
           )}
         </div>
+
         <nav
           className="grid grid-cols-3"
           style={{ borderTop: panelBorder }}
@@ -363,10 +521,16 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
               className="synkra-focus flex flex-col items-center gap-1 py-2"
               style={{
                 fontSize: 12,
-                color: mobileTab === tab ? "var(--accent-green)" : "var(--text-muted)",
+                color:
+                  mobileTab === tab
+                    ? "var(--accent-green)"
+                    : "var(--text-muted)",
               }}
             >
-              <Icon size={16} aria-hidden="true" />
+              <Icon
+                size={16}
+                aria-hidden="true"
+              />
               {label}
             </button>
           ))}
@@ -378,12 +542,16 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           blocks={blocks}
           userId={user.id}
           user={{
-            ...(user.email ? { email: user.email } : {}),
-            ...(user.name ? { name: user.name } : {}),
+            ...(user.email
+              ? { email: user.email }
+              : {}),
+            ...(user.name
+              ? { name: user.name }
+              : {}),
           }}
           onClose={() => setTesting(false)}
         />
       )}
     </div>
   );
-           }
+}
