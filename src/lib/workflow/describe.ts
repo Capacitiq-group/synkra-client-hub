@@ -61,7 +61,9 @@ export function summariseConfig(block: WorkflowBlock): string | null {
     case "find_information":
       return config["collection"] ? `Looks in ${String(config["collection"])}` : null;
     case "generate_pdf":
-      return config["template"] ? `Uses the ${String(config["template")} } template` : null;
+      return config["template"]
+        ? `Uses the ${String(config["template"])} template`
+        : null;
     case "summarise_ai":
       return config["input"]
         ? `Summarises into {{${String(config["output_variable"] ?? "ai_summary")}}}`
@@ -80,7 +82,7 @@ export function summariseConfig(block: WorkflowBlock): string | null {
     case "if_else":
     case "filter":
       return config["variable"]
-        ? `${String(config["variable")} ) ${String(config["operator"] ?? "equals")} ${String(config["value"] ?? "")}`
+        ? `${String(config["variable"])} ${String(config["operator"] ?? "equals")} ${String(config["value"] ?? "")}`
         : null;
     default:
       return null;
@@ -245,48 +247,98 @@ export function extractFieldEntries(block: WorkflowBlock): Array<[string, string
 const TYPEFORM_TRIGGER_VARIABLES: VariableOption[] = [
   {
     token: "{{trigger.event_id}}",
-    label: "Typeform event ID",
+    label: "Event ID",
     description: "The unique ID of the Typeform webhook event.",
   },
   {
     token: "{{trigger.event_type}}",
     label: "Event type",
-    description: "The Typeform event type that started this workflow.",
+    description: "The Typeform event type. For submissions this is form_response.",
   },
   {
     token: "{{trigger.form_id}}",
-    label: "Typeform form ID",
-    description: "The ID of the Typeform form that received the response.",
+    label: "Form ID",
+    description: "The Typeform form that received the response.",
   },
   {
     token: "{{trigger.token}}",
     label: "Response token",
-    description: "The unique token identifying the submitted Typeform response.",
+    description: "The unique Typeform response token.",
+  },
+  {
+    token: "{{trigger.response_id}}",
+    label: "Response ID",
+    description: "The Typeform response ID when supplied.",
   },
   {
     token: "{{trigger.response_url}}",
     label: "Response URL",
-    description: "The URL for the submitted Typeform response.",
+    description: "The Typeform URL associated with the response.",
   },
   {
     token: "{{trigger.submitted_at}}",
     label: "Submitted at",
-    description: "The timestamp when the response was submitted.",
+    description: "The date and time the response was submitted.",
   },
   {
     token: "{{trigger.landed_at}}",
     label: "Landed at",
-    description: "The timestamp when the respondent landed on the form.",
+    description: "The date and time the respondent opened the form.",
   },
   {
     token: "{{trigger.hidden}}",
     label: "Hidden fields",
-    description: "The hidden values supplied with the Typeform response.",
+    description: "Hidden fields included with the Typeform response.",
+  },
+  {
+    token: "{{trigger.calculated}}",
+    label: "Calculated values",
+    description: "Calculated values returned by Typeform.",
+  },
+  {
+    token: "{{trigger.variables}}",
+    label: "Form variables",
+    description: "Variables returned by Typeform.",
+  },
+  {
+    token: "{{trigger.definition}}",
+    label: "Form definition",
+    description: "The Typeform definition associated with the response.",
+  },
+  {
+    token: "{{trigger.fields}}",
+    label: "Form fields",
+    description: "The fields defined on the Typeform.",
   },
   {
     token: "{{trigger.answers}}",
-    label: "Typeform answers",
-    description: "The submitted answers, keyed by their Typeform question titles.",
+    label: "Answers",
+    description: "Flattened answers from the submitted Typeform.",
+  },
+  {
+    token: "{{trigger.answers_raw}}",
+    label: "Raw answers",
+    description: "The original Typeform answers array.",
+  },
+  {
+    token: "{{trigger.answers_by_ref}}",
+    label: "Answers by field reference",
+    description: "Answers indexed by Typeform field reference.",
+  },
+  {
+    token: "{{trigger.answers_by_title}}",
+    label: "Answers by question",
+    description: "Answers indexed by the Typeform question title.",
+  },
+  {
+    token: "{{trigger.form_response}}",
+    label: "Full form response",
+    description: "The original Typeform form_response object.",
+  },
+  {
+    token: "{{trigger.ending}}",
+    label: "Ending",
+    description: "The ending configuration returned by Typeform.",
   },
 ];
 
