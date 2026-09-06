@@ -418,6 +418,172 @@ const TALLY_TRIGGER_VARIABLES: VariableOption[] = [
   },
 ];
 
+const CALENDLY_MEETING_COMPLETED_VARIABLES: VariableOption[] = [
+  {
+    token: "{{trigger.event_type}}",
+    label: "Calendly event type",
+    description: "The Calendly webhook event that started this workflow.",
+  },
+  {
+    token: "{{trigger.uri}}",
+    label: "Calendly resource URI",
+    description: "The URI of the Calendly resource involved in the event.",
+  },
+  {
+    token: "{{trigger.email}}",
+    label: "Invitee email",
+    description: "The invitee email address.",
+  },
+  {
+    token: "{{trigger.first_name}}",
+    label: "Invitee first name",
+    description: "The invitee's first name.",
+  },
+  {
+    token: "{{trigger.last_name}}",
+    label: "Invitee last name",
+    description: "The invitee's last name.",
+  },
+  {
+    token: "{{trigger.name}}",
+    label: "Invitee name",
+    description: "The invitee's full name.",
+  },
+  {
+    token: "{{trigger.scheduled_event}}",
+    label: "Scheduled event",
+    description: "The Calendly scheduled event associated with the webhook.",
+  },
+  {
+    token: "{{trigger.payload}}",
+    label: "Calendly webhook payload",
+    description: "The complete Calendly webhook payload.",
+  },
+];
+
+const CALENDLY_NO_SHOW_VARIABLES: VariableOption[] = [
+  ...CALENDLY_MEETING_COMPLETED_VARIABLES,
+  {
+    token: "{{trigger.no_show}}",
+    label: "No-show information",
+    description: "The Calendly no-show information associated with the invitee.",
+  },
+];
+
+const XERO_INVOICE_VARIABLES: VariableOption[] = [
+  {
+    token: "{{trigger.event_type}}",
+    label: "Xero event type",
+    description: "The Xero invoice event type.",
+  },
+  {
+    token: "{{trigger.resource_id}}",
+    label: "Invoice resource ID",
+    description: "The Xero invoice resource ID from the webhook.",
+  },
+  {
+    token: "{{trigger.event_date_utc}}",
+    label: "Event date",
+    description: "When Xero recorded the invoice event.",
+  },
+  {
+    token: "{{trigger.tenant_id}}",
+    label: "Xero tenant ID",
+    description: "The Xero organisation tenant that generated the event.",
+  },
+  {
+    token: "{{trigger.invoice}}",
+    label: "Invoice",
+    description: "The current Xero invoice retrieved after the webhook event.",
+  },
+  {
+    token: "{{trigger.invoice.InvoiceID}}",
+    label: "Invoice ID",
+    description: "The Xero invoice ID.",
+  },
+  {
+    token: "{{trigger.invoice.InvoiceNumber}}",
+    label: "Invoice number",
+    description: "The Xero invoice number.",
+  },
+  {
+    token: "{{trigger.invoice.Status}}",
+    label: "Invoice status",
+    description: "The current Xero invoice status.",
+  },
+  {
+    token: "{{trigger.invoice.AmountDue}}",
+    label: "Amount due",
+    description: "The current amount due on the invoice.",
+  },
+  {
+    token: "{{trigger.invoice.AmountPaid}}",
+    label: "Amount paid",
+    description: "The current amount paid on the invoice.",
+  },
+  {
+    token: "{{trigger.invoice.Total}}",
+    label: "Invoice total",
+    description: "The invoice total.",
+  },
+];
+
+const SLACK_MESSAGE_VARIABLES: VariableOption[] = [
+  {
+    token: "{{trigger.text}}",
+    label: "Message text",
+    description: "The text of the Slack message.",
+  },
+  {
+    token: "{{trigger.user_id}}",
+    label: "Slack user ID",
+    description: "The Slack user who sent the message.",
+  },
+  {
+    token: "{{trigger.channel_id}}",
+    label: "Channel ID",
+    description: "The Slack channel where the message was sent.",
+  },
+  {
+    token: "{{trigger.ts}}",
+    label: "Message timestamp",
+    description: "The Slack timestamp identifying the message.",
+  },
+  {
+    token: "{{trigger.thread_ts}}",
+    label: "Thread timestamp",
+    description: "The parent thread timestamp, when the message belongs to a thread.",
+  },
+  {
+    token: "{{trigger.channel_type}}",
+    label: "Channel type",
+    description: "The Slack channel type.",
+  },
+  {
+    token: "{{trigger.raw_event}}",
+    label: "Slack event",
+    description: "The complete Slack Events API event.",
+  },
+];
+
+const SLACK_UNANSWERED_VARIABLES: VariableOption[] = [
+  {
+    token: "{{trigger.message}}",
+    label: "Unanswered message",
+    description: "The Slack message that has remained unanswered.",
+  },
+  {
+    token: "{{trigger.channel_id}}",
+    label: "Channel ID",
+    description: "The Slack channel containing the unanswered message.",
+  },
+  {
+    token: "{{trigger.hours_unanswered}}",
+    label: "Hours unanswered",
+    description: "How long the message has remained unanswered.",
+  },
+];
+
 export function knownTriggerVariables(triggerType: string): VariableOption[] {
   switch (triggerType) {
     case "typeform_response_received":
@@ -425,6 +591,21 @@ export function knownTriggerVariables(triggerType: string): VariableOption[] {
 
     case "tally_submission_received":
       return TALLY_TRIGGER_VARIABLES;
+
+    case "calendly_meeting_completed":
+      return CALENDLY_MEETING_COMPLETED_VARIABLES;
+
+    case "calendly_no_show":
+      return CALENDLY_NO_SHOW_VARIABLES;
+
+    case "xero_invoice_changed":
+      return XERO_INVOICE_VARIABLES;
+
+    case "slack_message_received":
+      return SLACK_MESSAGE_VARIABLES;
+
+    case "slack_unanswered_check":
+      return SLACK_UNANSWERED_VARIABLES;
 
     default:
       return [];
@@ -634,6 +815,83 @@ export function sampleInputFor(
           Email: "sample@example.com",
           Name: "Sample Customer",
         },
+      },
+    };
+  }
+
+  if (
+    trigger.trigger_type === "calendly_meeting_completed" ||
+    trigger.trigger_type === "calendly_no_show"
+  ) {
+    return {
+      trigger: {
+        event_type:
+          trigger.trigger_type === "calendly_no_show"
+            ? "invitee_no_show.created"
+            : "meeting_recap.created",
+        uri: "https://api.calendly.com/scheduled_events/sample",
+        email: "customer@example.com",
+        first_name: "Sample",
+        last_name: "Customer",
+        name: "Sample Customer",
+        scheduled_event:
+          "https://api.calendly.com/scheduled_events/sample",
+        no_show:
+          trigger.trigger_type === "calendly_no_show"
+            ? {
+                created_at: new Date().toISOString(),
+              }
+            : undefined,
+        payload: {},
+      },
+    };
+  }
+
+  if (trigger.trigger_type === "xero_invoice_changed") {
+    return {
+      trigger: {
+        event_type: "UPDATE",
+        resource_id: "sample-invoice-id",
+        event_date_utc: new Date().toISOString(),
+        tenant_id: "sample-tenant-id",
+        invoice: {
+          InvoiceID: "sample-invoice-id",
+          InvoiceNumber: "INV-001",
+          Status: "AUTHORISED",
+          AmountDue: 1500,
+          AmountPaid: 0,
+          Total: 1500,
+        },
+      },
+    };
+  }
+
+  if (trigger.trigger_type === "slack_message_received") {
+    return {
+      trigger: {
+        type: "message",
+        channel_id: "C0123456789",
+        user_id: "U0123456789",
+        text: "This is a sample Slack message.",
+        ts: "1750000000.000000",
+        event_ts: "1750000000.000000",
+        channel_type: "channel",
+        raw_event: {},
+      },
+    };
+  }
+
+  if (trigger.trigger_type === "slack_unanswered_check") {
+    return {
+      trigger: {
+        message: {
+          ts: "1750000000.000000",
+          text: "Can someone please confirm this?",
+          user: "U0123456789",
+          channel: "C0123456789",
+        },
+        channel_id: "C0123456789",
+        hours_unanswered: 4,
       },
     };
   }
