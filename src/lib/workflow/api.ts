@@ -350,6 +350,33 @@ export async function ensureTypeformWebhook(
   return (await response.json()) as { status: string };
 }
 
+/**
+ * Called once, right after a workflow with a Calendly "Meeting completed"
+ * or "No-show" trigger is published — idempotent per (userId, webhookUrl)
+ * pair, safe to call every publish.
+ */
+export async function ensureCalendlyWebhook(
+  userId: string,
+  webhookUrl: string,
+): Promise<{ status: string }> {
+  const response = await post("/integrations/calendly/webhooks/ensure", {
+    user_id: userId,
+    webhook_url: webhookUrl,
+  });
+  if (!response.ok) throw new Error(`Calendly webhook setup failed with status ${response.status}`);
+  return (await response.json()) as { status: string };
+}
+
+/** Global Xero invoice-change webhook receiver on the Synkra backend. */
+export function xeroWebhookUrl(): string {
+  return `${API_BASE}/webhooks/xero`;
+}
+
+/** Global Slack events webhook receiver on the Synkra backend. */
+export function slackEventsWebhookUrl(): string {
+  return `${API_BASE}/webhooks/slack`;
+}
+
 export interface NotionDatabase {
   id: string;
   title: string;
