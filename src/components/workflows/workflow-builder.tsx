@@ -8,7 +8,12 @@ import { usePlanUsage } from "@/hooks/usePlanUsage";
 import { countWorkflowSteps, checkStepsAllowed } from "@/lib/usage/limits";
 import { validateWorkflow } from "@/lib/workflow/describe";
 import { saveWorkflowDraft, useWorkflow } from "@/hooks/useWorkflows";
-import { registerWorkflow } from "@/lib/workflow/api";
+import {
+  registerWorkflow,
+  ensureClickupWebhook,
+  ensureAsanaWebhook,
+  ensureMondayWebhook,
+} from "@/lib/workflow/api";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { BlockLibrary } from "./block-library";
 import { BuilderCanvas } from "./builder-canvas";
@@ -139,6 +144,27 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
         });
       } catch (registerError) {
         console.warn("Workflow registration failed (non-fatal)", registerError);
+      }
+      // Ensures a real webhook exists on the trigger's provider side —
+      // best-effort, same reasoning as registerWorkflow above: a
+      // failure here means this trigger won't actually fire until the
+      // user re-publishes, not that the publish itself failed. Keyed
+      // off the just-published trigger's type, one branch per provider
+      // that needs an outbound webhook registered (clickup_event is
+      // account-wide; asana/monday are scoped to the specific
+      // project/board the block was configured against).
+      try {
+        const triggerType = trigger?.trigger_type;
+        const triggerConfig = trigger?.config ?? {};
+        if (triggerType === "clickup_event") {
+          await ensureClickupWebhook(user.id);
+        } else if (triggerType === "asana_task_stage_changed" && triggerConfig["project_gid"]) {
+          await ensureAsanaWebhook(user.id, triggerConfig["project_gid"] as string);
+        } else if (triggerType === "monday_item_changed" && triggerConfig["board_id"]) {
+          await ensureMondayWebhook(user.id, triggerConfig["board_id"] as string);
+        }
+      } catch (webhookError) {
+        console.warn("Provider webhook registration failed (non-fatal)", webhookError);
       }
       dirty.current = false;
       toast.success("Workflow published");
@@ -360,4 +386,4 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
       )}
     </div>
   );
-}
+           }
