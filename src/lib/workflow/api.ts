@@ -62,6 +62,16 @@ export function webhookUrlFor(workflowId: string): string {
 }
 
 /**
+ * Tally-specific webhook receiver. Unlike the generic webhookUrlFor()
+ * above, this endpoint builds context = {"trigger": trigger_context,
+ * "user": user} rather than context = {"payload": payload, "user": user},
+ * so Tally triggers must be pointed here instead of the generic receiver.
+ */
+export function tallyWebhookUrlFor(workflowId: string): string {
+  return `${API_BASE}/webhooks/tally/${workflowId}`;
+}
+
+/**
  * Dedicated inbound address for an account's "Email received" triggers.
  * Deterministic per user — mail forwarded here is delivered by Resend inbound.
  */
@@ -377,4 +387,4 @@ export async function retryRun(
 ): Promise<void> {
   const response = await post(`/webhooks/run/${workflowId}`, inputData);
   if (!response.ok) throw new Error(`Retry failed with status ${response.status}`);
-                                           }
+}
