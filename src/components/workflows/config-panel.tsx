@@ -392,6 +392,49 @@ function InboundEmailSetup({
 
 
 
+/**
+ * Trigger types that are delivered to synkra over a webhook, so the config
+ * panel should show the URL the user (or the provider) must call. Some of
+ * these use a fixed app-level URL rather than a per-workflow one — see
+ * FIXED_WEBHOOK_URLS below.
+ */
+const webhookBackedTriggerTypes = new Set([
+  "webhook",
+  "typeform_response_received",
+  "tally_submission_received",
+  "calendly_meeting_completed",
+  "calendly_no_show",
+  "xero_invoice_changed",
+  "slack_message_received",
+]);
+
+/**
+ * Providers that use one app-level webhook endpoint instead of a
+ * per-workflow URL, plus the explanation shown under the field.
+ */
+const FIXED_WEBHOOK_URLS: Record<string, { url: string; explanation: string }> = {
+  xero_invoice_changed: {
+    url: "https://api.synkra.co.za/webhooks/xero",
+    explanation:
+      "Xero uses an app-level webhook. Add this URL to your Xero developer app webhook settings. It is not configured separately for each workflow.",
+  },
+  calendly_meeting_completed: {
+    url: "https://api.synkra.co.za/webhooks/calendly",
+    explanation:
+      "Calendly webhooks are registered automatically when this workflow is published.",
+  },
+  calendly_no_show: {
+    url: "https://api.synkra.co.za/webhooks/calendly",
+    explanation:
+      "Calendly webhooks are registered automatically when this workflow is published.",
+  },
+  slack_message_received: {
+    url: "https://api.synkra.co.za/webhooks/slack",
+    explanation:
+      "Add this URL to your Slack app's Event Subscriptions settings.",
+  },
+};
+
 function WebhookUrlField({
   workflowId,
   subtype,
@@ -399,12 +442,15 @@ function WebhookUrlField({
   workflowId?: string | undefined;
   subtype: string;
 }) {
+  const fixed = FIXED_WEBHOOK_URLS[subtype];
   const [copied, setCopied] = useState(false);
-  const url = workflowId
-    ? subtype === "tally_submission_received"
-      ? tallyWebhookUrlFor(workflowId)
-      : webhookUrlFor(workflowId)
-    : null;
+  const url = fixed
+    ? fixed.url
+    : workflowId
+      ? subtype === "tally_submission_received"
+        ? tallyWebhookUrlFor(workflowId)
+        : webhookUrlFor(workflowId)
+      : null;
 
   const copy = async () => {
     if (!url) return;
@@ -451,9 +497,9 @@ function WebhookUrlField({
         </p>
       )}
       <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-        This is your unique link. Save the workflow, then paste this link into your website's
-        contact form tool, such as Tally or Typeform, or give it to your web developer so every
-        submission comes straight here.
+        {fixed
+          ? fixed.explanation
+          : "This is your unique link. Save the workflow, then paste this link into your website's contact form tool, such as Tally or Typeform, or give it to your web developer so every submission comes straight here."}
       </p>
     </div>
   );
@@ -498,6 +544,9 @@ export function ConfigPanel({
     return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
   };
   const subtype = blockSubtype(block);
+  const showWebhookUrl =
+    block.type === "trigger" &&
+    (subtype === "webhook" || webhookBackedTriggerTypes.has(block.trigger_type ?? ""));
   const definition = definitionFor(block);
   const configHint = definition?.configHint;
   const configNote = definition?.configNote;
@@ -563,10 +612,11 @@ export function ConfigPanel({
 
       {/*
         Only triggers whose receiver URL a user must paste somewhere show a
-        copyable URL. Typeform is registered automatically through its API at
-        publish time, so showing the generic run URL there would be wrong.
+        copyable URL. Triggers backed by an app-level provider webhook (Xero,
+        Calendly, Slack) show the fixed provider URL with setup instructions
+        instead of the per-workflow run URL.
       */}
-      {["webhook", "tally_submission_received"].includes(subtype) && (
+      {showWebhookUrl && (
         <WebhookUrlField
           workflowId={workflowId}
           subtype={subtype}
