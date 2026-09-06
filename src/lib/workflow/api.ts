@@ -322,6 +322,24 @@ export async function ensureMondayWebhook(
   return (await response.json()) as { status: string };
 }
 
+/**
+ * Called once, right after a workflow with a "New Typeform response"
+ * trigger is published — idempotent per (userId, formId) pair, same
+ * reasoning as ensureAsanaWebhook above (Typeform webhooks are
+ * per-form, not per-account).
+ */
+export async function ensureTypeformWebhook(
+  userId: string,
+  formId: string,
+): Promise<{ status: string }> {
+  const response = await post("/integrations/typeform/webhooks/ensure", {
+    user_id: userId,
+    form_id: formId,
+  });
+  if (!response.ok) throw new Error(`Typeform webhook setup failed with status ${response.status}`);
+  return (await response.json()) as { status: string };
+}
+
 export interface NotionDatabase {
   id: string;
   title: string;
@@ -359,4 +377,4 @@ export async function retryRun(
 ): Promise<void> {
   const response = await post(`/webhooks/run/${workflowId}`, inputData);
   if (!response.ok) throw new Error(`Retry failed with status ${response.status}`);
-}
+                                           }
