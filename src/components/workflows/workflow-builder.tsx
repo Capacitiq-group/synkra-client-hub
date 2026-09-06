@@ -14,6 +14,7 @@ import {
   ensureAsanaWebhook,
   ensureMondayWebhook,
   ensureTypeformWebhook,
+  ensureCalendlyWebhook,
 } from "@/lib/workflow/api";
 import type { WorkflowBlock } from "@/lib/workflow/types";
 import { BlockLibrary } from "./block-library";
@@ -231,6 +232,14 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
             user.id,
             triggerConfig["form_id"],
           );
+        } else if (
+          triggerType === "calendly_meeting_completed" ||
+          triggerType === "calendly_no_show"
+        ) {
+          const webhookUrl = import.meta.env["VITE_API_BASE_URL"]
+            ? `${import.meta.env["VITE_API_BASE_URL"]}/webhooks/calendly`
+            : "https://api.synkra.co.za/webhooks/calendly";
+          await ensureCalendlyWebhook(user.id, webhookUrl);
         }
       } catch (webhookError) {
         /*
