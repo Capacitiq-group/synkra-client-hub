@@ -12,6 +12,7 @@ export function describeBlock(block: WorkflowBlock): string {
         : subtype === "webhook"
           ? (block.description ?? "data arrives from an external system").toLowerCase()
           : (block.description ?? block.label).toLowerCase();
+
     return `Starts when ${detail}`;
   }
 
@@ -60,7 +61,7 @@ export function summariseConfig(block: WorkflowBlock): string | null {
     case "find_information":
       return config["collection"] ? `Looks in ${String(config["collection"])}` : null;
     case "generate_pdf":
-      return config["template"] ? `Uses the ${String(config["template"])} template` : null;
+      return config["template"] ? `Uses the ${String(config["template")} } template` : null;
     case "summarise_ai":
       return config["input"]
         ? `Summarises into {{${String(config["output_variable"] ?? "ai_summary")}}}`
@@ -79,7 +80,7 @@ export function summariseConfig(block: WorkflowBlock): string | null {
     case "if_else":
     case "filter":
       return config["variable"]
-        ? `${String(config["variable"])} ${String(config["operator"] ?? "equals")} ${String(config["value"] ?? "")}`
+        ? `${String(config["variable")} ) ${String(config["operator"] ?? "equals")} ${String(config["value"] ?? "")}`
         : null;
     default:
       return null;
@@ -234,11 +235,73 @@ export function extractFieldEntries(block: WorkflowBlock): Array<[string, string
 }
 
 /**
- * Variables available to a block, with friendly labels.
+ * Trigger variables whose backend context is explicitly constructed
+ * by Synkra rather than coming from the generic `payload` trigger.
  *
- * A trigger always runs first, whatever its position in the array, so its
- * payload fields are offered to every other block. Everything else is scoped
- * to the blocks that genuinely run before `upToIndex`.
+ * Keeping this mapping here makes the variable picker derive its
+ * provider-specific contract from the trigger type instead of pretending
+ * every provider uses `payload.*`.
+ */
+const TYPEFORM_TRIGGER_VARIABLES: VariableOption[] = [
+  {
+    token: "{{trigger.event_id}}",
+    label: "Typeform event ID",
+    description: "The unique ID of the Typeform webhook event.",
+  },
+  {
+    token: "{{trigger.event_type}}",
+    label: "Event type",
+    description: "The Typeform event type that started this workflow.",
+  },
+  {
+    token: "{{trigger.form_id}}",
+    label: "Typeform form ID",
+    description: "The ID of the Typeform form that received the response.",
+  },
+  {
+    token: "{{trigger.token}}",
+    label: "Response token",
+    description: "The unique token identifying the submitted Typeform response.",
+  },
+  {
+    token: "{{trigger.response_url}}",
+    label: "Response URL",
+    description: "The URL for the submitted Typeform response.",
+  },
+  {
+    token: "{{trigger.submitted_at}}",
+    label: "Submitted at",
+    description: "The timestamp when the response was submitted.",
+  },
+  {
+    token: "{{trigger.landed_at}}",
+    label: "Landed at",
+    description: "The timestamp when the respondent landed on the form.",
+  },
+  {
+    token: "{{trigger.hidden}}",
+    label: "Hidden fields",
+    description: "The hidden values supplied with the Typeform response.",
+  },
+  {
+    token: "{{trigger.answers}}",
+    label: "Typeform answers",
+    description: "The submitted answers, keyed by their Typeform question titles.",
+  },
+];
+
+export function knownTriggerVariables(triggerType: string): VariableOption[] {
+  switch (triggerType) {
+    case "typeform_response_received":
+      return TYPEFORM_TRIGGER_VARIABLES;
+
+    default:
+      return [];
+  }
+}
+
+/**
+ * Variables available to a block, with friendly labels.
  */
 export function availableVariableOptions(
   blocks: WorkflowBlock[],
@@ -246,8 +309,10 @@ export function availableVariableOptions(
 ): VariableOption[] {
   const options: VariableOption[] = [];
   const seen = new Set<string>();
+
   const push = (option: VariableOption) => {
     if (seen.has(option.token)) return;
+
     seen.add(option.token);
     options.push(option);
   };
@@ -257,22 +322,46 @@ export function availableVariableOptions(
     label: "Your email address",
     description: "The email address on your Synkra account.",
   });
+
   push({
     token: "{{user.name}}",
     label: "Your name",
     description: "Your name as it appears on your Synkra account.",
   });
+
   push({
     token: "{{user.business_name}}",
     label: "Your business name",
     description: "The business name on your Synkra account.",
   });
 
-  // Triggers first — they always run before every other block.
+  /*
+   * Provider-specific trigger variables.
+   *
+   * Do this before the generic webhook fallback because provider
+   * triggers do not necessarily expose an `expected_fields` payload.
+   */
   blocks
     .filter((block) => block.type === "trigger")
     .forEach((block) => {
+      const providerVariables =
+        knownTriggerVariables(
+          block.trigger_type ?? "",
+        );
+
+      providerVariables.forEach(push);
+
+      if (providerVariables.length > 0) {
+        return;
+      }
+
+      /*
+       * The generic webhook trigger is intentionally payload-based.
+       * Preserve that established contract rather than changing all
+       * existing webhook workflows.
+       */
       const fields = triggerFields(block);
+
       fields.forEach((field) =>
         push({
           token: `{{payload.${field}}}`,
@@ -280,37 +369,66 @@ export function availableVariableOptions(
           description: `The "${field}" value sent in when this workflow starts.`,
         }),
       );
-      if (!fields.length)
+
+      if (!fields.length) {
         push({
           token: "{{payload}}",
           label: "Everything that was sent in",
           description: "All the information received when this workflow starts.",
         });
+      }
     });
 
-  const before = blocks.slice(0, Math.max(upToIndex, 0));
+  const before = blocks.slice(
+    0,
+    Math.max(upToIndex, 0),
+  );
+
   before.forEach((block) => {
     if (block.type === "trigger") return;
-    const output = (block.config ?? {})["output_variable"];
-    if (typeof output !== "string" || !output) return;
+
+    const output =
+      (block.config ?? {})["output_variable"];
+
+    if (
+      typeof output !== "string" ||
+      !output
+    ) {
+      return;
+    }
+
     const subtype = blockSubtype(block);
 
     if (subtype === "extract_information_ai") {
-      const fields = extractFieldEntries(block);
+      const fields =
+        extractFieldEntries(block);
+
       fields
-        .filter(([name]) => name.trim() && !name.startsWith("__new_"))
-        .forEach(([name, description]) =>
-        push({
-          token: `{{${output}.${name}}}`,
-          label: description.trim() || humanizeFieldName(name),
-          description: `Pulled out of the text by the "${block.label}" step.`,
-        }),
-      );
+        .filter(
+          ([name]) =>
+            name.trim() &&
+            !name.startsWith("__new_"),
+        )
+        .forEach(
+          ([name, description]) =>
+            push({
+              token: `{{${output}.${name}}}`,
+              label:
+                description.trim() ||
+                humanizeFieldName(name),
+              description:
+                `Pulled out of the text by the "${block.label}" step.`,
+            }),
+        );
+
       push({
         token: `{{${output}}}`,
-        label: "Everything the AI pulled out",
-        description: `All the details found by the "${block.label}" step, together.`,
+        label:
+          "Everything the AI pulled out",
+        description:
+          `All the details found by the "${block.label}" step, together.`,
       });
+
       return;
     }
 
@@ -322,37 +440,106 @@ export function availableVariableOptions(
           : subtype === "find_information"
             ? "The record that was found"
             : humanizeFieldName(output);
+
     const description =
       subtype === "summarise_ai"
         ? `The short summary written by the "${block.label}" step.`
         : subtype === "generate_reply_ai"
           ? `The reply written for you by the "${block.label}" step.`
           : `The result saved by the "${block.label}" step.`;
-    push({ token: `{{${output}}}`, label, description });
+
+    push({
+      token: `{{${output}}}`,
+      label,
+      description,
+    });
   });
 
   return options;
 }
 
-/** Raw tokens only — kept for callers that just need the {{...}} strings. */
-export function availableVariables(blocks: WorkflowBlock[], upToIndex: number): string[] {
-  return availableVariableOptions(blocks, upToIndex).map((option) => option.token);
+/** Raw tokens only. */
+export function availableVariables(
+  blocks: WorkflowBlock[],
+  upToIndex: number,
+): string[] {
+  return availableVariableOptions(
+    blocks,
+    upToIndex,
+  ).map((option) => option.token);
 }
 
 /** Sample payload used to pre-populate the test modal. */
-export function sampleInputFor(blocks: WorkflowBlock[]): Record<string, unknown> {
-  const trigger = blocks.find((b) => b.type === "trigger");
+export function sampleInputFor(
+  blocks: WorkflowBlock[],
+): Record<string, unknown> {
+  const trigger = blocks.find(
+    (b) => b.type === "trigger",
+  );
+
   if (!trigger) return {};
-  if (trigger.trigger_type === "schedule") return { trigger: "schedule" };
-  const fields = (trigger.config["expected_fields"] as string[] | undefined) ?? [];
+
+  if (
+    trigger.trigger_type === "schedule"
+  ) {
+    return {
+      trigger: "schedule",
+    };
+  }
+
+  if (
+    trigger.trigger_type ===
+    "typeform_response_received"
+  ) {
+    return {
+      trigger: {
+        event_id: "sample-event-id",
+        event_type: "form_response",
+        form_id: String(
+          trigger.config["form_id"] ?? "sample-form-id",
+        ),
+        token: "sample-response-token",
+        response_url:
+          "https://example.typeform.com/responses/sample",
+        submitted_at:
+          new Date().toISOString(),
+        landed_at:
+          new Date().toISOString(),
+        hidden: {},
+        answers: {
+          Email: "sample@example.com",
+          Name: "Sample Customer",
+        },
+      },
+    };
+  }
+
+  const fields =
+    (trigger.config[
+      "expected_fields"
+    ] as string[] | undefined) ?? [];
+
   const payload: Record<string, string> = {};
+
   fields.forEach((field) => {
-    if (field.includes("email")) payload[field] = "sample@example.com";
-    else if (field.includes("phone")) payload[field] = "+27820000000";
-    else if (field.includes("amount")) payload[field] = "1500.00";
-    else if (field.includes("date")) payload[field] = new Date().toISOString();
-    else payload[field] = `Sample ${field.replace(/_/g, " ")}`;
+    if (field.includes("email")) {
+      payload[field] =
+        "sample@example.com";
+    } else if (field.includes("phone")) {
+      payload[field] =
+        "+27820000000";
+    } else if (field.includes("amount")) {
+      payload[field] = "1500.00";
+    } else if (field.includes("date")) {
+      payload[field] =
+        new Date().toISOString();
+    } else {
+      payload[field] =
+        `Sample ${field.replace(/_/g, " ")}`;
+    }
   });
-  return { payload };
+
+  return {
+    payload,
+  };
 }
-  
