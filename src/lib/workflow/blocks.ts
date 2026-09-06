@@ -622,7 +622,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   // ————————————————————————————————————————————————————————————
   {
     key: "typeform_response_received",
-    configHint: "Starts this workflow when someone submits the Typeform you pick. You'll paste this workflow's webhook URL into that form's Connect panel in Typeform.",
+    configHint: "Starts this workflow when someone submits the Typeform you pick. Synkra registers the connection with Typeform for you when you publish, so there is nothing to paste.",
     kind: "trigger",
     subtype: "typeform_response_received",
     label: "New Typeform response",
