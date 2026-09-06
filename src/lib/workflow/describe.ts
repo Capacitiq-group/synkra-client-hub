@@ -49,6 +49,7 @@ export function summariseConfig(block: WorkflowBlock): string | null {
         : null;
 
     case "typeform_response_received":
+    case "tally_submission_received":
       return config["form_id"]
         ? `Form ${String(config["form_id"])}`
         : null;
@@ -129,6 +130,9 @@ export function isConfigured(block: WorkflowBlock): boolean {
       return Boolean(config["match_all"]) || filled("variable");
 
     case "typeform_response_received":
+    case "tally_submission_received":
+      // The webhook receiver rejects events when no form is selected, so an
+      // empty form must block publish rather than silently 400 at runtime.
       return filled("form_id");
 
     case "send_email":
@@ -419,7 +423,7 @@ export function knownTriggerVariables(triggerType: string): VariableOption[] {
     case "typeform_response_received":
       return TYPEFORM_TRIGGER_VARIABLES;
 
-    case "tally_form_submitted":
+    case "tally_submission_received":
       return TALLY_TRIGGER_VARIABLES;
 
     default:
@@ -601,6 +605,31 @@ export function sampleInputFor(
         submitted_at: new Date().toISOString(),
         landed_at: new Date().toISOString(),
         hidden: {},
+        answers: {
+          Email: "sample@example.com",
+          Name: "Sample Customer",
+        },
+      },
+    };
+  }
+
+  if (trigger.trigger_type === "tally_submission_received") {
+    return {
+      trigger: {
+        event_id: "sample-event-id",
+        event_type: "FORM_RESPONSE",
+        created_at: new Date().toISOString(),
+        response_id: "sample-response-id",
+        submission_id: "sample-submission-id",
+        respondent_id: "sample-respondent-id",
+        form_id: String(trigger.config["form_id"] ?? "sample-form-id"),
+        form_name: "Sample Tally form",
+        submission_pdf_url: "https://tally.so/submissions/sample.pdf",
+        submission_preview_url: "https://tally.so/submissions/sample",
+        fields: [
+          { key: "question_email", label: "Email", type: "INPUT_EMAIL", value: "sample@example.com" },
+          { key: "question_name", label: "Name", type: "INPUT_TEXT", value: "Sample Customer" },
+        ],
         answers: {
           Email: "sample@example.com",
           Name: "Sample Customer",
