@@ -1,5 +1,10 @@
 # Synkra Client Hub
 
+> **Architecture:** the canonical description of Synkra's PocketBase instances,
+> which repo uses which one, and the identity model lives in one place:
+> [`SYNKRA-ARCHITECTURE.md` in `synkra-os`](https://github.com/Capacitiq-group/synkra-os/blob/main/SYNKRA-ARCHITECTURE.md).
+> Do not restate it here — update it there.
+
 You are building the Synkra client portal. This is a separate Lovable project from the landing page. It deploys at flow.synkra.co.za. Every Synkra client logs in here regardless of whether they are a beta user from the Synkra for Her programme or a future paying customer.
 
 
