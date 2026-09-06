@@ -141,6 +141,9 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     color: "var(--accent-green)",
     section: "TRIGGERS",
     requiresIntegration: "slack",
+    // Events API message.channels/message.groups delivery plus the channel
+    // picker (channels:read) — see docs/integrations/slack-events-setup.md.
+    requiredScopes: ["channels:read", "channels:history", "groups:read", "groups:history"],
     defaultConfig: { channel_id: "" },
   },
   {
@@ -154,6 +157,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     color: "var(--accent-green)",
     section: "TRIGGERS",
     requiresIntegration: "slack",
+    requiredScopes: ["channels:read", "channels:history", "groups:read", "groups:history"],
     defaultConfig: { channel_id: "", unanswered_after_hours: 4 },
   },
   {
@@ -457,7 +461,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     color: "#E01E5A",
     section: "ACTIONS",
     requiresIntegration: "slack",
-    requiredScopes: ["channels:history"],
+    requiredScopes: ["channels:read", "channels:history", "groups:read", "groups:history"],
     defaultConfig: { channel_id: "", output_variable: "slack_messages" },
   },
   {
