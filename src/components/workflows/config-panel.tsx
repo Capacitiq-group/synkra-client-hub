@@ -26,8 +26,8 @@ import { PlainField, VariableField, JsonField } from "./variables-popover";
 import { SlackChannelPicker } from "./slack-channel-picker";
 import { LoopBodyEditor } from "./loop-body-editor";
 
-/** Trigger types whose config is "pick a Slack channel". */
-const SLACK_TRIGGERS = ["slack_message_received", "slack_unanswered_check", "slack_daily_digest"];
+/** Block subtypes whose config is "pick a Slack channel". */
+const SLACK_TRIGGERS = ["slack_message_received", "slack_unanswered_check", "slack_channel_digest"];
 
 /**
  * Mirrors backend workflow_engine.py's _LIST_FETCHERS exactly — keep
