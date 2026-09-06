@@ -465,6 +465,24 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     defaultConfig: { channel_id: "", output_variable: "slack_messages" },
   },
   {
+    key: "zoho_contact_created",
+    configHint:
+      "Starts this workflow whenever a new contact is created in Zoho Books.",
+    kind: "trigger",
+    subtype: "zoho_event",
+    label: "New Zoho contact",
+    description: "Fires when a contact is created in Zoho Books",
+    icon: UserPlus,
+    color: "#E42527",
+    section: "TRIGGERS",
+    requiresIntegration: "zoho",
+    requiredScopes: ["ZohoBooks.contacts.READ"],
+    defaultConfig: {
+      event_type: "contact.created",
+      match_all: true,
+    },
+  },
+  {
     key: "zoho_find_contact",
     configHint: "Looks up an existing Zoho Books contact by email — useful before deciding whether to create or update one.",
     kind: "action",

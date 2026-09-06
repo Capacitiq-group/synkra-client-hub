@@ -584,10 +584,81 @@ const SLACK_UNANSWERED_VARIABLES: VariableOption[] = [
   },
 ];
 
+const ZOHO_TRIGGER_VARIABLES: VariableOption[] = [
+  {
+    token: "{{trigger.event_type}}",
+    label: "Zoho event type",
+    description: "The Zoho Books event that started this workflow.",
+  },
+  {
+    token: "{{trigger.event_id}}",
+    label: "Zoho event ID",
+    description: "The event ID supplied by the Zoho Books webhook.",
+  },
+  {
+    token: "{{trigger.created_date}}",
+    label: "Event created date",
+    description: "The created date supplied by the Zoho Books webhook.",
+  },
+  {
+    token: "{{trigger.contact_id}}",
+    label: "Zoho contact ID",
+    description: "The ID of the Zoho Books contact that was created.",
+  },
+  {
+    token: "{{trigger.contact_name}}",
+    label: "Contact name",
+    description: "The Zoho Books contact's display name.",
+  },
+  {
+    token: "{{trigger.company_name}}",
+    label: "Company name",
+    description: "The company name associated with the Zoho Books contact.",
+  },
+  {
+    token: "{{trigger.contact_type}}",
+    label: "Contact type",
+    description: "Whether the Zoho Books contact is a customer or vendor.",
+  },
+  {
+    token: "{{trigger.customer_sub_type}}",
+    label: "Customer type",
+    description: "The Zoho Books customer classification when applicable.",
+  },
+  {
+    token: "{{trigger.contact_number}}",
+    label: "Contact number",
+    description: "The Zoho Books contact number when supplied.",
+  },
+  {
+    token: "{{trigger.email}}",
+    label: "Contact email",
+    description: "The contact email supplied by Zoho Books.",
+  },
+  {
+    token: "{{trigger.phone}}",
+    label: "Contact phone",
+    description: "The contact phone supplied by Zoho Books.",
+  },
+  {
+    token: "{{trigger.mobile}}",
+    label: "Contact mobile",
+    description: "The contact mobile number supplied by Zoho Books.",
+  },
+  {
+    token: "{{trigger.status}}",
+    label: "Contact status",
+    description: "The current Zoho Books contact status.",
+  },
+];
+
 export function knownTriggerVariables(triggerType: string): VariableOption[] {
   switch (triggerType) {
     case "typeform_response_received":
       return TYPEFORM_TRIGGER_VARIABLES;
+
+    case "zoho_event":
+      return ZOHO_TRIGGER_VARIABLES;
 
     case "tally_submission_received":
       return TALLY_TRIGGER_VARIABLES;

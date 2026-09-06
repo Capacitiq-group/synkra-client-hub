@@ -1097,6 +1097,7 @@ export function ConfigPanel({
             value={text("email")}
             variables={variables}
             onChange={(v) => set("email", v)}
+            hint="For a Zoho contact workflow, use {{trigger.email}} from the New Zoho contact trigger."
           />
           <PlainField
             label="Store result as"
@@ -1115,13 +1116,14 @@ export function ConfigPanel({
               value={text("contact_id")}
               variables={variables}
               onChange={(v) => set("contact_id", v)}
+              hint="For a New Zoho contact workflow, use {{trigger.contact_id}} for the contact ID."
             />
           )}
           <JsonField
             label="Fields"
             value={obj("fields")}
             onChange={(v) => set("fields", v)}
-            hint='Zoho Books contact fields, e.g. {"contact_name": "{{trigger.company}}", "email": "{{trigger.email}}"}. Variables work inside the string values.'
+            hint='For a New Zoho contact workflow, use fields such as {"contact_name": "{{trigger.contact_name}}", "company_name": "{{trigger.company_name}}", "email": "{{trigger.email}}", "phone": "{{trigger.phone}}", "mobile": "{{trigger.mobile}}"}'
           />
           {subtype === "zoho_create_contact" && (
             <PlainField
