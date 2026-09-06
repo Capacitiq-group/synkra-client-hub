@@ -284,6 +284,44 @@ export async function ensureClickupWebhook(userId: string): Promise<{ status: st
   return (await response.json()) as { status: string };
 }
 
+/**
+ * Called once, right after a workflow with an "Asana task reaches a
+ * stage" trigger is published — idempotent per (userId, projectGid)
+ * pair, safe to call every publish. Unlike ClickUp's single
+ * account-wide webhook, Asana webhooks are registered per-project, so
+ * a call for a different projectGid on the same account registers a
+ * second webhook rather than being treated as already done.
+ */
+export async function ensureAsanaWebhook(
+  userId: string,
+  projectGid: string,
+): Promise<{ status: string }> {
+  const response = await post("/integrations/asana/webhooks/ensure", {
+    user_id: userId,
+    project_gid: projectGid,
+  });
+  if (!response.ok) throw new Error(`Asana webhook setup failed with status ${response.status}`);
+  return (await response.json()) as { status: string };
+}
+
+/**
+ * Called once, right after a workflow with a "Monday.com item or
+ * update changed" trigger is published — idempotent per (userId,
+ * boardId) pair, same reasoning as ensureAsanaWebhook above (Monday
+ * webhooks are per-board, not per-account).
+ */
+export async function ensureMondayWebhook(
+  userId: string,
+  boardId: string,
+): Promise<{ status: string }> {
+  const response = await post("/integrations/monday/webhooks/ensure", {
+    user_id: userId,
+    board_id: boardId,
+  });
+  if (!response.ok) throw new Error(`Monday webhook setup failed with status ${response.status}`);
+  return (await response.json()) as { status: string };
+}
+
 export interface NotionDatabase {
   id: string;
   title: string;
@@ -322,4 +360,3 @@ export async function retryRun(
   const response = await post(`/webhooks/run/${workflowId}`, inputData);
   if (!response.ok) throw new Error(`Retry failed with status ${response.status}`);
 }
-  
