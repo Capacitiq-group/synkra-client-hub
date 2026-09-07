@@ -74,12 +74,7 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": [
-            "draft",
-            "published",
-            "paused",
-            "error"
-          ]
+          "values": ["draft", "published", "paused", "error"]
         },
         {
           "name": "blocks",
@@ -109,11 +104,7 @@
         {
           "name": "last_run_status",
           "type": "select",
-          "values": [
-            "success",
-            "failed",
-            "running"
-          ]
+          "values": ["success", "failed", "running"]
         },
         {
           "name": "workspace_id",
@@ -140,13 +131,7 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": [
-            "running",
-            "success",
-            "failed",
-            "blocked",
-            "scheduled"
-          ]
+          "values": ["running", "success", "failed", "blocked", "scheduled"]
         },
         {
           "name": "execution_id",
@@ -214,14 +199,7 @@
         {
           "name": "type",
           "type": "select",
-          "values": [
-            "gmail",
-            "whatsapp",
-            "google_calendar",
-            "google_sheets",
-            "openai",
-            "webhook"
-          ]
+          "values": ["gmail", "whatsapp", "google_calendar", "google_sheets", "openai", "webhook"]
         },
         {
           "name": "credentials",
@@ -230,11 +208,7 @@
         {
           "name": "status",
           "type": "select",
-          "values": [
-            "connected",
-            "disconnected",
-            "error"
-          ]
+          "values": ["connected", "disconnected", "error"]
         },
         {
           "name": "display_name",
@@ -251,6 +225,34 @@
         {
           "name": "connection_id",
           "type": "text"
+        },
+        {
+          "name": "access_token",
+          "type": "text"
+        },
+        {
+          "name": "refresh_token",
+          "type": "text"
+        },
+        {
+          "name": "token_expires_at",
+          "type": "date"
+        },
+        {
+          "name": "connected_email",
+          "type": "text"
+        },
+        {
+          "name": "last_seen_uid",
+          "type": "text"
+        },
+        {
+          "name": "api_key",
+          "type": "text"
+        },
+        {
+          "name": "scopes",
+          "type": "json"
         }
       ]
     },
@@ -274,9 +276,7 @@
           "type": "bool"
         }
       ],
-      "indexes": [
-        "CREATE INDEX `idx_workspaces_owner` ON `workspaces` (`owner_id`)"
-      ]
+      "indexes": ["CREATE INDEX `idx_workspaces_owner` ON `workspaces` (`owner_id`)"]
     },
     {
       "name": "workspace_members",
@@ -305,20 +305,13 @@
           "name": "role",
           "type": "select",
           "required": true,
-          "values": [
-            "owner",
-            "admin",
-            "member"
-          ]
+          "values": ["owner", "admin", "member"]
         },
         {
           "name": "status",
           "type": "select",
           "required": true,
-          "values": [
-            "active",
-            "removed"
-          ]
+          "values": ["active", "removed"]
         },
         {
           "name": "invited_by",
@@ -353,21 +346,13 @@
           "name": "role",
           "type": "select",
           "required": true,
-          "values": [
-            "admin",
-            "member"
-          ]
+          "values": ["admin", "member"]
         },
         {
           "name": "status",
           "type": "select",
           "required": true,
-          "values": [
-            "pending",
-            "accepted",
-            "cancelled",
-            "expired"
-          ]
+          "values": ["pending", "accepted", "cancelled", "expired"]
         },
         {
           "name": "token",
@@ -459,11 +444,7 @@
           "name": "tier",
           "type": "select",
           "required": true,
-          "values": [
-            "free",
-            "basic",
-            "pro"
-          ]
+          "values": ["free", "basic", "pro"]
         },
         {
           "name": "amount_cents",
@@ -481,13 +462,7 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": [
-            "pending",
-            "paid",
-            "failed",
-            "cancelled",
-            "activated"
-          ]
+          "values": ["pending", "paid", "failed", "cancelled", "activated"]
         },
         {
           "name": "authorization_url",
@@ -540,11 +515,7 @@
         {
           "name": "tier",
           "type": "select",
-          "values": [
-            "free",
-            "basic",
-            "pro"
-          ]
+          "values": ["free", "basic", "pro"]
         },
         {
           "name": "amount_cents",
@@ -565,10 +536,7 @@
         {
           "name": "status",
           "type": "select",
-          "values": [
-            "success",
-            "failed"
-          ]
+          "values": ["success", "failed"]
         },
         {
           "name": "paid_at",
@@ -597,23 +565,14 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": [
-            "pending",
-            "approved",
-            "rejected"
-          ]
+          "values": ["pending", "approved", "rejected"]
         },
         {
           "name": "document",
           "type": "file",
           "maxSelect": 1,
           "maxSize": 10485760,
-          "mimeTypes": [
-            "application/pdf",
-            "image/jpeg",
-            "image/png",
-            "image/webp"
-          ]
+          "mimeTypes": ["application/pdf", "image/jpeg", "image/png", "image/webp"]
         },
         {
           "name": "institution_name",
@@ -631,10 +590,7 @@
           "name": "verification_method",
           "type": "select",
           "required": true,
-          "values": [
-            "academic_email",
-            "document_upload"
-          ]
+          "values": ["academic_email", "document_upload"]
         },
         {
           "name": "reviewed_by",
@@ -660,21 +616,13 @@
           "name": "tier",
           "type": "select",
           "required": true,
-          "values": [
-            "free",
-            "basic",
-            "pro"
-          ]
+          "values": ["free", "basic", "pro"]
         },
         {
           "name": "status",
           "type": "select",
           "required": true,
-          "values": [
-            "active",
-            "cancelled",
-            "expired"
-          ]
+          "values": ["active", "cancelled", "expired"]
         },
         {
           "name": "provider",
@@ -797,13 +745,7 @@
           "name": "kind",
           "type": "select",
           "required": true,
-          "values": [
-            "ai_ops",
-            "sms",
-            "whatsapp",
-            "voice_minutes",
-            "storage_gb"
-          ]
+          "values": ["ai_ops", "sms", "whatsapp", "voice_minutes", "storage_gb"]
         },
         {
           "name": "packs",
@@ -842,11 +784,7 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": [
-            "pending",
-            "paid",
-            "failed"
-          ]
+          "values": ["pending", "paid", "failed"]
         },
         {
           "name": "provider_transaction_id",
@@ -879,13 +817,7 @@
           "name": "kind",
           "type": "select",
           "required": true,
-          "values": [
-            "ai_ops",
-            "sms",
-            "whatsapp",
-            "voice_minutes",
-            "storage_gb"
-          ]
+          "values": ["ai_ops", "sms", "whatsapp", "voice_minutes", "storage_gb"]
         },
         {
           "name": "units_purchased",
@@ -926,21 +858,13 @@
           "name": "kind",
           "type": "select",
           "required": true,
-          "values": [
-            "executions"
-          ]
+          "values": ["executions"]
         },
         {
           "name": "pack_id",
           "type": "select",
           "required": true,
-          "values": [
-            "exec_250",
-            "exec_1000",
-            "exec_5000",
-            "exec_10000",
-            "exec_25000"
-          ]
+          "values": ["exec_250", "exec_1000", "exec_5000", "exec_10000", "exec_25000"]
         },
         {
           "name": "units",
@@ -975,11 +899,7 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": [
-            "pending",
-            "paid",
-            "failed"
-          ]
+          "values": ["pending", "paid", "failed"]
         },
         {
           "name": "provider_transaction_id",
@@ -1012,9 +932,7 @@
           "name": "kind",
           "type": "select",
           "required": true,
-          "values": [
-            "executions"
-          ]
+          "values": ["executions"]
         },
         {
           "name": "units_purchased",
@@ -1090,10 +1008,7 @@
         {
           "name": "confirmation_method",
           "type": "select",
-          "values": [
-            "auto",
-            "manual"
-          ]
+          "values": ["auto", "manual"]
         },
         {
           "name": "last_confirmation_attempted_at",
@@ -1152,10 +1067,7 @@
         {
           "name": "status",
           "type": "select",
-          "values": [
-            "pending",
-            "processing"
-          ]
+          "values": ["pending", "processing"]
         }
       ]
     },
@@ -1250,10 +1162,7 @@
         {
           "name": "consent_type",
           "type": "select",
-          "values": [
-            "terms_and_privacy",
-            "marketing"
-          ],
+          "values": ["terms_and_privacy", "marketing"],
           "required": true
         },
         {
@@ -1332,6 +1241,917 @@
       "indexes": [
         "CREATE UNIQUE INDEX `idx_notion_poll_cursors_workflow_db` ON `notion_poll_cursors` (`workflow_id`, `database_id`)"
       ]
+    },
+    {
+      "name": "clients",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_name",
+          "type": "text"
+        },
+        {
+          "name": "owner_name",
+          "type": "text"
+        },
+        {
+          "name": "owner_email",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "application_credit_balance",
+          "type": "number"
+        },
+        {
+          "name": "purchased_credit_balance",
+          "type": "number"
+        },
+        {
+          "name": "banking_details",
+          "type": "json"
+        },
+        {
+          "name": "billing_address",
+          "type": "text"
+        },
+        {
+          "name": "daily_digest_enabled",
+          "type": "bool"
+        },
+        {
+          "name": "overdue_reminders_enabled",
+          "type": "bool"
+        },
+        {
+          "name": "timesheet_reminders_enabled",
+          "type": "bool"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_clients_status` ON `clients` (`status`)"]
+    },
+    {
+      "name": "team_members",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "role",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "bool"
+        },
+        {
+          "name": "date_of_birth",
+          "type": "text"
+        },
+        {
+          "name": "work_start_date",
+          "type": "text"
+        },
+        {
+          "name": "receive_timesheet_reminders",
+          "type": "bool"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_team_members_company` ON `team_members` (`company_id`)"]
+    },
+    {
+      "name": "leads",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "full_name",
+          "type": "text"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "phone",
+          "type": "text"
+        },
+        {
+          "name": "source",
+          "type": "text"
+        },
+        {
+          "name": "message",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "assigned_to",
+          "type": "text"
+        },
+        {
+          "name": "deal_value",
+          "type": "number"
+        },
+        {
+          "name": "lost_reason",
+          "type": "text"
+        },
+        {
+          "name": "custom_fields",
+          "type": "json"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_leads_company` ON `leads` (`company_id`)"]
+    },
+    {
+      "name": "revenue_log",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "lead_id",
+          "type": "text"
+        },
+        {
+          "name": "amount",
+          "type": "number"
+        },
+        {
+          "name": "customer_name",
+          "type": "text"
+        },
+        {
+          "name": "type",
+          "type": "text"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_revenue_log_company` ON `revenue_log` (`company_id`)"]
+    },
+    {
+      "name": "support_tickets",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "ticket_id",
+          "type": "text"
+        },
+        {
+          "name": "customer_name",
+          "type": "text"
+        },
+        {
+          "name": "customer_email",
+          "type": "text"
+        },
+        {
+          "name": "subject",
+          "type": "text"
+        },
+        {
+          "name": "description",
+          "type": "text"
+        },
+        {
+          "name": "priority",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "escalation_reason",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_support_tickets_company_status` ON `support_tickets` (`company_id`, `status`)",
+        "CREATE INDEX `idx_support_tickets_ticket_id` ON `support_tickets` (`ticket_id`)"
+      ]
+    },
+    {
+      "name": "refund_requests",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text"
+        },
+        {
+          "name": "customer_name",
+          "type": "text"
+        },
+        {
+          "name": "customer_email",
+          "type": "text"
+        },
+        {
+          "name": "amount",
+          "type": "number"
+        },
+        {
+          "name": "reason",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_refund_requests_company` ON `refund_requests` (`company_id`)"]
+    },
+    {
+      "name": "invoices",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "invoice_number",
+          "type": "text"
+        },
+        {
+          "name": "customer_name",
+          "type": "text"
+        },
+        {
+          "name": "customer_email",
+          "type": "text"
+        },
+        {
+          "name": "amount",
+          "type": "number"
+        },
+        {
+          "name": "due_date",
+          "type": "text"
+        },
+        {
+          "name": "file_url",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_invoices_company_status` ON `invoices` (`company_id`, `status`)",
+        "CREATE INDEX `idx_invoices_number` ON `invoices` (`invoice_number`)"
+      ]
+    },
+    {
+      "name": "payments",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "invoice_number",
+          "type": "text"
+        },
+        {
+          "name": "amount",
+          "type": "number"
+        },
+        {
+          "name": "reference",
+          "type": "text"
+        },
+        {
+          "name": "customer_name",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "matched_to_invoice",
+          "type": "text"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_payments_company` ON `payments` (`company_id`)"]
+    },
+    {
+      "name": "pending_payments",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text"
+        },
+        {
+          "name": "amount",
+          "type": "number"
+        },
+        {
+          "name": "credit_amount",
+          "type": "number"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_pending_payments_reference` ON `pending_payments` (`reference`)"
+      ]
+    },
+    {
+      "name": "credit_ledger",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "type",
+          "type": "text"
+        },
+        {
+          "name": "amount",
+          "type": "number"
+        },
+        {
+          "name": "balance_after",
+          "type": "number"
+        },
+        {
+          "name": "description",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_credit_ledger_company` ON `credit_ledger` (`company_id`)"]
+    },
+    {
+      "name": "expenses",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text"
+        },
+        {
+          "name": "submitted_by",
+          "type": "text"
+        },
+        {
+          "name": "submitted_by_email",
+          "type": "text"
+        },
+        {
+          "name": "amount",
+          "type": "number"
+        },
+        {
+          "name": "category",
+          "type": "text"
+        },
+        {
+          "name": "description",
+          "type": "text"
+        },
+        {
+          "name": "receipt_url",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_expenses_company` ON `expenses` (`company_id`)"]
+    },
+    {
+      "name": "purchase_orders",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "po_number",
+          "type": "text"
+        },
+        {
+          "name": "requested_by",
+          "type": "text"
+        },
+        {
+          "name": "requester_email",
+          "type": "text"
+        },
+        {
+          "name": "supplier",
+          "type": "text"
+        },
+        {
+          "name": "items",
+          "type": "json"
+        },
+        {
+          "name": "total_amount",
+          "type": "number"
+        },
+        {
+          "name": "justification",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_purchase_orders_company` ON `purchase_orders` (`company_id`)"]
+    },
+    {
+      "name": "documents",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "type",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text"
+        },
+        {
+          "name": "customer_name",
+          "type": "text"
+        },
+        {
+          "name": "customer_email",
+          "type": "text"
+        },
+        {
+          "name": "file_url",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_documents_company` ON `documents` (`company_id`)"]
+    },
+    {
+      "name": "file_logs",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "filename",
+          "type": "text"
+        },
+        {
+          "name": "file_url",
+          "type": "text"
+        },
+        {
+          "name": "file_type",
+          "type": "text"
+        },
+        {
+          "name": "folder",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_file_logs_company` ON `file_logs` (`company_id`)"]
+    },
+    {
+      "name": "onboarding_tasks",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "employee_name",
+          "type": "text"
+        },
+        {
+          "name": "employee_email",
+          "type": "text"
+        },
+        {
+          "name": "role",
+          "type": "text"
+        },
+        {
+          "name": "start_date",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "tasks_completed",
+          "type": "json"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_onboarding_tasks_company` ON `onboarding_tasks` (`company_id`)"
+      ]
+    },
+    {
+      "name": "leave_requests",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text"
+        },
+        {
+          "name": "employee_name",
+          "type": "text"
+        },
+        {
+          "name": "employee_email",
+          "type": "text"
+        },
+        {
+          "name": "leave_type",
+          "type": "text"
+        },
+        {
+          "name": "start_date",
+          "type": "text"
+        },
+        {
+          "name": "end_date",
+          "type": "text"
+        },
+        {
+          "name": "reason",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_leave_requests_company` ON `leave_requests` (`company_id`)"]
+    },
+    {
+      "name": "performance_reviews",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "employee_name",
+          "type": "text"
+        },
+        {
+          "name": "employee_email",
+          "type": "text"
+        },
+        {
+          "name": "review_date",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_performance_reviews_company` ON `performance_reviews` (`company_id`)"
+      ]
+    },
+    {
+      "name": "content_approvals",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "reference",
+          "type": "text"
+        },
+        {
+          "name": "submitted_by",
+          "type": "text"
+        },
+        {
+          "name": "submitter_email",
+          "type": "text"
+        },
+        {
+          "name": "content_title",
+          "type": "text"
+        },
+        {
+          "name": "content_type",
+          "type": "text"
+        },
+        {
+          "name": "content_url",
+          "type": "text"
+        },
+        {
+          "name": "notes",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_content_approvals_company` ON `content_approvals` (`company_id`)"
+      ]
+    },
+    {
+      "name": "newsletter_subscribers",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "source",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_newsletter_subscribers_company_email` ON `newsletter_subscribers` (`company_id`, `email`)"
+      ]
+    },
+    {
+      "name": "webinar_registrations",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "webinar_name",
+          "type": "text"
+        },
+        {
+          "name": "webinar_date",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_webinar_registrations_company` ON `webinar_registrations` (`company_id`)"
+      ]
+    },
+    {
+      "name": "workflow_logs",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "text"
+        },
+        {
+          "name": "workflow",
+          "type": "text"
+        },
+        {
+          "name": "entity_id",
+          "type": "text"
+        },
+        {
+          "name": "action",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "metadata",
+          "type": "json"
+        }
+      ],
+      "indexes": ["CREATE INDEX `idx_workflow_logs_company` ON `workflow_logs` (`company_id`)"]
+    },
+    {
+      "name": "pending_approvals",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text"
+        },
+        {
+          "name": "type",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "subject",
+          "type": "text"
+        },
+        {
+          "name": "body",
+          "type": "text"
+        },
+        {
+          "name": "recipient_email",
+          "type": "text"
+        },
+        {
+          "name": "recipient_name",
+          "type": "text"
+        },
+        {
+          "name": "zoho_followup",
+          "type": "json"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_pending_approvals_user_status` ON `pending_approvals` (`user_id`, `status`)"
+      ]
+    },
+    {
+      "name": "agency_quote_requests",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "contact_name",
+          "type": "text"
+        },
+        {
+          "name": "contact_email",
+          "type": "text"
+        },
+        {
+          "name": "contact_phone",
+          "type": "text"
+        },
+        {
+          "name": "company_name",
+          "type": "text"
+        },
+        {
+          "name": "service_slug",
+          "type": "text"
+        },
+        {
+          "name": "qualification_answers",
+          "type": "json"
+        },
+        {
+          "name": "computed_tier",
+          "type": "text"
+        },
+        {
+          "name": "computed_monthly",
+          "type": "number"
+        },
+        {
+          "name": "computed_setup",
+          "type": "number"
+        },
+        {
+          "name": "qualification_passed",
+          "type": "bool"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "zoho_contact_id",
+          "type": "text"
+        },
+        {
+          "name": "zoho_estimate_id",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_agency_quote_requests_status` ON `agency_quote_requests` (`status`)",
+        "CREATE INDEX `idx_agency_quote_requests_email` ON `agency_quote_requests` (`contact_email`)"
+      ]
     }
   ],
   "userFields": [
@@ -1342,12 +2162,7 @@
     {
       "name": "student_verification_status",
       "type": "select",
-      "values": [
-        "none",
-        "pending",
-        "approved",
-        "rejected"
-      ]
+      "values": ["none", "pending", "approved", "rejected"]
     },
     {
       "name": "business_name",
@@ -1380,10 +2195,7 @@
     {
       "name": "user_type",
       "type": "select",
-      "values": [
-        "beta",
-        "paid"
-      ]
+      "values": ["beta", "paid"]
     },
     {
       "name": "trial_ends_at",
@@ -1392,11 +2204,7 @@
     {
       "name": "theme_preference",
       "type": "select",
-      "values": [
-        "dark",
-        "light",
-        "system"
-      ]
+      "values": ["dark", "light", "system"]
     },
     {
       "name": "notify_on_failure",
@@ -1449,11 +2257,7 @@
     {
       "name": "tier",
       "type": "select",
-      "values": [
-        "free",
-        "basic",
-        "pro"
-      ]
+      "values": ["free", "basic", "pro"]
     },
     {
       "name": "billing_period_start",
