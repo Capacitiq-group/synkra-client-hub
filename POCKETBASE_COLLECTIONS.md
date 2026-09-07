@@ -1,1 +1,0 @@
-(entire content for POCKETBASE_COLLECTIONS.md with appended block)
