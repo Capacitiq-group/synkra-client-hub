@@ -199,7 +199,7 @@
         {
           "name": "type",
           "type": "select",
-          "values": ["gmail", "whatsapp", "google_calendar", "google_sheets", "openai", "webhook"]
+          "values": ["gmail", "email", "ai", "webhook", "slack", "hubspot", "zoho", "clickup", "notion", "whatsapp", "sms", "shopify", "typeform", "tally", "calendly", "xero", "airtable", "monday", "asana", "pipedrive"]
         },
         {
           "name": "credentials",
