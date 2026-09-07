@@ -34,29 +34,29 @@ monthly usage counters.
 
 Fields added on top of PocketBase's built-in auth fields:
 
-| Field                                                                                                             | Type                                 | Notes                                                                                   |
-| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------- |
-| `name`                                                                                                            | text                                 | Display name.                                                                           |
-| `business_name`, `business_industry`, `business_address`                                                          | text                                 | Business profile.                                                                       |
-| `whatsapp_number`, `review_link`                                                                                  | text                                 | Integration helpers.                                                                    |
-| `review_destinations`                                                                                             | json                                 | Multi-destination review links (Google, HelloPeter, own website widget, other). Array of `{ id, url, enabled }` parsed by `parseReviewDestinations()` in `src/lib/reviews/user-destinations.ts`. `review_link` is kept in sync with the primary active destination and remains the legacy fallback. |
-| `is_tester`                                                                                                       | bool                                 | Beta tester flag.                                                                       |
-| `user_type`                                                                                                       | select `beta` \| `paid`              | Legacy account classification.                                                          |
-| `trial_ends_at`                                                                                                   | date                                 |                                                                                         |
-| `theme_preference`                                                                                                | select `dark` \| `light` \| `system` |                                                                                         |
-| `notify_on_failure`, `notify_weekly_summary`, `notify_on_success`, `notify_credit_low`, `notify_platform_updates` | bool                                 | Notification prefs.                                                                     |
-| `notification_email`                                                                                              | email                                |                                                                                         |
-| `credit_emails`, `credit_emails_used`, `credit_workflows`, `credit_workflows_used`                                | number                               | Legacy beta credits.                                                                    |
-| `onboarding_completed`                                                                                            | bool                                 |                                                                                         |
-| `onboarding_step`                                                                                                 | number                               |                                                                                         |
-| **`tier`**                                                                                                        | select `free` \| `basic` \| `pro`    | Plan tier. Read by `@/lib/plans` (`normalizeTier`); drives every limit including seats. |
-| **`student_verified`**                                                                                            | bool                                  | Section 4 (28 Aug 2026). Drives `getEffectivePriceZar()` — the only thing that actually affects what a student is charged. Server-owned: set only by `resolveOrCreateUser()` (`.ac.za` email at signup) or by an admin approving a `student_verifications` row. |
-| **`student_verification_status`**                                                                                 | select `none` \| `pending` \| `approved` \| `rejected` | Display-only status for the user's own settings page. `student_verified` is the field that actually matters for pricing; this is UI convenience, not itself trusted for billing. |
-| **`billing_period_start`**                                                                                        | date                                 | Start of the current monthly counting window.                                           |
-| **`executions_used_this_month`**                                                                                  | number                               | Incremented by `startExecution()` only.                                                 |
-| **`ai_ops_used_this_month`**                                                                                      | number                               | AI operation counter.                                                                   |
-| **`emails_used_this_month`**                                                                                      | number                               | Email send counter.                                                                     |
-| **`storage_used_mb`**                                                                                             | number                               | Storage counter.                                                                        |
+| Field                                                                                                             | Type                                                   | Notes                                                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                                                                                            | text                                                   | Display name.                                                                                                                                                                                                                                                                                       |
+| `business_name`, `business_industry`, `business_address`                                                          | text                                                   | Business profile.                                                                                                                                                                                                                                                                                   |
+| `whatsapp_number`, `review_link`                                                                                  | text                                                   | Integration helpers.                                                                                                                                                                                                                                                                                |
+| `review_destinations`                                                                                             | json                                                   | Multi-destination review links (Google, HelloPeter, own website widget, other). Array of `{ id, url, enabled }` parsed by `parseReviewDestinations()` in `src/lib/reviews/user-destinations.ts`. `review_link` is kept in sync with the primary active destination and remains the legacy fallback. |
+| `is_tester`                                                                                                       | bool                                                   | Beta tester flag.                                                                                                                                                                                                                                                                                   |
+| `user_type`                                                                                                       | select `beta` \| `paid`                                | Legacy account classification.                                                                                                                                                                                                                                                                      |
+| `trial_ends_at`                                                                                                   | date                                                   |                                                                                                                                                                                                                                                                                                     |
+| `theme_preference`                                                                                                | select `dark` \| `light` \| `system`                   |                                                                                                                                                                                                                                                                                                     |
+| `notify_on_failure`, `notify_weekly_summary`, `notify_on_success`, `notify_credit_low`, `notify_platform_updates` | bool                                                   | Notification prefs.                                                                                                                                                                                                                                                                                 |
+| `notification_email`                                                                                              | email                                                  |                                                                                                                                                                                                                                                                                                     |
+| `credit_emails`, `credit_emails_used`, `credit_workflows`, `credit_workflows_used`                                | number                                                 | Legacy beta credits.                                                                                                                                                                                                                                                                                |
+| `onboarding_completed`                                                                                            | bool                                                   |                                                                                                                                                                                                                                                                                                     |
+| `onboarding_step`                                                                                                 | number                                                 |                                                                                                                                                                                                                                                                                                     |
+| **`tier`**                                                                                                        | select `free` \| `basic` \| `pro`                      | Plan tier. Read by `@/lib/plans` (`normalizeTier`); drives every limit including seats.                                                                                                                                                                                                             |
+| **`student_verified`**                                                                                            | bool                                                   | Section 4 (28 Aug 2026). Drives `getEffectivePriceZar()` — the only thing that actually affects what a student is charged. Server-owned: set only by `resolveOrCreateUser()` (`.ac.za` email at signup) or by an admin approving a `student_verifications` row.                                     |
+| **`student_verification_status`**                                                                                 | select `none` \| `pending` \| `approved` \| `rejected` | Display-only status for the user's own settings page. `student_verified` is the field that actually matters for pricing; this is UI convenience, not itself trusted for billing.                                                                                                                    |
+| **`billing_period_start`**                                                                                        | date                                                   | Start of the current monthly counting window.                                                                                                                                                                                                                                                       |
+| **`executions_used_this_month`**                                                                                  | number                                                 | Incremented by `startExecution()` only.                                                                                                                                                                                                                                                             |
+| **`ai_ops_used_this_month`**                                                                                      | number                                                 | AI operation counter.                                                                                                                                                                                                                                                                               |
+| **`emails_used_this_month`**                                                                                      | number                                                 | Email send counter.                                                                                                                                                                                                                                                                                 |
+| **`storage_used_mb`**                                                                                             | number                                                 | Storage counter.                                                                                                                                                                                                                                                                                    |
 
 Relationships: owner of `workspaces` (`workspaces.owner_id`), referenced by
 `workspace_members.user_id`, `workflows.user_id`, `workflow_runs.user_id`.
@@ -191,21 +191,21 @@ Purpose: persisted, per-user in-app notifications. Server writers create rows;
 authenticated users may list, view, mark, or delete only rows whose `user_id`
 matches their PocketBase auth id.
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `user_id` | text, required | Recipient `users.id`. |
-| `event_type` | text, required | Extensible machine value; deliberately not a select field. Initial values: `workflow_completed`, `workflow_failed`, `credit_balance_low`, `weekly_summary`, `platform_update`. |
-| `title` | text, required | Short feed heading. |
-| `message` | text | Notification detail. |
-| `workflow_id`, `run_id` | text | Optional deep-link context. |
-| `link` | text | Optional internal `/dashboard...` fallback link. |
-| `source` | text | Writer that produced the row (e.g. `slack_urgency_triage`, `slack_daily_digest`, `slack_unanswered_check`), so the frontend can show a per-source icon. |
-| `severity` | text | `info`, `success`, `warning`, or `error`. |
-| `metadata` | json | Event-specific structured context. |
-| `read` | bool | Unread by default. |
-| `read_at` | date | Set when marked read. |
-| `dedupe_key` | text | Stable delivery key for idempotent writers. |
-| `created` / `updated` | autodate | Feed ordering and audit timestamps. |
+| Field                   | Type           | Notes                                                                                                                                                                          |
+| ----------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `user_id`               | text, required | Recipient `users.id`.                                                                                                                                                          |
+| `event_type`            | text, required | Extensible machine value; deliberately not a select field. Initial values: `workflow_completed`, `workflow_failed`, `credit_balance_low`, `weekly_summary`, `platform_update`. |
+| `title`                 | text, required | Short feed heading.                                                                                                                                                            |
+| `message`               | text           | Notification detail.                                                                                                                                                           |
+| `workflow_id`, `run_id` | text           | Optional deep-link context.                                                                                                                                                    |
+| `link`                  | text           | Optional internal `/dashboard...` fallback link.                                                                                                                               |
+| `source`                | text           | Writer that produced the row (e.g. `slack_urgency_triage`, `slack_daily_digest`, `slack_unanswered_check`), so the frontend can show a per-source icon.                        |
+| `severity`              | text           | `info`, `success`, `warning`, or `error`.                                                                                                                                      |
+| `metadata`              | json           | Event-specific structured context.                                                                                                                                             |
+| `read`                  | bool           | Unread by default.                                                                                                                                                             |
+| `read_at`               | date           | Set when marked read.                                                                                                                                                          |
+| `dedupe_key`            | text           | Stable delivery key for idempotent writers.                                                                                                                                    |
+| `created` / `updated`   | autodate       | Feed ordering and audit timestamps.                                                                                                                                            |
 
 Indexes: `(user_id, created)`, `(user_id, read)`, and a partial unique index on
 non-empty `dedupe_key`. Browser create access is closed. Execution outcome and
@@ -217,23 +217,23 @@ and platform updates use the secret-protected
 
 Purpose: one row per connected platform per user.
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `user_id` | text, required | Owner `users.id`. |
-| `type` | select | Platform key (`gmail`, `whatsapp`, `google_calendar`, `google_sheets`, `openai`, `webhook`). |
-| `credentials` | json | Real `access_token` / `refresh_token` values for platforms we hold tokens for (Gmail, HubSpot). |
-| `connection_id` | text | Provider-side connection identifier for platforms where a broker holds the token. Slack connects through Nango: Nango stores the token and we only keep the id it knows the connection by (by convention the user's own id). Kept as its own explicit field rather than overloading `credentials`. |
-| `status` | select `connected` \| `disconnected` \| `error` | |
-| `display_name` | text | |
-| `last_tested_at` | date | |
-| `error_message` | text | |
+| Field            | Type                                            | Notes                                                                                                                                                                                                                                                                                              |
+| ---------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_id`        | text, required                                  | Owner `users.id`.                                                                                                                                                                                                                                                                                  |
+| `type`           | select                                          | Platform key (`gmail`, `whatsapp`, `google_calendar`, `google_sheets`, `openai`, `webhook`).                                                                                                                                                                                                       |
+| `credentials`    | json                                            | Real `access_token` / `refresh_token` values for platforms we hold tokens for (Gmail, HubSpot).                                                                                                                                                                                                    |
+| `connection_id`  | text                                            | Provider-side connection identifier for platforms where a broker holds the token. Slack connects through Nango: Nango stores the token and we only keep the id it knows the connection by (by convention the user's own id). Kept as its own explicit field rather than overloading `credentials`. |
+| `status`         | select `connected` \| `disconnected` \| `error` |                                                                                                                                                                                                                                                                                                    |
+| `display_name`   | text                                            |                                                                                                                                                                                                                                                                                                    |
+| `last_tested_at` | date                                            |                                                                                                                                                                                                                                                                                                    |
+| `error_message`  | text                                            |                                                                                                                                                                                                                                                                                                    |
 
 ## `student_verifications` (base, server-only)
 
 Purpose: Section 4 of the 28 Aug 2026 handover — the student discount
 program. One row per verification attempt (a user can have more than one
 if a first upload is rejected and they try again). This collection only
-ever records the *attempt*; the actual entitlement lives on the `users`
+ever records the _attempt_; the actual entitlement lives on the `users`
 record itself (`student_verified`, `student_verification_status`), which
 is what `getEffectivePriceZar()` in `plans.ts` actually reads at
 checkout/billing time — never this collection directly.
@@ -253,16 +253,16 @@ involved in one of them:
   `is_higher_education` check says yes) or leaves it `pending` for manual
   review via `/admin` on this app.
 
-| Field                 | Type                                                    | Notes                                                                 |
-| --------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `user_id`              | text, required                                            | `users.id`.                                                             |
-| `status`               | select `pending` \| `approved` \| `rejected`, required    | Set by synkra-core, or by an admin via the approve/reject endpoints.    |
-| `document`             | file (PDF/JPEG/PNG/WebP, max 10MB)                        | The uploaded proof. Not present for the academic-email path.           |
-| `institution_name`     | text                                                       | AI-extracted, shown to the admin reviewing a pending case.              |
-| `document_year`        | text                                                       | AI-extracted. Auto-approval requires this to equal the current year.   |
-| `name_on_document`     | text                                                       | AI-extracted. Auto-approval requires this to plausibly match the account's registered name. |
-| `verification_method`  | select `academic_email` \| `document_upload`, required    |                                                                          |
-| `reviewed_by`          | text                                                       | Admin's user id, set only when a human approved/rejected a pending case. |
+| Field                 | Type                                                   | Notes                                                                                       |
+| --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `user_id`             | text, required                                         | `users.id`.                                                                                 |
+| `status`              | select `pending` \| `approved` \| `rejected`, required | Set by synkra-core, or by an admin via the approve/reject endpoints.                        |
+| `document`            | file (PDF/JPEG/PNG/WebP, max 10MB)                     | The uploaded proof. Not present for the academic-email path.                                |
+| `institution_name`    | text                                                   | AI-extracted, shown to the admin reviewing a pending case.                                  |
+| `document_year`       | text                                                   | AI-extracted. Auto-approval requires this to equal the current year.                        |
+| `name_on_document`    | text                                                   | AI-extracted. Auto-approval requires this to plausibly match the account's registered name. |
+| `verification_method` | select `academic_email` \| `document_upload`, required |                                                                                             |
+| `reviewed_by`         | text                                                   | Admin's user id, set only when a human approved/rejected a pending case.                    |
 
 Indexes:
 
@@ -277,20 +277,20 @@ Purpose: one row per purchased execution top-up pack. Separate from
 `addon_purchases` — the add-on system (`ai_ops`, `sms`, `whatsapp`,
 `voice_minutes`, `storage_gb`) is untouched by this kind.
 
-| Field                     | Type                                                                                | Notes                                              |
-| ------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `user_id`                 | text, required                                                                      | `users.id`.                                        |
-| `kind`                    | select `executions`, required                                                       | The new purchasable kind.                          |
-| `pack_id`                 | select `exec_250` \| `exec_1000` \| `exec_5000` \| `exec_10000` \| `exec_25000`     | Published pack. Prices live in `execution-packs.ts`.|
-| `units`                   | number                                                                              | Executions granted by the pack.                    |
-| `amount_cents`            | number                                                                              | Recomputed server-side, never sent by the browser. |
-| `currency`, `provider`    | text                                                                                | `ZAR`, `paystack`.                                 |
-| `reference`               | text, required                                                                      | `SYN-EXECPACK-<units>-<uuid>`.                     |
-| `authorization_url`, `access_code` | text                                                                       | Paystack checkout handles.                         |
-| `status`                  | select `pending` \| `paid` \| `failed`, required                                    |                                                    |
-| `provider_transaction_id` | text                                                                                |                                                    |
-| `paid_at`                 | date                                                                                |                                                    |
-| `error_message`           | text                                                                                |                                                    |
+| Field                              | Type                                                                            | Notes                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `user_id`                          | text, required                                                                  | `users.id`.                                          |
+| `kind`                             | select `executions`, required                                                   | The new purchasable kind.                            |
+| `pack_id`                          | select `exec_250` \| `exec_1000` \| `exec_5000` \| `exec_10000` \| `exec_25000` | Published pack. Prices live in `execution-packs.ts`. |
+| `units`                            | number                                                                          | Executions granted by the pack.                      |
+| `amount_cents`                     | number                                                                          | Recomputed server-side, never sent by the browser.   |
+| `currency`, `provider`             | text                                                                            | `ZAR`, `paystack`.                                   |
+| `reference`                        | text, required                                                                  | `SYN-EXECPACK-<units>-<uuid>`.                       |
+| `authorization_url`, `access_code` | text                                                                            | Paystack checkout handles.                           |
+| `status`                           | select `pending` \| `paid` \| `failed`, required                                |                                                      |
+| `provider_transaction_id`          | text                                                                            |                                                      |
+| `paid_at`                          | date                                                                            |                                                      |
+| `error_message`                    | text                                                                            |                                                      |
 
 Indexes:
 
@@ -328,15 +328,15 @@ Purpose: append-only audit trail of terms/privacy acceptance and marketing
 opt-in captured at checkout. Written by `createCheckout` in
 `src/lib/billing/billing.server.ts` — never updated, one row per consent event.
 
-| Field                | Type                                                        | Notes                                              |
-| -------------------- | ----------------------------------------------------------- | -------------------------------------------------- |
-| `user_id`            | text, required                                               | `users.id`.                                        |
-| `checkout_reference` | text                                                         | The `SYN-...` reference the consent was given for. |
-| `consent_type`       | select `terms_and_privacy` \| `marketing`, required          |                                                    |
-| `granted`            | bool                                                         | What the person actually chose.                    |
-| `policy_version`     | text                                                         | `terms:<v>;privacy:<v>`; empty for marketing.      |
-| `granted_at`         | date                                                         | ISO timestamp recorded server-side.                |
-| `ip_address`         | text                                                         | First entry of `x-forwarded-for`, when present.    |
+| Field                | Type                                                | Notes                                              |
+| -------------------- | --------------------------------------------------- | -------------------------------------------------- |
+| `user_id`            | text, required                                      | `users.id`.                                        |
+| `checkout_reference` | text                                                | The `SYN-...` reference the consent was given for. |
+| `consent_type`       | select `terms_and_privacy` \| `marketing`, required |                                                    |
+| `granted`            | bool                                                | What the person actually chose.                    |
+| `policy_version`     | text                                                | `terms:<v>;privacy:<v>`; empty for marketing.      |
+| `granted_at`         | date                                                | ISO timestamp recorded server-side.                |
+| `ip_address`         | text                                                | First entry of `x-forwarded-for`, when present.    |
 
 Indexes:
 
@@ -348,11 +348,11 @@ Indexes:
 Purpose: forwarding aliases on `@in.synkra.co.za`. Managed by synkra-core
 (`routers/ghost_mailbox.py`) and read by inbound email relay.
 
-| Field              | Type           | Notes                                                     |
-| ------------------ | -------------- | --------------------------------------------------------- |
-| `user_id`          | text, required | Owner; every read is scoped to it.                        |
-| `address`          | text, required | Lowercased, must end with `@in.synkra.co.za`.             |
-| `forward_to_email` | text, required | Real inbox mail is relayed to.                            |
+| Field              | Type           | Notes                                         |
+| ------------------ | -------------- | --------------------------------------------- |
+| `user_id`          | text, required | Owner; every read is scoped to it.            |
+| `address`          | text, required | Lowercased, must end with `@in.synkra.co.za`. |
+| `forward_to_email` | text, required | Real inbox mail is relayed to.                |
 
 Indexes:
 
@@ -380,3 +380,396 @@ Indexes:
 Note: adding these three collections to a live PocketBase requires re-running
 the first-time setup (`runFirstTimeSetup`, `/setup`) or applying
 `pb_schema.json` manually.
+
+## synkra-core owned collections (base, server-only)
+
+These 23 collections are written and read by synkra-core's daily backend
+workflows and the agency checkout flow. All rules are `null`, so only server
+code holding `PB_ADMIN_*` can touch them. They are declared here and in
+`pb_schema.json` so a freshly provisioned database comes up complete.
+
+### `clients` (base, server-only)
+
+| Field                         | Type   | Notes |
+| ----------------------------- | ------ | ----- |
+| `company_name`                | text   |       |
+| `owner_name`                  | text   |       |
+| `owner_email`                 | text   |       |
+| `status`                      | text   |       |
+| `application_credit_balance`  | number |       |
+| `purchased_credit_balance`    | number |       |
+| `banking_details`             | json   |       |
+| `billing_address`             | text   |       |
+| `daily_digest_enabled`        | bool   |       |
+| `overdue_reminders_enabled`   | bool   |       |
+| `timesheet_reminders_enabled` | bool   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_clients_status`ON`clients` (`status`)`
+
+### `team_members` (base, server-only)
+
+| Field                         | Type | Notes |
+| ----------------------------- | ---- | ----- |
+| `company_id`                  | text |       |
+| `name`                        | text |       |
+| `email`                       | text |       |
+| `role`                        | text |       |
+| `active`                      | bool |       |
+| `date_of_birth`               | text |       |
+| `work_start_date`             | text |       |
+| `receive_timesheet_reminders` | bool |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_team_members_company`ON`team_members` (`company_id`)`
+
+### `leads` (base, server-only)
+
+| Field           | Type   | Notes |
+| --------------- | ------ | ----- |
+| `company_id`    | text   |       |
+| `full_name`     | text   |       |
+| `email`         | text   |       |
+| `phone`         | text   |       |
+| `source`        | text   |       |
+| `message`       | text   |       |
+| `status`        | text   |       |
+| `assigned_to`   | text   |       |
+| `deal_value`    | number |       |
+| `lost_reason`   | text   |       |
+| `custom_fields` | json   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_leads_company`ON`leads` (`company_id`)`
+
+### `revenue_log` (base, server-only)
+
+| Field           | Type   | Notes |
+| --------------- | ------ | ----- |
+| `company_id`    | text   |       |
+| `lead_id`       | text   |       |
+| `amount`        | number |       |
+| `customer_name` | text   |       |
+| `type`          | text   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_revenue_log_company`ON`revenue_log` (`company_id`)`
+
+### `support_tickets` (base, server-only)
+
+| Field               | Type | Notes |
+| ------------------- | ---- | ----- |
+| `company_id`        | text |       |
+| `ticket_id`         | text |       |
+| `customer_name`     | text |       |
+| `customer_email`    | text |       |
+| `subject`           | text |       |
+| `description`       | text |       |
+| `priority`          | text |       |
+| `status`            | text |       |
+| `escalation_reason` | text |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_support_tickets_company_status`ON`support_tickets` (`company_id`, `status`)`
+- `CREATE INDEX `idx_support_tickets_ticket_id`ON`support_tickets` (`ticket_id`)`
+
+### `refund_requests` (base, server-only)
+
+| Field            | Type   | Notes |
+| ---------------- | ------ | ----- |
+| `company_id`     | text   |       |
+| `reference`      | text   |       |
+| `customer_name`  | text   |       |
+| `customer_email` | text   |       |
+| `amount`         | number |       |
+| `reason`         | text   |       |
+| `status`         | text   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_refund_requests_company`ON`refund_requests` (`company_id`)`
+
+### `invoices` (base, server-only)
+
+| Field            | Type   | Notes |
+| ---------------- | ------ | ----- |
+| `company_id`     | text   |       |
+| `invoice_number` | text   |       |
+| `customer_name`  | text   |       |
+| `customer_email` | text   |       |
+| `amount`         | number |       |
+| `due_date`       | text   |       |
+| `file_url`       | text   |       |
+| `status`         | text   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_invoices_company_status`ON`invoices` (`company_id`, `status`)`
+- `CREATE INDEX `idx_invoices_number`ON`invoices` (`invoice_number`)`
+
+### `payments` (base, server-only)
+
+| Field                | Type   | Notes |
+| -------------------- | ------ | ----- |
+| `company_id`         | text   |       |
+| `invoice_number`     | text   |       |
+| `amount`             | number |       |
+| `reference`          | text   |       |
+| `customer_name`      | text   |       |
+| `status`             | text   |       |
+| `matched_to_invoice` | text   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_payments_company`ON`payments` (`company_id`)`
+
+### `pending_payments` (base, server-only)
+
+| Field           | Type   | Notes |
+| --------------- | ------ | ----- |
+| `company_id`    | text   |       |
+| `reference`     | text   |       |
+| `amount`        | number |       |
+| `credit_amount` | number |       |
+| `status`        | text   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_pending_payments_reference`ON`pending_payments` (`reference`)`
+
+### `credit_ledger` (base, server-only)
+
+| Field           | Type   | Notes |
+| --------------- | ------ | ----- |
+| `company_id`    | text   |       |
+| `type`          | text   |       |
+| `amount`        | number |       |
+| `balance_after` | number |       |
+| `description`   | text   |       |
+| `reference`     | text   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_credit_ledger_company`ON`credit_ledger` (`company_id`)`
+
+### `expenses` (base, server-only)
+
+| Field                | Type   | Notes |
+| -------------------- | ------ | ----- |
+| `company_id`         | text   |       |
+| `reference`          | text   |       |
+| `submitted_by`       | text   |       |
+| `submitted_by_email` | text   |       |
+| `amount`             | number |       |
+| `category`           | text   |       |
+| `description`        | text   |       |
+| `receipt_url`        | text   |       |
+| `status`             | text   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_expenses_company`ON`expenses` (`company_id`)`
+
+### `purchase_orders` (base, server-only)
+
+| Field             | Type   | Notes |
+| ----------------- | ------ | ----- |
+| `company_id`      | text   |       |
+| `po_number`       | text   |       |
+| `requested_by`    | text   |       |
+| `requester_email` | text   |       |
+| `supplier`        | text   |       |
+| `items`           | json   |       |
+| `total_amount`    | number |       |
+| `justification`   | text   |       |
+| `status`          | text   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_purchase_orders_company`ON`purchase_orders` (`company_id`)`
+
+### `documents` (base, server-only)
+
+| Field            | Type | Notes |
+| ---------------- | ---- | ----- |
+| `company_id`     | text |       |
+| `type`           | text |       |
+| `reference`      | text |       |
+| `customer_name`  | text |       |
+| `customer_email` | text |       |
+| `file_url`       | text |       |
+| `status`         | text |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_documents_company`ON`documents` (`company_id`)`
+
+### `file_logs` (base, server-only)
+
+| Field        | Type | Notes |
+| ------------ | ---- | ----- |
+| `company_id` | text |       |
+| `filename`   | text |       |
+| `file_url`   | text |       |
+| `file_type`  | text |       |
+| `folder`     | text |       |
+| `status`     | text |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_file_logs_company`ON`file_logs` (`company_id`)`
+
+### `onboarding_tasks` (base, server-only)
+
+| Field             | Type | Notes |
+| ----------------- | ---- | ----- |
+| `company_id`      | text |       |
+| `employee_name`   | text |       |
+| `employee_email`  | text |       |
+| `role`            | text |       |
+| `start_date`      | text |       |
+| `status`          | text |       |
+| `tasks_completed` | json |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_onboarding_tasks_company`ON`onboarding_tasks` (`company_id`)`
+
+### `leave_requests` (base, server-only)
+
+| Field            | Type | Notes |
+| ---------------- | ---- | ----- |
+| `company_id`     | text |       |
+| `reference`      | text |       |
+| `employee_name`  | text |       |
+| `employee_email` | text |       |
+| `leave_type`     | text |       |
+| `start_date`     | text |       |
+| `end_date`       | text |       |
+| `reason`         | text |       |
+| `status`         | text |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_leave_requests_company`ON`leave_requests` (`company_id`)`
+
+### `performance_reviews` (base, server-only)
+
+| Field            | Type | Notes |
+| ---------------- | ---- | ----- |
+| `company_id`     | text |       |
+| `employee_name`  | text |       |
+| `employee_email` | text |       |
+| `review_date`    | text |       |
+| `status`         | text |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_performance_reviews_company`ON`performance_reviews` (`company_id`)`
+
+### `content_approvals` (base, server-only)
+
+| Field             | Type | Notes |
+| ----------------- | ---- | ----- |
+| `company_id`      | text |       |
+| `reference`       | text |       |
+| `submitted_by`    | text |       |
+| `submitter_email` | text |       |
+| `content_title`   | text |       |
+| `content_type`    | text |       |
+| `content_url`     | text |       |
+| `notes`           | text |       |
+| `status`          | text |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_content_approvals_company`ON`content_approvals` (`company_id`)`
+
+### `newsletter_subscribers` (base, server-only)
+
+| Field        | Type | Notes |
+| ------------ | ---- | ----- |
+| `company_id` | text |       |
+| `email`      | text |       |
+| `name`       | text |       |
+| `status`     | text |       |
+| `source`     | text |       |
+
+Indexes:
+
+- `CREATE UNIQUE INDEX `idx_newsletter_subscribers_company_email`ON`newsletter_subscribers` (`company_id`, `email`)`
+
+### `webinar_registrations` (base, server-only)
+
+| Field          | Type | Notes |
+| -------------- | ---- | ----- |
+| `company_id`   | text |       |
+| `email`        | text |       |
+| `name`         | text |       |
+| `webinar_name` | text |       |
+| `webinar_date` | text |       |
+| `status`       | text |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_webinar_registrations_company`ON`webinar_registrations` (`company_id`)`
+
+### `workflow_logs` (base, server-only)
+
+| Field        | Type | Notes |
+| ------------ | ---- | ----- |
+| `company_id` | text |       |
+| `workflow`   | text |       |
+| `entity_id`  | text |       |
+| `action`     | text |       |
+| `status`     | text |       |
+| `metadata`   | json |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_workflow_logs_company`ON`workflow_logs` (`company_id`)`
+
+### `pending_approvals` (base, server-only)
+
+| Field             | Type | Notes |
+| ----------------- | ---- | ----- |
+| `user_id`         | text |       |
+| `type`            | text |       |
+| `status`          | text |       |
+| `subject`         | text |       |
+| `body`            | text |       |
+| `recipient_email` | text |       |
+| `recipient_name`  | text |       |
+| `zoho_followup`   | json |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_pending_approvals_user_status`ON`pending_approvals` (`user_id`, `status`)`
+
+### `agency_quote_requests` (base, server-only)
+
+| Field                   | Type   | Notes |
+| ----------------------- | ------ | ----- |
+| `contact_name`          | text   |       |
+| `contact_email`         | text   |       |
+| `contact_phone`         | text   |       |
+| `company_name`          | text   |       |
+| `service_slug`          | text   |       |
+| `qualification_answers` | json   |       |
+| `computed_tier`         | text   |       |
+| `computed_monthly`      | number |       |
+| `computed_setup`        | number |       |
+| `qualification_passed`  | bool   |       |
+| `status`                | text   |       |
+| `zoho_contact_id`       | text   |       |
+| `zoho_estimate_id`      | text   |       |
+
+Indexes:
+
+- `CREATE INDEX `idx_agency_quote_requests_status`ON`agency_quote_requests` (`status`)`
+- `CREATE INDEX `idx_agency_quote_requests_email`ON`agency_quote_requests` (`contact_email`)`
