@@ -72,6 +72,17 @@ export function tallyWebhookUrlFor(workflowId: string): string {
 }
 
 /**
+ * Zoho Books' "New contact" trigger has no per-workflow filtering on the
+ * backend (routers/zoho_webhook.py's /zoho/contact-created/{user_id}) —
+ * unlike every other webhook-backed trigger here, the URL is keyed by
+ * the connected Synkra user, not the individual workflow, so a second
+ * "New Zoho contact" workflow for the same user reuses the same URL.
+ */
+export function zohoContactCreatedWebhookUrlFor(userId: string): string {
+  return `${API_BASE}/webhooks/zoho/contact-created/${userId}`;
+}
+
+/**
  * Dedicated inbound address for an account's "Email received" triggers.
  * Deterministic per user — mail forwarded here is delivered by Resend inbound.
  */
