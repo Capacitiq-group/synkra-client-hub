@@ -426,15 +426,14 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     // consent_records is append-only, same pattern as agency_usage_events -
     // never update an existing row, always write a new one, so the audit
     // trail is a full history rather than a single overwritable boolean.
-    // NEEDS CREATING on the live PocketBase instance - see this repo's
-    // README for the field list. Logged rather than thrown on failure so a
-    // missing collection can never block someone completing a real
-    // purchase; the checkout itself is the priority.
+    // Declared in pb_schema.json and documented in POCKETBASE_COLLECTIONS.md.
+    // Logged rather than thrown on failure so a write problem can never block
+    // someone completing a real purchase; the checkout itself is the priority.
     for (const row of consentRows) {
       try {
         await pb.collection("consent_records").create(row);
       } catch (err) {
-        console.error("Failed to write consent_records row (collection may not exist yet):", err);
+        console.error("Failed to write consent_records row:", err);
       }
     }
   }
