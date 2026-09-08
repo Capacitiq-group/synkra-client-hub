@@ -10,6 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { EXECUTION_TRIGGERS } from "@/lib/usage/limits";
+import { secretsMatch } from "@/lib/security";
 
 const schema = z.object({
   user_id: z.string().min(1),
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/api/public/executions/start")({
     handlers: {
       POST: async ({ request }) => {
         const secret = process.env["API_SECRET"] || "";
-        if (!secret || request.headers.get("x-synkra-secret") !== secret) {
+        if (!secretsMatch(request.headers.get("x-synkra-secret"), secret)) {
           return Response.json({ allowed: false, error: "unauthorized" }, { status: 401 });
         }
 
