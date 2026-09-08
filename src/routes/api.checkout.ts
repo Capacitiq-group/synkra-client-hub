@@ -21,6 +21,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { PURCHASABLE_TIERS } from "@/lib/billing/config";
+import { secretsMatch } from "@/lib/security";
 
 const addonSchema = z.object({
   id: z.string().min(1).max(80),
@@ -58,7 +59,7 @@ export const Route = createFileRoute("/api/checkout")({
           console.error("[api/checkout] CHECKOUT_API_SECRET is not configured");
           return Response.json({ ok: false, error: "server_misconfigured" }, { status: 500 });
         }
-        if (secret !== expected) {
+        if (!secretsMatch(secret, expected)) {
           return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
         }
 
