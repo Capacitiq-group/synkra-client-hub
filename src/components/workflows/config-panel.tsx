@@ -31,7 +31,7 @@ import { LoopBodyEditor } from "./loop-body-editor";
 const SLACK_TRIGGERS = ["slack_message_received", "slack_unanswered_check", "slack_channel_digest"];
 
 /**
- * Mirrors the zoho_list_*/hubspot_list_pipelines/slack_list_channels
+ * Mirrors the zoho_list_* / hubspot_list_pipelines / slack_list_channels
  * entries in backend workflow_engine.py's PROVIDER_FETCH_HANDLERS
  * exactly — keep these two in sync. Every other platform (Shopify,
  * Calendly, Xero, Airtable, Monday, Asana, Pipedrive, ClickUp, Notion)
