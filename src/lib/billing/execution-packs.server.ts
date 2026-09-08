@@ -307,14 +307,27 @@ export async function consumeExecutionCredit(
   const row = await findOne(pb, CREDITS_COLLECTION, "user_id = {:userId}", { userId });
   if (!row) return { spent: 0, remaining: 0 };
 
-  const remaining = Math.max(0, num(row, "units_purchased") - num(row, "units_used"));
-  const spent = Math.min(remaining, units);
-  if (spent > 0) {
-    await pb
-      .collection(CREDITS_COLLECTION)
-      .update(str(row, "id"), { units_used: num(row, "units_used") + spent });
+  const rowId = str(row, "id");
+  const purchased = num(row, "units_purchased");
+
+  // Reserve `units` with PocketBase's atomic "+"-suffixed update (applied at
+  // the DB layer, not read-compute-write) so two concurrent callers can never
+  // both read the same stale units_used and silently lose one debit. If the
+  // reservation overshoots the purchased balance, give back exactly the
+  // overshoot; this correctly rejects (or partially grants) whichever
+  // concurrent request(s) arrive after the balance is exhausted.
+  const updated = asRecord(
+    await pb.collection(CREDITS_COLLECTION).update(rowId, { "units_used+": units }),
+  );
+  const usedAfter = num(updated, "units_used");
+  const overshoot = Math.max(0, Math.min(units, usedAfter - purchased));
+  const spent = units - overshoot;
+
+  if (overshoot > 0) {
+    await pb.collection(CREDITS_COLLECTION).update(rowId, { "units_used+": -overshoot });
   }
-  return { spent, remaining: remaining - spent };
+
+  return { spent, remaining: Math.max(0, purchased - (usedAfter - overshoot)) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -361,5 +374,4 @@ export async function assertExecutionPackOwner(
     reference,
   });
   return Boolean(purchase && str(purchase, "user_id") === userId);
-      }
-      
+}
