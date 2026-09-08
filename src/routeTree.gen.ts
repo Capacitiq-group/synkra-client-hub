@@ -32,6 +32,7 @@ import { Route as DashboardNotificationsRouteImport } from './routes/dashboard.n
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as ResetPasswordConfirmRouteImport } from './routes/reset-password_.confirm'
 import { Route as ApiPublicPlansRouteImport } from './routes/api/public/plans'
+import { Route as ApiWorkflowsRetryRouteImport } from './routes/api/workflows/retry'
 import { Route as DashboardWorkflowsIndexRouteImport } from './routes/dashboard.workflows.index'
 import { Route as ResetPasswordConfirmTokenRouteImport } from './routes/reset-password_.confirm.$token'
 import { Route as ApiPublicBillingWebhookRouteImport } from './routes/api/public/billing/webhook'
@@ -156,6 +157,11 @@ const ApiPublicPlansRoute = ApiPublicPlansRouteImport.update({
   path: '/api/public/plans',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWorkflowsRetryRoute = ApiWorkflowsRetryRouteImport.update({
+  id: '/api/workflows/retry',
+  path: '/api/workflows/retry',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardWorkflowsIndexRoute = DashboardWorkflowsIndexRouteImport.update({
   id: '/workflows/',
   path: '/workflows/',
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/reset-password/confirm': typeof ResetPasswordConfirmRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
   '/api/public/plans': typeof ApiPublicPlansRoute
+  '/api/workflows/retry': typeof ApiWorkflowsRetryRoute
   '/reset-password/confirm/$token': typeof ResetPasswordConfirmTokenRoute
   '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
@@ -259,6 +266,7 @@ export interface FileRoutesByTo {
   '/reset-password/confirm': typeof ResetPasswordConfirmRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
   '/api/public/plans': typeof ApiPublicPlansRoute
+  '/api/workflows/retry': typeof ApiWorkflowsRetryRoute
   '/reset-password/confirm/$token': typeof ResetPasswordConfirmTokenRoute
   '/dashboard/workflows': typeof DashboardWorkflowsIndexRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
@@ -293,6 +301,7 @@ export interface FileRoutesById {
   '/reset-password_/confirm': typeof ResetPasswordConfirmRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
   '/api/public/plans': typeof ApiPublicPlansRoute
+  '/api/workflows/retry': typeof ApiWorkflowsRetryRoute
   '/reset-password_/confirm/$token': typeof ResetPasswordConfirmTokenRoute
   '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
@@ -328,6 +337,7 @@ export interface FileRouteTypes {
     | '/reset-password/confirm'
     | '/dashboard/'
     | '/api/public/plans'
+    | '/api/workflows/retry'
     | '/reset-password/confirm/$token'
     | '/dashboard/workflows/'
     | '/api/public/billing/webhook'
@@ -360,6 +370,7 @@ export interface FileRouteTypes {
     | '/reset-password/confirm'
     | '/dashboard'
     | '/api/public/plans'
+    | '/api/workflows/retry'
     | '/reset-password/confirm/$token'
     | '/dashboard/workflows'
     | '/api/public/billing/webhook'
@@ -393,6 +404,7 @@ export interface FileRouteTypes {
     | '/reset-password_/confirm'
     | '/dashboard/'
     | '/api/public/plans'
+    | '/api/workflows/retry'
     | '/reset-password_/confirm/$token'
     | '/dashboard/workflows/'
     | '/api/public/billing/webhook'
@@ -419,6 +431,7 @@ export interface RootRouteChildren {
   CheckoutReturnRoute: typeof CheckoutReturnRoute
   ResetPasswordConfirmRoute: typeof ResetPasswordConfirmRouteWithChildren
   ApiPublicPlansRoute: typeof ApiPublicPlansRoute
+  ApiWorkflowsRetryRoute: typeof ApiWorkflowsRetryRoute
   ApiPublicBillingWebhookRoute: typeof ApiPublicBillingWebhookRoute
   ApiPublicExecutionsCompleteRoute: typeof ApiPublicExecutionsCompleteRoute
   ApiPublicExecutionsStartRoute: typeof ApiPublicExecutionsStartRoute
@@ -588,6 +601,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPlansRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/workflows/retry': {
+      id: '/api/workflows/retry'
+      path: '/api/workflows/retry'
+      fullPath: '/api/workflows/retry'
+      preLoaderRoute: typeof ApiWorkflowsRetryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/workflows/': {
       id: '/dashboard/workflows/'
       path: '/workflows'
@@ -707,6 +727,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutReturnRoute: CheckoutReturnRoute,
   ResetPasswordConfirmRoute: ResetPasswordConfirmRouteWithChildren,
   ApiPublicPlansRoute: ApiPublicPlansRoute,
+  ApiWorkflowsRetryRoute: ApiWorkflowsRetryRoute,
   ApiPublicBillingWebhookRoute: ApiPublicBillingWebhookRoute,
   ApiPublicExecutionsCompleteRoute: ApiPublicExecutionsCompleteRoute,
   ApiPublicExecutionsStartRoute: ApiPublicExecutionsStartRoute,
