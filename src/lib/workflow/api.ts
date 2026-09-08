@@ -418,11 +418,31 @@ export async function disconnectIntegration(type: string, userId: string): Promi
   if (!response.ok) throw new Error(`Disconnect failed with status ${response.status}`);
 }
 
-/** Re-runs a workflow with the original trigger payload from a previous run. */
+/**
+ * Re-runs a workflow with the original trigger payload from a previous run.
+ *
+ * Goes through this app's own /api/workflows/retry route, not core's public
+ * webhook receiver: that route verifies the signed-in user owns the workflow
+ * and forwards with the shared secret, and it also works for paused or errored
+ * workflows (the public receiver only accepts published ones).
+ */
 export async function retryRun(
   workflowId: string,
   inputData: Record<string, unknown>,
 ): Promise<void> {
-  const response = await post(`/webhooks/run/${workflowId}`, inputData);
-  if (!response.ok) throw new Error(`Retry failed with status ${response.status}`);
+  const { default: pb } = await import("@/lib/pocketbase");
+  const response = await fetch("/api/workflows/retry", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${pb.authStore.token}`,
+    },
+    body: JSON.stringify({ workflow_id: workflowId, input_data: inputData }),
+  });
+  if (!response.ok) {
+    const detail = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (response.status === 401) throw new Error("Please sign in again to retry this run.");
+    if (response.status === 404) throw new Error("This workflow no longer exists.");
+    throw new Error(detail?.error || `Retry failed with status ${response.status}`);
+  }
 }
