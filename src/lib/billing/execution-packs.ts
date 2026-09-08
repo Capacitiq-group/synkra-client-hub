@@ -1,89 +1,377 @@
+// SECURITY: Always use pb.filter() for user-supplied values. Never interpolate strings.
 /**
- * Execution top-up packs (client-safe, pure).
+ * Execution top-up pack purchases and the standing execution credit balance
+ * (server only).
  *
- * A NEW purchasable kind that lives alongside the existing add-ons in
- * `./addons` — the add-on catalogue is deliberately untouched. The difference
- * that justifies its own module: executions are sold as fixed packs with fixed
- * pack prices (not a single unit price times a pack count), and the credit is a
- * standing balance that never expires with the billing month.
+ * Mirrors `./addons.server` deliberately: the browser names a published pack id
+ * and nothing else, the charge is recomputed here from `./execution-packs`, and
+ * settlement is idempotent — the unique index on
+ * `execution_pack_purchases.reference` plus `execution_credits.last_reference`
+ * mean the webhook and the return page can both settle the same reference
+ * without ever granting executions twice.
  *
- * Published prices — do not alter:
- *     250 executions   R50    (R0.20 / execution)
- *   1,000 executions   R150   (R0.15 / execution)
- *   5,000 executions   R500   (R0.10 / execution)
- *  10,000 executions   R800   (R0.08 / execution)
- *  25,000 executions   R1,500 (R0.06 / execution)
+ * Purchased executions do NOT expire with the billing month. Nothing in this
+ * file ever resets `units_purchased`, and the monthly rollover in
+ * `@/lib/usage/executions.server` only touches the users record counters.
  */
+import { randomUUID } from "crypto";
+import type PocketBase from "pocketbase";
+import { adminClient } from "@/lib/usage/pocketbase.server";
+import { initializeTransaction, paystackConfigured, verifyTransaction } from "./paystack.server";
+import { BillingError } from "./billing.server";
+import { CURRENCY, PROVIDER } from "./config";
+import {
+  EXECUTION_CREDIT_KIND,
+  emptyExecutionBalance,
+  executionPackPriceCents,
+  getExecutionPack,
+  type ExecutionCreditBalance,
+  type ExecutionPackId,
+} from "./execution-packs";
 
-export const EXECUTION_PACK_IDS = [
-  "exec_250",
-  "exec_1000",
-  "exec_5000",
-  "exec_10000",
-  "exec_25000",
-] as const;
+export const PURCHASES_COLLECTION = "execution_pack_purchases";
+export const CREDITS_COLLECTION = "execution_credits";
 
-export type ExecutionPackId = (typeof EXECUTION_PACK_IDS)[number];
+const EXECUTION_REFERENCE_PREFIX = "SYN-EXECPACK";
 
-export interface ExecutionPack {
-  id: ExecutionPackId;
-  /** Executions granted by one pack. */
+/** True for references created by this module (and only by this module). */
+export function isExecutionPackReference(reference: string): boolean {
+  return reference.startsWith(`${EXECUTION_REFERENCE_PREFIX}-`);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value as Record<string, unknown>;
+}
+
+function str(row: Record<string, unknown>, key: string): string {
+  return String(row[key] ?? "");
+}
+
+function num(row: Record<string, unknown>, key: string): number {
+  const value = Number(row[key] ?? 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+async function findOne(
+  pb: PocketBase,
+  collection: string,
+  filter: string,
+  params: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
+  const rows = await pb.collection(collection).getList(1, 1, { filter: pb.filter(filter, params) });
+  const first = rows.items[0];
+  return first ? asRecord(first) : null;
+}
+
+function appUrl(): string {
+  const raw = process.env["APP_URL"] || process.env["VITE_APP_URL"] || "http://localhost:8080";
+  return raw.replace(/\/+$/, "");
+}
+
+/* ------------------------------------------------------------------ */
+/* Balance                                                             */
+/* ------------------------------------------------------------------ */
+
+export async function getExecutionCreditBalance(userId: string): Promise<ExecutionCreditBalance> {
+  const pb = await adminClient();
+  const row = await findOne(pb, CREDITS_COLLECTION, "user_id = {:userId}", { userId });
+  if (!row) return emptyExecutionBalance();
+  const purchased = num(row, "units_purchased");
+  const used = num(row, "units_used");
+  return { purchased, used, remaining: Math.max(0, purchased - used) };
+}
+
+/* ------------------------------------------------------------------ */
+/* Purchase                                                            */
+/* ------------------------------------------------------------------ */
+
+export interface ExecutionPackCheckoutResult {
+  ok: true;
+  reference: string;
+  packId: ExecutionPackId;
   executions: number;
-  /** Fixed pack price in ZAR rand. */
-  priceZar: number;
+  amountCents: number;
+  authorizationUrl: string;
 }
 
-export const EXECUTION_PACKS: Record<ExecutionPackId, ExecutionPack> = {
-  exec_250: { id: "exec_250", executions: 250, priceZar: 50 },
-  exec_1000: { id: "exec_1000", executions: 1000, priceZar: 150 },
-  exec_5000: { id: "exec_5000", executions: 5000, priceZar: 500 },
-  exec_10000: { id: "exec_10000", executions: 10000, priceZar: 800 },
-  exec_25000: { id: "exec_25000", executions: 25000, priceZar: 1500 },
-};
+export async function createExecutionPackCheckout(input: {
+  userId: string;
+  packId: unknown;
+}): Promise<ExecutionPackCheckoutResult> {
+  const pack = getExecutionPack(input.packId);
+  const amountCents = executionPackPriceCents(pack.id);
 
-export const EXECUTION_PACK_LIST: ExecutionPack[] = EXECUTION_PACK_IDS.map(
-  (id) => EXECUTION_PACKS[id],
-);
+  if (!paystackConfigured()) {
+    throw new BillingError("not_configured", "Card payments are not available right now.");
+  }
 
-/** The purchasable kind name, stored on the purchase and credit rows. */
-export const EXECUTION_CREDIT_KIND = "executions" as const;
+  const pb = await adminClient();
+  const user = asRecord(await pb.collection("users").getOne(input.userId));
+  const email = str(user, "email");
+  if (!email) throw new BillingError("invalid_email", "Your account has no email address.");
 
-/** Copy shown wherever the monthly included allowance is exhausted. */
-export const EXECUTION_LIMIT_TITLE = "You've reached your monthly execution limit";
+  const reference = `${EXECUTION_REFERENCE_PREFIX}-${pack.executions}-${randomUUID()}`;
+  const purchase = await pb.collection(PURCHASES_COLLECTION).create({
+    user_id: input.userId,
+    kind: EXECUTION_CREDIT_KIND,
+    pack_id: pack.id,
+    units: pack.executions,
+    amount_cents: amountCents,
+    currency: CURRENCY,
+    provider: PROVIDER,
+    reference,
+    status: "pending",
+  });
 
-export function isExecutionPackId(value: unknown): value is ExecutionPackId {
-  return typeof value === "string" && (EXECUTION_PACK_IDS as readonly string[]).includes(value);
+  try {
+    const init = await initializeTransaction({
+      email,
+      amountCents,
+      reference,
+      currency: CURRENCY,
+      callbackUrl: `${appUrl()}/checkout/return?reference=${encodeURIComponent(reference)}`,
+      metadata: {
+        user_id: input.userId,
+        execution_pack: pack.id,
+        units: pack.executions,
+      },
+    });
+    await pb.collection(PURCHASES_COLLECTION).update(purchase.id, {
+      authorization_url: init.authorization_url,
+      access_code: init.access_code,
+    });
+    return {
+      ok: true,
+      reference,
+      packId: pack.id,
+      executions: pack.executions,
+      amountCents,
+      authorizationUrl: init.authorization_url,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not start the payment.";
+    await pb
+      .collection(PURCHASES_COLLECTION)
+      .update(purchase.id, { status: "failed", error_message: message });
+    throw new BillingError("provider_error", message);
+  }
 }
 
-/** Throws for anything that is not a published pack, so no price can be forged. */
-export function getExecutionPack(id: unknown): ExecutionPack {
-  if (!isExecutionPackId(id)) throw new Error(`Unknown execution pack: ${String(id)}`);
-  return EXECUTION_PACKS[id];
+/* ------------------------------------------------------------------ */
+/* Settlement                                                          */
+/* ------------------------------------------------------------------ */
+
+export interface ExecutionPackSettleResult {
+  ok: boolean;
+  status: "paid" | "failed" | "pending" | "unknown_reference";
+  alreadySettled: boolean;
+  units?: number;
 }
 
-/** Authoritative charge for one pack, in cents. */
-export function executionPackPriceCents(id: unknown): number {
-  return Math.round(getExecutionPack(id).priceZar * 100);
+export async function settleExecutionPackPurchase(
+  reference: string,
+  _source: "webhook" | "return" | "manual",
+): Promise<ExecutionPackSettleResult> {
+  const pb = await adminClient();
+  const purchase = await findOne(pb, PURCHASES_COLLECTION, "reference = {:reference}", {
+    reference,
+  });
+  if (!purchase) return { ok: false, status: "unknown_reference", alreadySettled: false };
+
+  const units = num(purchase, "units");
+
+  if (str(purchase, "status") === "paid") {
+    return { ok: true, status: "paid", alreadySettled: true, units };
+  }
+
+  const verification = await verifyTransaction(reference);
+  if (verification.status !== "success") {
+    await pb.collection(PURCHASES_COLLECTION).update(str(purchase, "id"), {
+      status: verification.status === "abandoned" ? "pending" : "failed",
+      error_message: `Paystack reported "${verification.status}".`,
+    });
+    return {
+      ok: false,
+      status: verification.status === "abandoned" ? "pending" : "failed",
+      alreadySettled: false,
+      units,
+    };
+  }
+
+  const expected = num(purchase, "amount_cents");
+  if (expected > 0 && verification.amount !== expected) {
+    await pb.collection(PURCHASES_COLLECTION).update(str(purchase, "id"), {
+      status: "failed",
+      error_message: `Amount mismatch: charged ${verification.amount}, expected ${expected}.`,
+    });
+    return { ok: false, status: "failed", alreadySettled: false, units };
+  }
+
+  // Re-read immediately before flipping the row: a concurrent webhook / return
+  // settlement may already have marked it paid and granted the executions.
+  const fresh = await findOne(pb, PURCHASES_COLLECTION, "reference = {:reference}", { reference });
+  if (fresh && str(fresh, "status") === "paid") {
+    return { ok: true, status: "paid", alreadySettled: true, units };
+  }
+
+  await pb.collection(PURCHASES_COLLECTION).update(str(purchase, "id"), {
+    status: "paid",
+    paid_at: verification.paid_at ?? new Date().toISOString(),
+    provider_transaction_id: String(verification.id ?? ""),
+    error_message: "",
+  });
+
+  await grantExecutionCredits(pb, {
+    userId: str(purchase, "user_id"),
+    units,
+    reference,
+  });
+
+  // A failed confirmation email must never fail settlement.
+  try {
+    const buyer = asRecord(await pb.collection("users").getOne(str(purchase, "user_id")));
+    const email = str(buyer, "email");
+    if (email) {
+      const { sendEmail, addonPurchaseEmail } = await import("./email.server");
+      const sent = await sendEmail({
+        to: email,
+        ...addonPurchaseEmail("Workflow executions", units, "executions"),
+      });
+      if (!sent.ok) console.error("[execution-packs] confirmation email failed:", sent.error);
+    }
+  } catch (err) {
+    console.error("[execution-packs] confirmation email failed:", err);
+  }
+
+  return { ok: true, status: "paid", alreadySettled: false, units };
 }
 
-/** Effective price per execution, for display only. */
-export function executionPackUnitPriceZar(id: unknown): number {
-  const pack = getExecutionPack(id);
-  return pack.priceZar / pack.executions;
+async function grantExecutionCredits(
+  pb: PocketBase,
+  input: { userId: string; units: number; reference: string },
+) {
+  const existing = await findOne(pb, CREDITS_COLLECTION, "user_id = {:userId}", {
+    userId: input.userId,
+  });
+
+  if (existing) {
+    if (str(existing, "last_reference") === input.reference) return;
+    await pb.collection(CREDITS_COLLECTION).update(str(existing, "id"), {
+      units_purchased: num(existing, "units_purchased") + input.units,
+      last_reference: input.reference,
+    });
+    return;
+  }
+
+  try {
+    await pb.collection(CREDITS_COLLECTION).create({
+      user_id: input.userId,
+      kind: EXECUTION_CREDIT_KIND,
+      units_purchased: input.units,
+      units_used: 0,
+      // Standing balance: never reset on a billing-period rollover.
+      expires_monthly: false,
+      first_purchased_at: new Date().toISOString(),
+      last_reference: input.reference,
+    });
+  } catch {
+    // The unique user_id index rejected a racing create: fold the units into
+    // the row the other writer just made, unless it was this same reference.
+    const row = await findOne(pb, CREDITS_COLLECTION, "user_id = {:userId}", {
+      userId: input.userId,
+    });
+    if (!row) throw new Error("Could not record the purchased execution credit.");
+    if (str(row, "last_reference") === input.reference) return;
+    await pb.collection(CREDITS_COLLECTION).update(str(row, "id"), {
+      units_purchased: num(row, "units_purchased") + input.units,
+      last_reference: input.reference,
+    });
+  }
 }
 
-/** "R0.20 / execution" — display helper used by the pack picker. */
-export function formatExecutionUnitPrice(id: unknown): string {
-  return `R${executionPackUnitPriceZar(id).toFixed(2)} / execution`;
+/* ------------------------------------------------------------------ */
+/* Consumption                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Spends up to `units` of purchased execution credit. Called ONLY after the
+ * monthly included allowance is exhausted, so the included amount is always
+ * consumed first.
+ */
+export async function consumeExecutionCredit(
+  userId: string,
+  units = 1,
+): Promise<{ spent: number; remaining: number }> {
+  if (units <= 0) return { spent: 0, remaining: 0 };
+  const pb = await adminClient();
+  const row = await findOne(pb, CREDITS_COLLECTION, "user_id = {:userId}", { userId });
+  if (!row) return { spent: 0, remaining: 0 };
+
+  const rowId = str(row, "id");
+  const purchased = num(row, "units_purchased");
+
+  // Reserve `units` with PocketBase's atomic "+"-suffixed update (applied at
+  // the DB layer, not read-compute-write) so two concurrent callers can never
+  // both read the same stale units_used and silently lose one debit. If the
+  // reservation overshoots the purchased balance, give back exactly the
+  // overshoot; this correctly rejects (or partially grants) whichever
+  // concurrent request(s) arrive after the balance is exhausted.
+  const updated = asRecord(
+    await pb.collection(CREDITS_COLLECTION).update(rowId, { "units_used+": units }),
+  );
+  const usedAfter = num(updated, "units_used");
+  const overshoot = Math.max(0, Math.min(units, usedAfter - purchased));
+  const spent = units - overshoot;
+
+  if (overshoot > 0) {
+    await pb.collection(CREDITS_COLLECTION).update(rowId, { "units_used+": -overshoot });
+  }
+
+  return { spent, remaining: Math.max(0, purchased - (usedAfter - overshoot)) };
 }
 
-export interface ExecutionCreditBalance {
-  purchased: number;
-  used: number;
-  /** Purchased executions still available. Never expires monthly. */
-  remaining: number;
+/* ------------------------------------------------------------------ */
+/* Status reads                                                        */
+/* ------------------------------------------------------------------ */
+
+export interface ExecutionPackPurchaseStatus {
+  found: boolean;
+  status: string;
+  packId: string | null;
+  units: number;
+  amountCents: number;
+  activated: boolean;
 }
 
-export function emptyExecutionBalance(): ExecutionCreditBalance {
-  return { purchased: 0, used: 0, remaining: 0 };
+export async function getExecutionPackPurchaseStatus(
+  reference: string,
+): Promise<ExecutionPackPurchaseStatus> {
+  const pb = await adminClient();
+  const purchase = await findOne(pb, PURCHASES_COLLECTION, "reference = {:reference}", {
+    reference,
+  });
+  if (!purchase) {
+    return { found: false, status: "unknown", packId: null, units: 0, amountCents: 0, activated: false };
+  }
+  const status = str(purchase, "status");
+  return {
+    found: true,
+    status,
+    packId: str(purchase, "pack_id"),
+    units: num(purchase, "units"),
+    amountCents: num(purchase, "amount_cents"),
+    activated: status === "paid",
+  };
 }
+
+/** True when `reference` belongs to `userId`; checked before anything is shown. */
+export async function assertExecutionPackOwner(
+  reference: string,
+  userId: string,
+): Promise<boolean> {
+  const pb = await adminClient();
+  const purchase = await findOne(pb, PURCHASES_COLLECTION, "reference = {:reference}", {
+    reference,
+  });
+  return Boolean(purchase && str(purchase, "user_id") === userId);
+    }
