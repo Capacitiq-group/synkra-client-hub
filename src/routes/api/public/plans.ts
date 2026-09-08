@@ -10,13 +10,14 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { PLAN_LIMITS } from "@/lib/plans";
+import { secretsMatch } from "@/lib/security";
 
 export const Route = createFileRoute("/api/public/plans")({
   server: {
     handlers: {
       GET: async ({ request }) => {
         const secret = process.env["API_SECRET"] || "";
-        if (!secret || request.headers.get("x-synkra-secret") !== secret) {
+        if (!secretsMatch(request.headers.get("x-synkra-secret"), secret)) {
           return Response.json({ error: "unauthorized" }, { status: 401 });
         }
 
