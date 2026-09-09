@@ -1,12 +1,14 @@
 // SECURITY: Always use pb.filter() for user-supplied values. Never interpolate strings.
 /**
- * Add-on purchases and credit balances (server only).
+ * Add-on purchases (server only). Balances, lots, and consumption now live in
+ * `./addon-ledger.server` — this file is only checkout + Paystack settlement.
  *
- * The browser never sends a price: it names an add-on kind and a whole number
- * of packs, and the charge is recomputed here from `./addons`. Settlement is
- * idempotent — the unique index on `addon_purchases.reference` is the lock, so
- * the webhook and the return page can both settle the same reference without
- * ever granting credit twice.
+ * The browser never sends a price: it names a fixed pack id from
+ * `./addon-packs`, and the charge/units are recomputed here from that catalog
+ * — never trusted from the request. Settlement is idempotent twice over: the
+ * unique index on `addon_purchases.reference` gates this file's own re-entry,
+ * and `grantAddonLot`'s own idempotency-on-reference check means even a
+ * duplicate call from here can never grant a second lot for the same payment.
  */
 import { randomUUID } from "crypto";
 import type PocketBase from "pocketbase";
@@ -14,17 +16,9 @@ import { adminClient } from "@/lib/usage/pocketbase.server";
 import { initializeTransaction, paystackConfigured, verifyTransaction } from "./paystack.server";
 import { BillingError } from "./billing.server";
 import { CURRENCY, PROVIDER } from "./config";
-import {
-  ADDON_KINDS,
-  ADDON_UNAVAILABLE_MESSAGE,
-  addonPriceCents,
-  emptyBalance,
-  getAddon,
-  normalizePacks,
-  unitsForPacks,
-  type AddonBalance,
-  type AddonKind,
-} from "./addons";
+import { getAddon, type AddonKind } from "./addons";
+import { getAddonPack, addonPackPriceCents, isAddonPackId } from "./addon-packs";
+import { grantAddonLot } from "./addon-ledger.server";
 
 const ADDON_REFERENCE_PREFIX = "SYN-ADDON";
 
@@ -62,39 +56,6 @@ function appUrl(): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Balances                                                            */
-/* ------------------------------------------------------------------ */
-
-export async function listAddonBalances(userId: string): Promise<AddonBalance[]> {
-  const pb = await adminClient();
-  const rows = await pb
-    .collection("addon_credits")
-    .getFullList({ filter: pb.filter("user_id = {:userId}", { userId }) });
-
-  const byKind = new Map<string, Record<string, unknown>>();
-  for (const raw of rows) {
-    const row = asRecord(raw);
-    byKind.set(str(row, "kind"), row);
-  }
-
-  return ADDON_KINDS.map((kind) => {
-    const row = byKind.get(kind);
-    if (!row) return emptyBalance(kind);
-    const purchased = num(row, "units_purchased");
-    const used = num(row, "units_used");
-    const product = getAddon(kind);
-    return {
-      kind,
-      label: product.label,
-      unit: product.unit,
-      purchased,
-      used,
-      remaining: Math.max(0, purchased - used),
-    };
-  });
-}
-
-/* ------------------------------------------------------------------ */
 /* Purchase                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -102,7 +63,7 @@ export interface AddonCheckoutResult {
   ok: true;
   reference: string;
   kind: AddonKind;
-  packs: number;
+  packId: string;
   units: number;
   amountCents: number;
   authorizationUrl: string;
@@ -110,18 +71,21 @@ export interface AddonCheckoutResult {
 
 export async function createAddonCheckout(input: {
   userId: string;
-  kind: unknown;
-  packs: unknown;
+  packId: unknown;
 }): Promise<AddonCheckoutResult> {
-  const product = getAddon(input.kind);
-  // Authoritative gate: channels that are not integrated yet can never be sold,
-  // regardless of what the browser sends.
-  if (!product.purchasable) {
-    throw new BillingError("addon_unavailable", ADDON_UNAVAILABLE_MESSAGE);
+  if (!isAddonPackId(input.packId)) {
+    throw new BillingError("addon_unavailable", "That add-on pack no longer exists.");
   }
-  const packs = normalizePacks(product.kind, input.packs);
-  const units = unitsForPacks(product.kind, packs);
-  const amountCents = addonPriceCents(product.kind, packs);
+  // Authoritative on all three counts: which pack this is, how many units it
+  // grants, and what it costs. getAddonPack() throws for anything not on the
+  // published list, so a crafted packId can never reach a price at all, let
+  // alone a forged one.
+  const pack = getAddonPack(input.packId);
+  const product = getAddon(pack.kind);
+  if (!product.purchasable) {
+    throw new BillingError("addon_unavailable", "This add-on isn't available yet.");
+  }
+  const amountCents = addonPackPriceCents(pack.id);
 
   if (!paystackConfigured()) {
     throw new BillingError("not_configured", "Card payments are not available right now.");
@@ -132,12 +96,12 @@ export async function createAddonCheckout(input: {
   const email = str(user, "email");
   if (!email) throw new BillingError("invalid_email", "Your account has no email address.");
 
-  const reference = `${ADDON_REFERENCE_PREFIX}-${product.kind.toUpperCase()}-${randomUUID()}`;
+  const reference = `${ADDON_REFERENCE_PREFIX}-${pack.kind.toUpperCase()}-${randomUUID()}`;
   const purchase = await pb.collection("addon_purchases").create({
     user_id: input.userId,
-    kind: product.kind,
-    packs,
-    units,
+    kind: pack.kind,
+    pack_id: pack.id,
+    units: pack.units,
     amount_cents: amountCents,
     currency: CURRENCY,
     provider: PROVIDER,
@@ -152,7 +116,7 @@ export async function createAddonCheckout(input: {
       reference,
       currency: CURRENCY,
       callbackUrl: `${appUrl()}/checkout/return?reference=${encodeURIComponent(reference)}`,
-      metadata: { user_id: input.userId, addon: product.kind, packs, units },
+      metadata: { user_id: input.userId, addon: pack.kind, pack_id: pack.id, units: pack.units },
     });
     await pb.collection("addon_purchases").update(purchase.id, {
       authorization_url: init.authorization_url,
@@ -161,9 +125,9 @@ export async function createAddonCheckout(input: {
     return {
       ok: true,
       reference,
-      kind: product.kind,
-      packs,
-      units,
+      kind: pack.kind,
+      packId: pack.id,
+      units: pack.units,
       amountCents,
       authorizationUrl: init.authorization_url,
     };
@@ -196,8 +160,26 @@ export async function settleAddonPurchase(
   const purchase = await findOne(pb, "addon_purchases", "reference = {:reference}", { reference });
   if (!purchase) return { ok: false, status: "unknown_reference", alreadySettled: false };
 
-  const kind = getAddon(str(purchase, "kind")).kind;
-  const units = num(purchase, "units");
+  // Recompute from pack_id — the authoritative source — rather than trusting
+  // whatever units/amount_cents this row already has stored, consistent with
+  // "the browser never sends a price" applying to every stage, not just the
+  // very first checkout call. Falls back to the row's own legacy fields for
+  // any purchase created before this pack_id migration shipped, so an
+  // in-flight purchase from the old model doesn't fail to settle.
+  const packId = str(purchase, "pack_id");
+  let kind: AddonKind;
+  let units: number;
+  let expected: number;
+  if (packId) {
+    const pack = getAddonPack(packId);
+    kind = pack.kind;
+    units = pack.units;
+    expected = addonPackPriceCents(packId);
+  } else {
+    kind = getAddon(str(purchase, "kind")).kind;
+    units = num(purchase, "units");
+    expected = num(purchase, "amount_cents");
+  }
 
   if (str(purchase, "status") === "paid") {
     return { ok: true, status: "paid", alreadySettled: true, kind, units };
@@ -218,7 +200,6 @@ export async function settleAddonPurchase(
     };
   }
 
-  const expected = num(purchase, "amount_cents");
   if (expected > 0 && verification.amount !== expected) {
     await pb.collection("addon_purchases").update(str(purchase, "id"), {
       status: "failed",
@@ -242,9 +223,18 @@ export async function settleAddonPurchase(
     error_message: "",
   });
 
-  // grantAddonUnits is itself keyed on the reference (addon_credits.last_reference
-  // plus the unique user_id+kind index), so a replay can never add units twice.
-  await grantAddonUnits(pb, { userId: str(purchase, "user_id"), kind, units, reference, source });
+  // grantAddonLot is itself idempotent on `reference` (a proper existence
+  // check before creating the lot), so a replay from a racing webhook +
+  // return-page settlement can never grant a second lot for the same payment.
+  await grantAddonLot({
+    userId: str(purchase, "user_id"),
+    kind,
+    packId,
+    units,
+    priceCents: expected,
+    reference,
+    purchasedAt: verification.paid_at ?? new Date().toISOString(),
+  });
 
   // Confirmation email. The credits are already granted at this point, so a
   // delivery failure is logged and swallowed — it must never fail settlement.
@@ -265,99 +255,6 @@ export async function settleAddonPurchase(
   }
 
   return { ok: true, status: "paid", alreadySettled: false, kind, units };
-
-}
-
-
-async function grantAddonUnits(
-  pb: PocketBase,
-  input: {
-    userId: string;
-    kind: AddonKind;
-    units: number;
-    reference: string;
-    source: string;
-  },
-) {
-  const product = getAddon(input.kind);
-  const existing = await findOne(pb, "addon_credits", "user_id = {:userId} && kind = {:kind}", {
-    userId: input.userId,
-    kind: input.kind,
-  });
-
-  if (existing) {
-    if (str(existing, "last_reference") === input.reference) return;
-    await pb.collection("addon_credits").update(str(existing, "id"), {
-      units_purchased: num(existing, "units_purchased") + input.units,
-      last_reference: input.reference,
-    });
-  } else {
-    try {
-      await pb.collection("addon_credits").create({
-        user_id: input.userId,
-        kind: input.kind,
-        units_purchased: input.units,
-        units_used: 0,
-        monthly: product.monthly,
-        period_start: new Date().toISOString(),
-        last_reference: input.reference,
-      });
-    } catch {
-      // The unique user_id+kind index rejected a racing create: fold the units
-      // into the row the other writer just made, unless it was this reference.
-      const row = await findOne(pb, "addon_credits", "user_id = {:userId} && kind = {:kind}", {
-        userId: input.userId,
-        kind: input.kind,
-      });
-      if (!row) throw new Error("Could not record the purchased add-on credit.");
-      if (str(row, "last_reference") === input.reference) return;
-      await pb.collection("addon_credits").update(str(row, "id"), {
-        units_purchased: num(row, "units_purchased") + input.units,
-        last_reference: input.reference,
-      });
-    }
-  }
-
-
-  // Storage is the one add-on the enforcement path reads straight off the user
-  // record, because the storage limit is compared against a live total.
-  if (input.kind === "storage_gb") {
-    const user = asRecord(await pb.collection("users").getOne(input.userId));
-    await pb
-      .collection("users")
-      .update(input.userId, { addon_storage_gb: num(user, "addon_storage_gb") + input.units });
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Consumption                                                         */
-/* ------------------------------------------------------------------ */
-
-/**
- * Spends up to `units` of purchased credit and returns how much was spent.
- * Callers use the result to decide whether an over-limit action may proceed.
- */
-export async function consumeAddonCredit(
-  userId: string,
-  kind: AddonKind,
-  units = 1,
-): Promise<{ spent: number; remaining: number }> {
-  if (units <= 0) return { spent: 0, remaining: 0 };
-  const pb = await adminClient();
-  const row = await findOne(pb, "addon_credits", "user_id = {:userId} && kind = {:kind}", {
-    userId,
-    kind,
-  });
-  if (!row) return { spent: 0, remaining: 0 };
-
-  const remaining = Math.max(0, num(row, "units_purchased") - num(row, "units_used"));
-  const spent = Math.min(remaining, units);
-  if (spent > 0) {
-    await pb
-      .collection("addon_credits")
-      .update(str(row, "id"), { units_used: num(row, "units_used") + spent });
-  }
-  return { spent, remaining: remaining - spent };
 }
 
 export interface AddonPurchaseStatus {
@@ -397,4 +294,44 @@ export async function assertAddonPurchaseOwner(
   const pb = await adminClient();
   const purchase = await findOne(pb, "addon_purchases", "reference = {:reference}", { reference });
   return Boolean(purchase && str(purchase, "user_id") === userId);
+}
+
+export interface AddonPurchaseHistoryEntry {
+  id: string;
+  reference: string;
+  kind: AddonKind;
+  packId: string;
+  units: number;
+  amountCents: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  paidAt: string;
+}
+
+/** Every add-on purchase attempt for this account, newest first — pending, paid, and failed alike. */
+export async function listAddonPurchases(
+  userId: string,
+  limit = 50,
+): Promise<AddonPurchaseHistoryEntry[]> {
+  const pb = await adminClient();
+  const rows = await pb.collection("addon_purchases").getList(1, Math.min(limit, 200), {
+    filter: pb.filter("user_id = {:userId}", { userId }),
+    sort: "-created",
+  });
+  return rows.items.map((raw) => {
+    const row = asRecord(raw);
+    return {
+      id: str(row, "id"),
+      reference: str(row, "reference"),
+      kind: str(row, "kind") as AddonKind,
+      packId: str(row, "pack_id"),
+      units: num(row, "units"),
+      amountCents: num(row, "amount_cents"),
+      currency: str(row, "currency") || "ZAR",
+      status: str(row, "status"),
+      createdAt: str(row, "created"),
+      paidAt: str(row, "paid_at"),
+    };
+  });
 }
