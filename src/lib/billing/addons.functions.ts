@@ -4,19 +4,18 @@
  * Every function here is authenticated: the browser sends its PocketBase auth
  * token and nothing else that identifies an account. The user id is resolved
  * server-side from that token, so the browser can never say "grant credits to
- * user X". Prices are recomputed from `./addons`; the browser sends only an
- * add-on kind and a whole number of packs.
+ * user X". The browser names a fixed pack id (see ./addon-packs); price and
+ * units are always recomputed server-side from that id, never trusted.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { ADDON_KINDS, ADDON_UNAVAILABLE_MESSAGE, isAddonPurchasable } from "./addons";
 
 const authSchema = z.object({ token: z.string().min(10) });
 const purchaseSchema = authSchema.extend({
-  kind: z.enum(ADDON_KINDS),
-  packs: z.number().int().min(1).max(50),
+  packId: z.string().min(1).max(64),
 });
 const statusSchema = authSchema.extend({ reference: z.string().min(8).max(200) });
+const historySchema = authSchema.extend({ limit: z.number().int().min(1).max(200).optional() });
 
 type Failure = { ok: false; error: string; message: string };
 
@@ -63,24 +62,48 @@ export const getAddonBalancesFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => authSchema.parse(data))
   .handler(async ({ data }) =>
     guardedUser(data.token, async (userId) => {
-      const { listAddonBalances } = await import("./addons.server");
-      return { ok: true as const, balances: await listAddonBalances(userId) };
+      const { listPrepaidBalances } = await import("./addon-ledger.server");
+      return { ok: true as const, balances: await listPrepaidBalances(userId) };
     }),
   );
 
-/** Starts a Paystack checkout for an add-on. The price is computed server-side. */
+/** Every prepaid pack this account has ever bought, oldest first (FIFO order). */
+export const getAddonLotsFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => authSchema.parse(data))
+  .handler(async ({ data }) =>
+    guardedUser(data.token, async (userId) => {
+      const { listAddonLots } = await import("./addon-ledger.server");
+      return { ok: true as const, lots: await listAddonLots(userId) };
+    }),
+  );
+
+/** Consumption ledger — every unit ever drawn down, newest first. */
+export const getAddonConsumptionFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => historySchema.parse(data))
+  .handler(async ({ data }) =>
+    guardedUser(data.token, async (userId) => {
+      const { listAddonConsumption } = await import("./addon-ledger.server");
+      return { ok: true as const, entries: await listAddonConsumption(userId, data.limit ?? 50) };
+    }),
+  );
+
+/** Transaction history — every purchase attempt, pending/paid/failed alike. */
+export const getAddonPurchaseHistoryFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => historySchema.parse(data))
+  .handler(async ({ data }) =>
+    guardedUser(data.token, async (userId) => {
+      const { listAddonPurchases } = await import("./addons.server");
+      return { ok: true as const, purchases: await listAddonPurchases(userId, data.limit ?? 50) };
+    }),
+  );
+
+/** Starts a Paystack checkout for a fixed add-on pack. Price/units are recomputed server-side. */
 export const startAddonPurchaseFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => purchaseSchema.parse(data))
   .handler(async ({ data }) =>
     guardedUser(data.token, async (userId) => {
-      // Rejected before any provider or database work happens; the same check
-      // is repeated inside createAddonCheckout so no call path can skip it.
-      if (!isAddonPurchasable(data.kind)) {
-        const { BillingError } = await import("./billing.server");
-        throw new BillingError("addon_unavailable", ADDON_UNAVAILABLE_MESSAGE);
-      }
       const { createAddonCheckout } = await import("./addons.server");
-      return createAddonCheckout({ userId, kind: data.kind, packs: data.packs });
+      return createAddonCheckout({ userId, packId: data.packId });
     }),
   );
 
