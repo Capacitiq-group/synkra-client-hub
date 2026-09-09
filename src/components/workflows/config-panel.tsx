@@ -24,6 +24,7 @@ import type { WorkflowBlock } from "@/lib/workflow/types";
 import { PlainField, VariableField, JsonField } from "./variables-popover";
 import { SlackChannelPicker } from "./slack-channel-picker";
 import { LoopBodyEditor } from "./loop-body-editor";
+import { BranchBodyEditor } from "./branch-body-editor";
 
 /** Block subtypes whose config is "pick a Slack channel". */
 const SLACK_TRIGGERS = ["slack_message_received", "slack_unanswered_check", "slack_channel_digest"];
@@ -459,7 +460,14 @@ export function ConfigPanel({
   const { data: integrations = {} } = useIntegrationsMap();
   // Also must run before the early return below, same reason as above.
   const [loopEditorOpen, setLoopEditorOpen] = useState(false);
-  useEffect(() => setLoopEditorOpen(false), [block?.id]);
+  // Which path of an if_else block is being edited, if any. Same
+  // rules-of-hooks constraint as loopEditorOpen: declared before the
+  // early return below, and reset whenever the selected block changes.
+  const [branchEditor, setBranchEditor] = useState<"true" | "false" | null>(null);
+  useEffect(() => {
+    setLoopEditorOpen(false);
+    setBranchEditor(null);
+  }, [block?.id]);
 
   if (!block) {
     return (
@@ -998,6 +1006,62 @@ export function ConfigPanel({
               value={text("value")}
               variables={variables}
               onChange={(v) => set("value", v)}
+            />
+          )}
+        </>
+      )}
+
+      {subtype === "if_else" && (
+        <>
+          <PlainField
+            label="Name for the “true” path"
+            value={text("true_label", "Yes")}
+            onChange={(v) => set("true_label", v)}
+          />
+          <PlainField
+            label="Name for the “false” path"
+            value={text("false_label", "No")}
+            onChange={(v) => set("false_label", v)}
+          />
+          {(["true", "false"] as const).map((path) => {
+            const key = path === "true" ? "true_blocks" : "false_blocks";
+            const label = path === "true" ? text("true_label", "Yes") : text("false_label", "No");
+            const count = ((config[key] as WorkflowBlock[] | undefined) ?? []).length;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setBranchEditor(path)}
+                className="synkra-focus flex h-9 items-center justify-center gap-2 rounded-md text-[13px] font-medium"
+                style={{
+                  border: "1px solid var(--border-default)",
+                  color: "var(--text-primary)",
+                  backgroundColor: "var(--bg-elevated)",
+                }}
+              >
+                Steps for “{label}” ({count})
+              </button>
+            );
+          })}
+          <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            Only the matching path runs. The other path&apos;s steps are recorded as skipped, and
+            both paths share the same working data as the rest of the workflow.
+          </p>
+          {branchEditor && (
+            <BranchBodyEditor
+              pathLabel={
+                branchEditor === "true" ? text("true_label", "Yes") : text("false_label", "No")
+              }
+              blocks={
+                (config[branchEditor === "true" ? "true_blocks" : "false_blocks"] as
+                  | WorkflowBlock[]
+                  | undefined) ?? []
+              }
+              onSave={(nextBlocks) => {
+                set(branchEditor === "true" ? "true_blocks" : "false_blocks", nextBlocks);
+                setBranchEditor(null);
+              }}
+              onClose={() => setBranchEditor(null)}
             />
           )}
         </>
