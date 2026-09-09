@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ForwardingAddressCard } from "@/components/email/forwarding-address-card";
 import {
   IntegrationDirectory,
   type DirectorySearch,
@@ -34,5 +35,21 @@ export const Route = createFileRoute("/dashboard/integrations")({
 
 function IntegrationsPage() {
   const search = Route.useSearch();
-  return <IntegrationDirectory search={search} />;
+  return (
+    <>
+      <div className="mx-auto w-full max-w-[1200px] px-4 pt-6 md:px-10">
+        <div
+          className="rounded-lg p-4"
+          style={{
+            border: "1px solid var(--border-default)",
+            backgroundColor: "var(--bg-card)",
+          }}
+        >
+          {/* Email needs no connection — the forwarding address already exists. */}
+          <ForwardingAddressCard title="Email forwarding address" />
+        </div>
+      </div>
+      <IntegrationDirectory search={search} />
+    </>
+  );
 }

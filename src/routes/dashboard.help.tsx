@@ -194,7 +194,7 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   {
     question: "How does mailbox monitoring actually work?",
     answer:
-      'Every account gets a dedicated inbound address (shown on the "Email received" trigger in the builder). Forward emails to it from Gmail or Outlook using a filter or forwarding rule. The first time you set this up, your email provider asks you to confirm the forwarding address — we detect and confirm this automatically when possible. Anything forwarded there is checked against the trigger\'s criteria.',
+      'Every account gets a dedicated inbound address (shown on the "Email received" trigger in the builder, on the Integrations page, and under Settings → Profile → Email forwarding). Forward emails to it from Gmail or Outlook using a filter or forwarding rule. The first time you set this up, your email provider asks you to confirm the forwarding address — we detect and confirm this automatically when possible. Anything forwarded there is checked against the trigger\'s criteria.',
     category: "Webhooks & Triggers",
   },
   {

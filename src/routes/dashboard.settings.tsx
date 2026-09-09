@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ProfileSettings } from "@/components/settings/profile-settings";
+import { EmailForwardingSettings } from "@/components/settings/email-forwarding-settings";
 import { BusinessSettings } from "@/components/settings/business-settings";
 import { ReviewDestinationsSettings } from "@/components/settings/review-destinations-settings";
 import { NotificationsSettings } from "@/components/settings/notifications-settings";
@@ -110,7 +111,12 @@ function SettingsPage() {
         ))}
       </nav>
       <div className="mt-8">
-        {tab === "profile" && <ProfileSettings />}
+        {tab === "profile" && (
+          <div className="flex flex-col gap-8">
+            <ProfileSettings />
+            <EmailForwardingSettings />
+          </div>
+        )}
         {tab === "business" && (
           <div className="flex flex-col gap-8">
             <BusinessSettings />

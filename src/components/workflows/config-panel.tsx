@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, Plus, X } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
-import pb from "@/lib/pocketbase";
+import { ForwardingAddressCard } from "@/components/email/forwarding-address-card";
 import {
   webhookUrlFor,
   tallyWebhookUrlFor,
   zohoContactCreatedWebhookUrlFor,
-  inboundEmailAddressForUser,
 } from "@/lib/workflow/api";
 import { OPERATORS, blockSubtype, definitionFor } from "@/lib/workflow/blocks";
 import { useIntegrationsMap } from "@/hooks/useIntegrations";
@@ -239,40 +237,6 @@ function InboundEmailSetup({
   set: (key: string, value: unknown) => void;
   replace: (config: Record<string, unknown>) => void;
 }) {
-  const { user } = useAuth();
-  const [copied, setCopied] = useState(false);
-  const address = user?.id ? inboundEmailAddressForUser(user.id) : null;
-
-  const verification = useQuery({
-    queryKey: ["inbound-address", user?.id],
-    enabled: Boolean(user?.id),
-    queryFn: async () => {
-      if (!user?.id) return null;
-      try {
-        const records = await pb.collection("inbound_addresses").getFullList({
-          filter: pb.filter("user_id = {:userId}", { userId: user.id }),
-        });
-        const record = records[0];
-        return record ? { verified: Boolean(record["verified"]) } : null;
-      } catch {
-        // The collection may not be readable/available yet — never block setup.
-        return null;
-      }
-    },
-    staleTime: 30000,
-  });
-
-  const copy = async () => {
-    if (!address) return;
-    try {
-      await navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  };
-
   const matchAll = config["match_all"] !== false && !config["variable"];
   const operator = String(config["operator"] ?? "contains");
 
@@ -290,57 +254,11 @@ function InboundEmailSetup({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
-          Your dedicated inbound address
-        </span>
-        {address ? (
-          <>
-            <div
-              className="flex items-center justify-between gap-2 rounded-md px-3 py-2"
-              style={{
-                border: "1px solid var(--border-default)",
-                backgroundColor: "var(--bg-card)",
-              }}
-            >
-              <code style={{ fontSize: 12, color: "var(--text-primary)" }}>{address}</code>
-              <button
-                type="button"
-                onClick={() => void copy()}
-                aria-label="Copy inbound email address"
-                className="synkra-focus flex items-center gap-1 rounded-sm"
-                style={{ fontSize: 12, color: "var(--accent-green)" }}
-              >
-                {copied ? (
-                  <Check size={13} aria-hidden="true" />
-                ) : (
-                  <Copy size={13} aria-hidden="true" />
-                )}
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              Forward emails to this address from Gmail or Outlook using a filter or forwarding
-              rule. The first time you set this up, you&apos;ll need to confirm the forwarding
-              address with your email provider — we detect and confirm this automatically when
-              possible.
-            </p>
-            {verification.data?.verified ? (
-              <p style={{ fontSize: 12, color: "var(--state-success)" }}>
-                Verified — forwarded emails will start this workflow.
-              </p>
-            ) : verification.isSuccess ? (
-              <p style={{ fontSize: 12, color: "var(--state-warning)" }}>
-                Not verified yet — send a test forwarded email to complete setup.
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            Sign in to see your dedicated inbound address.
-          </p>
-        )}
-      </div>
+      {/* Shared card — same address, copy button, status and setup note everywhere. */}
+      <ForwardingAddressCard
+        title="Your dedicated inbound address"
+        description="Forward emails to this address and matching mail starts this workflow."
+      />
 
       <div className="flex flex-col gap-2">
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
