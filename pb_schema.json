@@ -2218,6 +2218,59 @@
         "CREATE INDEX `idx_agency_quote_requests_status` ON `agency_quote_requests` (`status`)",
         "CREATE INDEX `idx_agency_quote_requests_email` ON `agency_quote_requests` (`contact_email`)"
       ]
+    },
+    {
+      "name": "error_logs",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "service",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "environment",
+          "type": "text"
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "stack",
+          "type": "text"
+        },
+        {
+          "name": "fingerprint",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "context",
+          "type": "json"
+        },
+        {
+          "name": "created_at",
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_error_logs_fingerprint` ON `error_logs` (`fingerprint`)",
+        "CREATE INDEX `idx_error_logs_created` ON `error_logs` (`created_at`)",
+        "CREATE INDEX `idx_error_logs_service` ON `error_logs` (`service`)"
+      ]
     }
   ],
   "userFields": [
