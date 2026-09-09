@@ -5,11 +5,16 @@ import {
   Link,
   Outlet,
   Scripts,
+  useRouter,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  installClientErrorReporting,
+  reportCaughtError,
+} from "@/lib/client-error-reporting";
 import { useAuthStore } from "@/stores/auth";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -33,7 +38,49 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFound,
+  errorComponent: RootErrorScreen,
 });
+
+/**
+ * Friendly replacement for the blank screen a render/loader crash would
+ * otherwise leave behind. It also reports the crash to synkra-core, so the
+ * failure raises the same email and in-app alert as a backend failure.
+ */
+function RootErrorScreen({ error, reset }: { error: Error; reset: () => void }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    reportCaughtError(error, "react");
+  }, [error]);
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+      <h1 className="text-2xl font-semibold">Something went wrong</h1>
+      <p className="max-w-md text-sm text-muted-foreground">
+        This page didn&apos;t load properly. Our team has been notified automatically. You
+        can try again, or head back to your dashboard.
+      </p>
+      <div className="flex flex-wrap justify-center gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            router.invalidate();
+            reset();
+          }}
+          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          Try again
+        </button>
+        <Link
+          to="/"
+          className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
+        >
+          Go home
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
@@ -68,6 +115,8 @@ function RootComponent() {
 
   useEffect(() => {
     setMounted(true);
+    // Catch blank screens and failed page scripts across the whole portal.
+    installClientErrorReporting();
     useAuthStore.getState().hydrate();
 
     try {
