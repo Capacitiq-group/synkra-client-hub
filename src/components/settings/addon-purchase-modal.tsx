@@ -3,21 +3,19 @@
  *
  * Calls the already-existing, already-authoritative server functions in
  * `@/lib/billing/addons.functions` — this component adds no pricing logic of
- * its own. It shows the pack price (computed server-side, this is just a
- * live preview using the same public catalog), lets the buyer choose a pack
- * count, starts a Paystack checkout, and redirects to `authorizationUrl`
- * exactly like the existing plan checkout flow in `checkout.tsx`.
+ * its own. Add-on credit is sold as fixed-price prepaid packs (see
+ * `@/lib/billing/addon-packs`), not an arbitrary quantity — the buyer picks
+ * one of a curated set of pack sizes, the server recomputes the exact price
+ * from that pack's id, starts a Paystack checkout, and this redirects to
+ * `authorizationUrl` exactly like the existing plan checkout flow in
+ * `checkout.tsx`.
  */
 import { useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, Check } from "lucide-react";
 import pb from "@/lib/pocketbase";
 import { startAddonPurchaseFn } from "@/lib/billing/addons.functions";
-import {
-  ADDON_CATALOG,
-  ADDON_UNAVAILABLE_MESSAGE,
-  addonPackPriceZar,
-  type AddonKind,
-} from "@/lib/billing/addons";
+import { ADDON_CATALOG, ADDON_UNAVAILABLE_MESSAGE, type AddonKind } from "@/lib/billing/addons";
+import { packsForKind, type AddonPack } from "@/lib/billing/addon-packs";
 import { formatZar } from "@/lib/billing/config";
 
 /** Small pill reused wherever a not-yet-available add-on is shown. */
@@ -45,18 +43,16 @@ interface Props {
 
 export function AddonPurchaseModal({ kind, onClose }: Props) {
   const product = ADDON_CATALOG[kind];
-  const [packs, setPacks] = useState(1);
+  const packs = packsForKind(kind);
+  const [selected, setSelected] = useState<AddonPack | null>(packs[0] ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const packPriceZar = addonPackPriceZar(kind);
-  const totalZar = packPriceZar * packs;
-  const totalUnits = product.packSize * packs;
-
   async function submit() {
-    // Defence in depth: the button is disabled for non-purchasable add-ons, but
-    // the guard lives here too so no code path can start a checkout for them.
-    if (!product.purchasable) return;
+    // Defence in depth: the button is disabled for non-purchasable add-ons and
+    // when nothing is selected, but the guard lives here too so no code path
+    // can start a checkout without a real, published pack id.
+    if (!product.purchasable || !selected) return;
     setError(null);
     setBusy(true);
     try {
@@ -66,7 +62,7 @@ export function AddonPurchaseModal({ kind, onClose }: Props) {
         return;
       }
       const result = (await startAddonPurchaseFn({
-        data: { token, kind, packs },
+        data: { token, packId: selected.id },
       })) as unknown as
         | { ok: true; authorizationUrl?: string }
         | { ok: false; error: string; message: string };
@@ -98,7 +94,7 @@ export function AddonPurchaseModal({ kind, onClose }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[420px] rounded-xl p-6"
+        className="w-full max-w-[440px] rounded-xl p-6"
         style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
       >
         <div className="flex items-start justify-between">
@@ -119,53 +115,47 @@ export function AddonPurchaseModal({ kind, onClose }: Props) {
           {product.description}
         </p>
 
-        <div className="mt-5">
-          <label className="block text-[13px]" style={{ color: "var(--text-secondary)" }}>
-            Number of packs ({product.packSize} {product.unit} each)
-          </label>
-          <div className="mt-2 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setPacks((p) => Math.max(1, p - 1))}
-              disabled={packs <= 1}
-              className="synkra-focus flex h-9 w-9 items-center justify-center rounded-md"
-              style={{ border: "1px solid var(--border-default)", opacity: packs <= 1 ? 0.5 : 1 }}
-            >
-              −
-            </button>
-            <span
-              className="min-w-[2ch] text-center"
-              style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}
-            >
-              {packs}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPacks((p) => Math.min(product.maxPacks, p + 1))}
-              disabled={packs >= product.maxPacks}
-              className="synkra-focus flex h-9 w-9 items-center justify-center rounded-md"
-              style={{
-                border: "1px solid var(--border-default)",
-                opacity: packs >= product.maxPacks ? 0.5 : 1,
-              }}
-            >
-              +
-            </button>
+        {product.purchasable && packs.length > 0 && (
+          <div className="mt-5 grid grid-cols-1 gap-2">
+            {packs.map((pack) => {
+              const isSelected = selected?.id === pack.id;
+              return (
+                <button
+                  key={pack.id}
+                  type="button"
+                  onClick={() => setSelected(pack)}
+                  className="synkra-focus flex items-center justify-between rounded-lg px-4 py-3 text-left"
+                  style={{
+                    border: isSelected
+                      ? "1.5px solid var(--accent-green)"
+                      : "1px solid var(--border-default)",
+                    backgroundColor: isSelected ? "var(--bg-card)" : "transparent",
+                  }}
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="flex h-5 w-5 items-center justify-center rounded-full"
+                      style={{
+                        border: isSelected
+                          ? "1.5px solid var(--accent-green)"
+                          : "1.5px solid var(--border-default)",
+                        backgroundColor: isSelected ? "var(--accent-green)" : "transparent",
+                      }}
+                    >
+                      {isSelected && <Check size={12} color="var(--bg-base)" strokeWidth={3} />}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                      {pack.units.toLocaleString("en-ZA")} {product.unit}
+                    </span>
+                  </span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                    {formatZar(Math.round(pack.priceZar * 100))}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </div>
-
-        <div
-          className="mt-5 flex items-center justify-between rounded-lg px-4 py-3"
-          style={{ backgroundColor: "var(--bg-card)" }}
-        >
-          <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-            {totalUnits.toLocaleString("en-ZA")} {product.unit}
-            {product.monthly ? " / month" : ""}
-          </span>
-          <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
-            {formatZar(Math.round(totalZar * 100))}
-          </span>
-        </div>
+        )}
 
         {error && (
           <p className="mt-3" style={{ fontSize: 13, color: "var(--state-error)" }} role="alert">
@@ -177,18 +167,18 @@ export function AddonPurchaseModal({ kind, onClose }: Props) {
           <button
             type="button"
             onClick={submit}
-            disabled={busy}
+            disabled={busy || !selected}
             className="synkra-focus mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-lg"
             style={{
               backgroundColor: "var(--accent-green)",
               color: "var(--bg-base)",
               fontSize: 14,
               fontWeight: 600,
-              opacity: busy ? 0.6 : 1,
+              opacity: busy || !selected ? 0.6 : 1,
             }}
           >
             {busy && <Loader2 size={16} className="animate-spin" />}
-            Pay {formatZar(Math.round(totalZar * 100))}
+            {selected ? `Pay ${formatZar(Math.round(selected.priceZar * 100))}` : "Select a pack"}
           </button>
         ) : (
           <button
@@ -208,10 +198,10 @@ export function AddonPurchaseModal({ kind, onClose }: Props) {
         )}
         <p className="mt-3 text-center" style={{ fontSize: 12, color: "var(--text-muted)" }}>
           {product.purchasable
-            ? "You'll be redirected to Paystack to complete payment securely."
+            ? "Non-expiring balance, oldest pack used first. You'll be redirected to Paystack to complete payment securely."
             : `${ADDON_UNAVAILABLE_MESSAGE} We'll enable it here as soon as ${product.label} is connected.`}
         </p>
       </div>
     </div>
   );
-}
+                                          }
