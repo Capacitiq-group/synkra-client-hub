@@ -8,11 +8,11 @@
  *
  * Prices are in ZAR rand per unit, exactly as published:
  *   AI operation        R0.10 each
- *   Email                R0.05 each (see note on the emails entry below - not yet confirmed as final)
+ *   Email                R0.01 each
  *   SMS                 R0.90 each
  *   WhatsApp            R0.50 per conversation
  *   Voice               R5.00 per minute
- *   Storage             R30.00 per GB / month
+ *   Storage             R30.00 per GB-month, sold in prepaid packs (see ./addon-packs)
  */
 
 export const ADDON_KINDS = ["ai_ops", "emails", "sms", "whatsapp", "voice_minutes", "storage_gb"] as const;
@@ -58,17 +58,12 @@ export const ADDON_CATALOG: Record<AddonKind, AddonProduct> = {
   // depends on: execute_send_email had no credit check at all before
   // this, so email sending was completely unmetered - no plan limit
   // was ever enforced and emails_used_this_month was never
-  // incremented anywhere. Price/pack size below are a reasonable
-  // starting point mirroring this file's existing pattern (a cheap,
-  // Synkra-hosted channel gets a bigger pack at a lower unit price,
-  // same logic as ai_ops vs. the pricier third-party channels below)
-  // - not a confirmed final price. Confirm before this is treated as
-  // publicly quoted pricing.
+  // incremented anywhere. Published price (see addon-packs.ts): R0.01/email.
   emails: {
     kind: "emails",
     label: "Email",
     unit: "emails",
-    unitPriceZar: 0.05,
+    unitPriceZar: 0.01,
     packSize: 1000,
     maxPacks: 20,
     monthly: false,
@@ -115,9 +110,12 @@ export const ADDON_CATALOG: Record<AddonKind, AddonProduct> = {
     unitPriceZar: 30,
     packSize: 1,
     maxPacks: 50,
-    monthly: true,
-    purchasable: false,
-    description: "Additional file storage, billed per GB for the current month.",
+    // Non-expiring prepaid balance (see addon-packs.ts), not a monthly
+    // allowance — "monthly: true" would be wrong now that it's sold as a
+    // real FIFO pack rather than a recurring per-month add-on.
+    monthly: false,
+    purchasable: true,
+    description: "Additional file storage, billed per GB-month, bought in prepaid packs.",
   },
 };
 
@@ -183,4 +181,4 @@ export function emptyBalance(kind: AddonKind): AddonBalance {
 
 export function emptyBalances(): AddonBalance[] {
   return ADDON_KINDS.map(emptyBalance);
-}
+                    }
