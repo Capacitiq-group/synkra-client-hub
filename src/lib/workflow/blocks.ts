@@ -1354,7 +1354,7 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   },
   {
     key: "if_else",
-    configHint: "Check something and remember the result, so later steps and messages can refer to it.",
+    configHint: "Check something, then run one set of steps if it’s true and a different set if it isn’t.",
     kind: "logic",
     subtype: "if_else",
     label: "Make a decision",
@@ -1362,12 +1362,19 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
     icon: GitBranch,
     color: "var(--state-warning)",
     section: "LOGIC",
+    // true_blocks/false_blocks are the two nested step lists, one per
+    // path. Exactly one runs; the engine (run_blocks in
+    // workflow_engine.py) records the other path's steps as skipped.
+    // Both paths share the same working data, so anything the taken
+    // path stores is available to steps after the decision.
     defaultConfig: {
       variable: "",
       operator: "equals",
       value: "",
       true_label: "Yes",
       false_label: "No",
+      true_blocks: [],
+      false_blocks: [],
     },
   },
   {
