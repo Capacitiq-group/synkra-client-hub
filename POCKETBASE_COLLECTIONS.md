@@ -773,3 +773,30 @@ Indexes:
 
 - `CREATE INDEX `idx_agency_quote_requests_status`ON`agency_quote_requests` (`status`)`
 - `CREATE INDEX `idx_agency_quote_requests_email`ON`agency_quote_requests` (`contact_email`)`
+
+### `error_logs` (base, server-only)
+
+Purpose: durable history of every failure recorded by `synkra-core`'s alerting
+module (`services/alerting.py`) — unhandled request errors, failed scheduled
+jobs and missed runs, failed workflow runs, and browser crashes posted by the
+portal to `POST /client-errors/report` (see
+`src/lib/client-error-reporting.ts`). Rows are written by core with superuser
+credentials; the browser never reads or writes this collection directly.
+
+| Field         | Type | Notes                                                                 |
+| ------------- | ---- | --------------------------------------------------------------------- |
+| `service`     | text | `synkra-core`, or `synkra-client-hub` for browser crashes.            |
+| `environment` | text | `production`, `staging`, `development`.                               |
+| `level`       | text | `error`, `critical`.                                                   |
+| `source`      | text | Origin, e.g. `request`, `scheduled:<job>`, `workflow`, `browser:react`. |
+| `message`     | text | Truncated to 2000 chars.                                               |
+| `stack`       | text | Truncated to 4000 chars (8000 accepted from the browser).             |
+| `fingerprint` | text | Dedupe key; repeat alerts are suppressed, but every row is still saved. |
+| `context`     | json | Workflow / user / run details, URL, user agent, IP.                    |
+| `created_at`  | text | ISO-8601 UTC timestamp set by the writer.                              |
+
+Indexes:
+
+- `CREATE INDEX `idx_error_logs_fingerprint`ON`error_logs` (`fingerprint`)`
+- `CREATE INDEX `idx_error_logs_created`ON`error_logs` (`created_at`)`
+- `CREATE INDEX `idx_error_logs_service`ON`error_logs` (`service`)`
