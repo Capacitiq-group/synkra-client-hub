@@ -205,7 +205,26 @@ export async function runFirstTimeSetup(
           schema: updated,
         });
       }
+
+      // SECURITY: accounts in this app are only ever meant to be created
+      // server-side (checkout/billing settlement, magic-link signup) using
+      // an authenticated superuser session — never directly by a browser
+      // calling the PocketBase REST API. PocketBase's own default for a
+      // freshly created auth collection is a PUBLIC createRule (""), which
+      // would let anyone with an HTTP client POST to /api/collections/users/records
+      // and self-provision a full account with self-chosen fields, bypassing
+      // billing entirely. Lock it to superuser-only (null) whenever it's
+      // still at that public/unset default. A createRule an operator has
+      // deliberately set to something else (e.g. an invite-token check) is
+      // left untouched — this only closes the dangerous default, never
+      // overwrites an intentional choice.
+      const liveRecord = usersCollection as unknown as Record<string, unknown>;
+      const currentCreateRule = liveRecord["createRule"];
+      if (currentCreateRule === "" || currentCreateRule === undefined) {
+        await pb.collections.update(usersCollection.id, { createRule: null });
+      }
     }
+
 
     progress.onStep("Seeding workflow templates");
     await seedTemplates(pb);

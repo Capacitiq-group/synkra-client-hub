@@ -203,6 +203,20 @@ async function main() {
     log("user fields already complete");
   }
 
+  // 2b. SECURITY: close PocketBase's public-by-default createRule on the
+  // users auth collection. Accounts in this app are only ever created
+  // server-side (checkout/billing settlement, magic-link signup) via an
+  // authenticated superuser session — never by a browser calling the
+  // PocketBase REST API directly. A createRule of "" (PocketBase's default
+  // for a new auth collection) or unset would let anyone self-provision a
+  // full account, bypassing billing entirely. Only fix that specific
+  // dangerous default — leave any rule an operator has deliberately set to
+  // something else untouched.
+  if (users.createRule === "" || users.createRule === undefined) {
+    await pb.collections.update(users.id, { createRule: null });
+    log("locked users.createRule to superuser-only");
+  }
+
   // 3. Portal login account.
   const trialEnds = new Date();
   trialEnds.setFullYear(trialEnds.getFullYear() + 1);

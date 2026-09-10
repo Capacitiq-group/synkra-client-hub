@@ -2,7 +2,6 @@
 import pb, { describeConnectionProblem, isNetworkFailure } from "./pocketbase";
 import { sanitizeEmail } from "./sanitize";
 import { checkRateLimit, clearRateLimit } from "./rateLimit";
-import { sendNotificationEmail } from "./notifications";
 
 export interface AuthUser {
   id: string;
@@ -66,76 +65,6 @@ export async function signIn(
     if (/suspend|disabled|banned/i.test(message)) return { success: false, error: "suspended" };
     if (/failed to authenticate|invalid/i.test(message)) {
       return { success: false, error: "invalid_credentials" };
-    }
-    return { success: false, error: "unknown" };
-  }
-}
-
-export async function signUp(
-  email: string,
-  password: string,
-  userData: {
-    name: string;
-    business_name?: string;
-    business_industry?: string;
-    user_type?: "beta" | "paid";
-  }
-): Promise<{ success: boolean; error?: string; emailSent?: boolean; user?: AuthUser }> {
-  const cleanEmail = sanitizeEmail(email);
-
-  const rl = checkRateLimit(`signup-${cleanEmail}`, 3, 15 * 60 * 1000);
-  if (!rl.allowed) {
-    const minutes = Math.ceil(rl.remainingMs / 60000);
-    return { success: false, error: `rate_limited:${minutes}` };
-  }
-
-  try {
-    const result = await pb.collection("users").create({
-      email: cleanEmail,
-      password: password,
-      passwordConfirm: password,
-      name: userData.name,
-      business_name: userData.business_name || "",
-      business_industry: userData.business_industry || "",
-      user_type: userData.user_type || "beta",
-      credit_emails: 100,
-      credit_emails_used: 0,
-      credit_workflows: 2000,
-      credit_workflows_used: 0,
-      notify_on_failure: true,
-      notify_weekly_summary: true,
-      notify_on_success: false,
-      notify_credit_low: true,
-      notify_platform_updates: false,
-    });
-
-    // Auto-login after successful registration
-    await pb.collection("users").authWithPassword(cleanEmail, password);
-    clearRateLimit(`signup-${cleanEmail}`);
-
-    // Welcome email goes out through the existing server-side email proxy
-    // (Resend behind synkra-core). The shared secret stays on the server; the
-    // browser only ever calls the server function. Delivery failure is
-    // reported back to the caller instead of being swallowed, so account
-    // creation is never presented as fully successful when the email failed.
-    const emailSent = await sendNotificationEmail({
-      to: cleanEmail,
-      subject: "Welcome to Synkra",
-      body: `Hi ${userData.name || "there"},\n\nYour Synkra client portal account is ready.\n\nSign in here: ${typeof window !== "undefined" ? window.location.origin : "https://flow.synkra.co.za"}/login\n\nInside the portal you can activate ready-to-run automation templates, connect your business details, and watch every workflow run in the activity log.\n\nSynkra`,
-    });
-
-    return { success: true, emailSent, user: result as unknown as AuthUser };
-  } catch (err) {
-    if (isNetworkFailure(err)) return { success: false, error: "unreachable" };
-    const message = err instanceof Error ? err.message : "";
-    if (/already exists/i.test(message)) {
-      return { success: false, error: "email_exists" };
-    }
-    if (/password.*match|passwordConfirm/i.test(message)) {
-      return { success: false, error: "password_mismatch" };
-    }
-    if (/required/i.test(message)) {
-      return { success: false, error: "missing_fields" };
     }
     return { success: false, error: "unknown" };
   }
