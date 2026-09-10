@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
 import { Shimmer, SectionError } from "@/components/dashboard/primitives";
 import { TemplateCard } from "@/components/workflows/template-card";
 import { TemplateDetailModal } from "@/components/workflows/template-detail-modal";
@@ -37,6 +37,27 @@ type WorkflowTab = "templates" | "mine";
 
 /** How many templates the Recommended shelf shows at most. */
 const RECOMMENDED_LIMIT = 3;
+
+/** How many templates the All templates grid shows per page. */
+const TEMPLATES_PER_PAGE = 12;
+
+/**
+ * Builds a compact page list with ellipses so the control stays a fixed width
+ * regardless of how many templates exist.
+ */
+function buildPageItems(current: number, total: number): (number | "gap")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = new Set<number>([1, total, current, current - 1, current + 1]);
+  if (current <= 3) [2, 3, 4].forEach((n) => pages.add(n));
+  if (current >= total - 2) [total - 3, total - 2, total - 1].forEach((n) => pages.add(n));
+  const sorted = [...pages].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  const items: (number | "gap")[] = [];
+  sorted.forEach((page, index) => {
+    if (index > 0 && page - (sorted[index - 1] as number) > 1) items.push("gap");
+    items.push(page);
+  });
+  return items;
+}
 
 export const Route = createFileRoute("/dashboard/workflows/")({
   validateSearch: (search: Record<string, unknown>): { tab?: WorkflowTab } => {
@@ -161,6 +182,87 @@ function Shelf({
   );
 }
 
+function Pagination({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (next: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const baseStyle = {
+    borderRadius: "var(--radius-md)",
+    border: "1px solid var(--border-default)",
+    fontSize: 13,
+    padding: "6px 11px",
+    color: "var(--text-secondary)",
+    backgroundColor: "var(--bg-card)",
+  } as const;
+
+  return (
+    <nav className="mt-6 flex flex-wrap items-center gap-2" aria-label="Template pages">
+      <button
+        type="button"
+        className="synkra-focus inline-flex items-center gap-1"
+        style={{ ...baseStyle, opacity: page === 1 ? 0.5 : 1 }}
+        onClick={() => onChange(page - 1)}
+        disabled={page === 1}
+      >
+        <ChevronLeft size={13} aria-hidden="true" />
+        Previous
+      </button>
+
+      {buildPageItems(page, totalPages).map((item, index) =>
+        item === "gap" ? (
+          <span
+            key={`gap-${index}`}
+            style={{ fontSize: 13, color: "var(--text-secondary)", padding: "0 2px" }}
+            aria-hidden="true"
+          >
+            …
+          </span>
+        ) : (
+          <button
+            key={item}
+            type="button"
+            className="synkra-focus"
+            aria-label={`Page ${item}`}
+            aria-current={item === page ? "page" : undefined}
+            style={
+              item === page
+                ? {
+                    ...baseStyle,
+                    borderColor: "var(--accent-green-border)",
+                    backgroundColor: "var(--accent-green-subtle)",
+                    color: "var(--accent-green)",
+                    fontWeight: 700,
+                  }
+                : baseStyle
+            }
+            onClick={() => onChange(item)}
+          >
+            {item}
+          </button>
+        ),
+      )}
+
+      <button
+        type="button"
+        className="synkra-focus inline-flex items-center gap-1"
+        style={{ ...baseStyle, opacity: page === totalPages ? 0.5 : 1 }}
+        onClick={() => onChange(page + 1)}
+        disabled={page === totalPages}
+      >
+        Next
+        <ChevronRight size={13} aria-hidden="true" />
+      </button>
+    </nav>
+  );
+}
+
 function CardSkeletons({ count = 3 }: { count?: number }) {
   return (
     <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -201,6 +303,7 @@ function WorkflowsPage() {
     categories: [],
     platforms: [],
   });
+  const [templatePage, setTemplatePage] = useState(1);
   const [workflowQuery, setWorkflowQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState("newest");
@@ -266,6 +369,21 @@ function WorkflowsPage() {
     () => templates.filter((template) => matchesFilters(template, filters)),
     [templates, filters],
   );
+
+  // Filtering always happens before pagination, and any filter change sends the
+  // user back to the first page so they never land on an empty page.
+  useEffect(() => {
+    setTemplatePage(1);
+  }, [filters]);
+
+  const totalTemplatePages = Math.max(1, Math.ceil(visibleTemplates.length / TEMPLATES_PER_PAGE));
+  const currentTemplatePage = Math.min(templatePage, totalTemplatePages);
+  const templatePageStart = (currentTemplatePage - 1) * TEMPLATES_PER_PAGE;
+  const pagedTemplates = visibleTemplates.slice(
+    templatePageStart,
+    templatePageStart + TEMPLATES_PER_PAGE,
+  );
+  const templateRangeEnd = templatePageStart + pagedTemplates.length;
 
   /**
    * Synkra has no popularity or personalisation data, so "Recommended" is a
@@ -584,12 +702,22 @@ function WorkflowsPage() {
           )}
           <Shelf
             title="All templates"
-            subtitle={`${visibleTemplates.length} ${
-              visibleTemplates.length === 1 ? "template" : "templates"
-            }${filtersActive ? " match your filters" : " available"}.`}
+            subtitle={`Showing ${templatePageStart + 1}–${templateRangeEnd} of ${
+              visibleTemplates.length
+            } ${visibleTemplates.length === 1 ? "template" : "templates"}${
+              filtersActive ? " matching your filters" : ""
+            }.`}
           >
-            {visibleTemplates.map(renderTemplateCard)}
+            {pagedTemplates.map(renderTemplateCard)}
           </Shelf>
+          <Pagination
+            page={currentTemplatePage}
+            totalPages={totalTemplatePages}
+            onChange={(next) => {
+              setTemplatePage(next);
+              if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
         </>
       )}
     </div>
