@@ -343,23 +343,6 @@ Indexes:
 - `idx_consent_records_user` on `user_id`
 - `idx_consent_records_reference` on `checkout_reference`
 
-## `ghost_mailboxes` (base, server-only)
-
-Purpose: forwarding aliases on `@in.synkra.co.za`. Managed by synkra-core
-(`routers/ghost_mailbox.py`) and read by inbound email relay.
-
-| Field              | Type           | Notes                                         |
-| ------------------ | -------------- | --------------------------------------------- |
-| `user_id`          | text, required | Owner; every read is scoped to it.            |
-| `address`          | text, required | Lowercased, must end with `@in.synkra.co.za`. |
-| `forward_to_email` | text, required | Real inbox mail is relayed to.                |
-
-Indexes:
-
-- `idx_ghost_mailboxes_address`: unique on `address` — the create endpoint
-  returns 409 on a taken address.
-- `idx_ghost_mailboxes_user` on `user_id`
-
 ## `notion_poll_cursors` (base, server-only)
 
 Purpose: watermark for the Notion database poll in synkra-core's scheduler, so
