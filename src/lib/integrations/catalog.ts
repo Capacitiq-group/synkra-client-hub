@@ -167,20 +167,6 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     available: true,
   },
   {
-    key: "gmail",
-    name: "Gmail",
-    category: "Communication",
-    summary: "Read and send from a connected Gmail inbox inside your workflows.",
-    description:
-      "Connect a Gmail account so workflows can watch that inbox for new mail and send from it — separate from the built-in Synkra inbound address, which needs no connection at all.",
-    notes: ["Connected through Google OAuth", "Available on paid plans"],
-    icon: Mail,
-    iconColor: "#EA4335",
-    endpoint: "gmail",
-    requiresPaidPlan: true,
-    available: true,
-  },
-  {
     key: "zoho",
     name: "Zoho Books",
     category: "Finance",
