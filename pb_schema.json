@@ -2124,6 +2124,11 @@
         {
           "name": "zoho_followup",
           "type": "json"
+        },
+        {
+          "name": "claim_count",
+          "type": "number",
+          "required": false
         }
       ],
       "indexes": [

@@ -232,23 +232,34 @@ export interface MagicLinkSession {
 
 /**
  * Consumes a magic link and mints a real PocketBase session for the user.
- * The link is marked used before the session is issued, so a replay of the
- * same URL cannot produce a second session.
+ *
+ * The record is deleted as the single-use claim itself, not marked with a
+ * `used_at` flag that gets checked first and written second. Two requests
+ * racing on the same token (a real trigger for this: corporate email
+ * scanners like Outlook Safe Links and Gmail's own link-scanning pre-fetch
+ * URLs in emails automatically, so the scanner can "use" the link before
+ * the person clicks it) would both pass a read-then-write check in the
+ * gap between the read and the write. A delete has no such gap: only one
+ * of two concurrent delete calls against the same row can ever succeed:
+ * PocketBase's delete is a single atomic operation, and the loser gets a
+ * not-found error we treat as "already used" instead of a session.
  */
 export async function consumeMagicLink(token: string): Promise<MagicLinkSession> {
   if (!token || token.length < 32) throw new BillingError("invalid_token", "This link is invalid.");
   const pb = await adminClient();
   const record = await findByField(pb, "magic_links", "token_hash", hashToken(token));
   if (!record) throw new BillingError("invalid_token", "This sign-in link is not valid.");
-  if (str(record, "used_at")) {
-    throw new BillingError("already_used", "This sign-in link has already been used.");
-  }
+
   const expiresAt = new Date(str(record, "expires_at").replace(" ", "T"));
   if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
     throw new BillingError("expired", "This sign-in link has expired. Request a new one.");
   }
 
-  await pb.collection("magic_links").update(str(record, "id"), { used_at: new Date().toISOString() });
+  try {
+    await pb.collection("magic_links").delete(str(record, "id"));
+  } catch {
+    throw new BillingError("already_used", "This sign-in link has already been used.");
+  }
 
   const userId = str(record, "user_id");
   const impersonated = await pb.collection("users").impersonate(userId, 60 * 60 * 24 * 7);

@@ -34,7 +34,6 @@ import { adminClient } from "@/lib/usage/pocketbase.server";
 import { ADDON_KINDS, getAddon, type AddonKind } from "./addons";
 
 const MAX_LOTS = 500;
-const MAX_ATTEMPTS = 4;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
@@ -258,6 +257,16 @@ async function returnUnits(pb: PocketBase, taken: Taken[]): Promise<void> {
  * Draws `units` from the account's prepaid balance for `kind`, oldest lot
  * first. All-or-nothing: if the whole amount cannot be covered, nothing is
  * consumed and the caller must refuse the action.
+ *
+ * Concurrency: every debit against a lot uses PocketBase's atomic "+"-suffixed
+ * update (applied at the DB layer, not read-compute-write), the same
+ * mechanism execution-packs.server.ts already uses for the single-lot case.
+ * There is no read-then-write gap for a second request to land in: we always
+ * attempt to reserve the full outstanding amount from a lot, then correct
+ * back any overshoot past that lot's units_purchased. Two concurrent draws on
+ * the same lot are serialized by the database itself, so whichever request's
+ * increment overshoots gets exactly the overshoot handed back — no request
+ * can ever see a "fresh" balance that's already stale by the time it writes.
  */
 export async function consumeAddonUnits(input: {
   userId: string;
@@ -277,64 +286,69 @@ export async function consumeAddonUnits(input: {
   }
 
   const pb = await adminClient();
-
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-    const lots = (await lotRows(pb, input.userId, input.kind)).map(toLot);
-    const available = lots.reduce((total, lot) => total + lot.unitsRemaining, 0);
-    if (available < want) {
-      return {
-        allowed: false,
-        consumed: 0,
-        remaining: available,
-        reason: "insufficient_balance",
-        message: `Not enough prepaid ${getAddon(input.kind).unit} left. ${available} remaining, ${want} needed.`,
-      };
-    }
-
-    const taken: Taken[] = [];
-    let outstanding = want;
-    let lost = false;
-
-    for (const lot of lots) {
-      if (outstanding <= 0) break;
-      if (lot.unitsRemaining <= 0) continue;
-
-      // Compare-and-set: only decrement if nobody moved units_used since we read it.
-      const fresh = asRecord(await pb.collection("addon_credits").getOne(lot.id));
-      if (num(fresh, "units_used") !== lot.unitsUsed) {
-        lost = true;
-        break;
-      }
-      const take = Math.min(lot.unitsRemaining, outstanding);
-      await pb.collection("addon_credits").update(lot.id, { units_used: lot.unitsUsed + take });
-      taken.push({ lotId: lot.id, units: take });
-      outstanding -= take;
-    }
-
-    if (lost || outstanding > 0) {
-      await returnUnits(pb, taken);
-      continue; // re-plan against fresh remainders
-    }
-
-    const remaining = available - want;
-    for (const entry of taken) {
-      await pb.collection("addon_consumption").create({
-        user_id: input.userId,
-        kind: input.kind,
-        lot_id: entry.lotId,
-        units: entry.units,
-        reason: input.reason,
-        balance_after: remaining,
-      });
-    }
-    return { allowed: true, consumed: want, remaining };
+  const lots = (await lotRows(pb, input.userId, input.kind)).map(toLot);
+  const available = lots.reduce((total, lot) => total + lot.unitsRemaining, 0);
+  if (available < want) {
+    return {
+      allowed: false,
+      consumed: 0,
+      remaining: available,
+      reason: "insufficient_balance",
+      message: `Not enough prepaid ${getAddon(input.kind).unit} left. ${available} remaining, ${want} needed.`,
+    };
   }
 
-  return {
-    allowed: false,
-    consumed: 0,
-    remaining: await prepaidRemaining(input.userId, input.kind),
-    reason: "contended",
-    message: "The balance is being updated by another request. Try again.",
-  };
-                                                    }
+  const taken: Taken[] = [];
+  let outstanding = want;
+
+  for (const lot of lots) {
+    if (outstanding <= 0) break;
+    if (lot.unitsRemaining <= 0) continue;
+
+    // Reserve everything we still need from this lot. The database, not this
+    // process, decides how much of that actually lands within the lot's
+    // purchased amount.
+    const attempt = outstanding;
+    const updated = asRecord(
+      await pb.collection("addon_credits").update(lot.id, { "units_used+": attempt }),
+    );
+    const usedAfter = num(updated, "units_used");
+    const overshoot = Math.max(0, usedAfter - lot.unitsPurchased);
+    const actuallyTaken = attempt - overshoot;
+
+    if (overshoot > 0) {
+      await pb.collection("addon_credits").update(lot.id, { "units_used+": -overshoot });
+    }
+    if (actuallyTaken > 0) {
+      taken.push({ lotId: lot.id, units: actuallyTaken });
+      outstanding -= actuallyTaken;
+    }
+  }
+
+  if (outstanding > 0) {
+    // Contention ate into the balance between our estimate above and the
+    // per-lot reservations: give back everything we did manage to take and
+    // refuse the whole action, rather than half-spend it.
+    await returnUnits(pb, taken);
+    return {
+      allowed: false,
+      consumed: 0,
+      remaining: await prepaidRemaining(input.userId, input.kind),
+      reason: "insufficient_balance",
+      message: `Not enough prepaid ${getAddon(input.kind).unit} left.`,
+    };
+  }
+
+  const remaining = available - want;
+  for (const entry of taken) {
+    await pb.collection("addon_consumption").create({
+      user_id: input.userId,
+      kind: input.kind,
+      lot_id: entry.lotId,
+      units: entry.units,
+      reason: input.reason,
+      balance_after: remaining,
+    });
+  }
+  return { allowed: true, consumed: want, remaining };
+}

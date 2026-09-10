@@ -431,6 +431,30 @@ export function UsageSettings() {
             canUpgrade={canUpgrade}
             onBuyAddOn={handleBuyAddOn("emails")}
             addonKind="emails"
+            footnote={
+              balanceFor("emails") > 0 ? (
+                <>
+                  <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>
+                    +{formatNumber(balanceFor("emails"))} purchased emails
+                  </span>{" "}
+                  available. Purchased email credit never expires and is only used once this
+                  month's included allowance runs out.
+                </>
+              ) : (
+                <>
+                  Need more than your monthly allowance?{" "}
+                  <button
+                    type="button"
+                    onClick={handleBuyAddOn("emails")}
+                    className="synkra-focus rounded-sm"
+                    style={{ color: "var(--accent-green)", fontWeight: 600 }}
+                  >
+                    Buy an email add-on pack
+                  </button>{" "}
+                  — purchased email credit never expires.
+                </>
+              )
+            }
           />
           <UsageCard
             label="Storage"
@@ -441,6 +465,30 @@ export function UsageSettings() {
             canUpgrade={canUpgrade}
             onBuyAddOn={handleBuyAddOn("storage_gb")}
             addonKind="storage_gb"
+            footnote={
+              balanceFor("storage_gb") > 0 ? (
+                <>
+                  <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>
+                    +{formatNumber(balanceFor("storage_gb"))} GB purchased
+                  </span>{" "}
+                  available. Purchased storage never expires and is only used once this month's
+                  included allowance runs out.
+                </>
+              ) : (
+                <>
+                  Need more than your plan's storage?{" "}
+                  <button
+                    type="button"
+                    onClick={handleBuyAddOn("storage_gb")}
+                    className="synkra-focus rounded-sm"
+                    style={{ color: "var(--accent-green)", fontWeight: 600 }}
+                  >
+                    Buy a storage add-on pack
+                  </button>{" "}
+                  — purchased storage never expires.
+                </>
+              )
+            }
           />
           {limits.aiOps > 0 ? (
             <UsageCard
@@ -452,6 +500,30 @@ export function UsageSettings() {
               canUpgrade={canUpgrade}
               onBuyAddOn={handleBuyAddOn("ai_ops")}
               addonKind="ai_ops"
+              footnote={
+                balanceFor("ai_ops") > 0 ? (
+                  <>
+                    <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>
+                      +{formatNumber(balanceFor("ai_ops"))} purchased AI operations
+                    </span>{" "}
+                    available. Purchased AI credit never expires and is only used once this
+                    month's included allowance runs out.
+                  </>
+                ) : (
+                  <>
+                    Need more than your monthly allowance?{" "}
+                    <button
+                      type="button"
+                      onClick={handleBuyAddOn("ai_ops")}
+                      className="synkra-focus rounded-sm"
+                      style={{ color: "var(--accent-green)", fontWeight: 600 }}
+                    >
+                      Buy an AI operations add-on pack
+                    </button>{" "}
+                    — purchased AI credit never expires.
+                  </>
+                )
+              }
             />
           ) : (
             <div
