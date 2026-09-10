@@ -407,19 +407,6 @@ function HelpPage() {
       </p>
 
       <div className="mt-10 flex flex-col gap-12">
-        <Section title="Getting started">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {VIDEOS.map(([title, description, url]) => (
-              <VideoCard
-                key={title}
-                title={title}
-                description={description}
-                url={url || undefined}
-              />
-            ))}
-          </div>
-        </Section>
-
         <Section title="Common questions">
           <div className="relative mb-4">
             <Search
