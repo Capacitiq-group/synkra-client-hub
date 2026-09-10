@@ -199,7 +199,7 @@
         {
           "name": "type",
           "type": "select",
-          "values": ["gmail", "email", "ai", "webhook", "slack", "hubspot", "zoho", "clickup", "notion", "whatsapp", "sms", "shopify", "typeform", "tally", "calendly", "xero", "airtable", "monday", "asana", "pipedrive"]
+          "values": ["email", "ai", "webhook", "slack", "hubspot", "zoho", "clickup", "notion", "whatsapp", "sms", "shopify", "typeform", "tally", "calendly", "xero", "airtable", "monday", "asana", "pipedrive"]
         },
         {
           "name": "credentials",
@@ -1251,32 +1251,6 @@
       "indexes": [
         "CREATE INDEX `idx_consent_records_user` ON `consent_records` (`user_id`)",
         "CREATE INDEX `idx_consent_records_reference` ON `consent_records` (`checkout_reference`)"
-      ]
-    },
-    {
-      "name": "ghost_mailboxes",
-      "type": "base",
-      "serverOnly": true,
-      "fields": [
-        {
-          "name": "user_id",
-          "type": "text",
-          "required": true
-        },
-        {
-          "name": "address",
-          "type": "text",
-          "required": true
-        },
-        {
-          "name": "forward_to_email",
-          "type": "text",
-          "required": true
-        }
-      ],
-      "indexes": [
-        "CREATE UNIQUE INDEX `idx_ghost_mailboxes_address` ON `ghost_mailboxes` (`address`)",
-        "CREATE INDEX `idx_ghost_mailboxes_user` ON `ghost_mailboxes` (`user_id`)"
       ]
     },
     {
