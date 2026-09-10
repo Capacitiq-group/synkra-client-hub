@@ -566,22 +566,75 @@ const SLACK_MESSAGE_VARIABLES: VariableOption[] = [
   },
 ];
 
+const EMAIL_RECEIVED_VARIABLES: VariableOption[] = [
+  { token: "{{trigger.from_email}}", label: "Sender email", description: "The address that sent the email." },
+  { token: "{{trigger.to}}", label: "Recipient addresses", description: "The addresses the email was sent to." },
+  { token: "{{trigger.subject}}", label: "Email subject", description: "The subject line of the received email." },
+  { token: "{{trigger.body}}", label: "Email body", description: "The text or HTML body of the received email." },
+  { token: "{{trigger.message_id}}", label: "Message ID", description: "The unique ID of the received email." },
+  { token: "{{trigger.received_at}}", label: "Received at", description: "When the email was received." },
+];
+
+const HUBSPOT_TRIGGER_VARIABLES: VariableOption[] = [
+  { token: "{{trigger.eventId}}", label: "HubSpot event ID", description: "The unique ID of the HubSpot webhook event." },
+  { token: "{{trigger.subscriptionType}}", label: "Subscription type", description: "The HubSpot event type that started this workflow." },
+  { token: "{{trigger.portalId}}", label: "Portal ID", description: "The HubSpot portal that sent the event." },
+  { token: "{{trigger.objectId}}", label: "Object ID", description: "The HubSpot object affected by the event." },
+  { token: "{{trigger.propertyName}}", label: "Property name", description: "The HubSpot property that changed." },
+  { token: "{{trigger.propertyValue}}", label: "Property value", description: "The new value of the changed HubSpot property." },
+  { token: "{{trigger.changeSource}}", label: "Change source", description: "The source of the HubSpot change." },
+  { token: "{{trigger.occurredAt}}", label: "Occurred at", description: "When the HubSpot event occurred." },
+  { token: "{{trigger.dealstage}}", label: "Deal stage", description: "The new deal stage for deal-stage changes." },
+  { token: "{{trigger.deal}}", label: "Deal", description: "The full HubSpot deal record when available." },
+];
+
+const CLICKUP_TRIGGER_VARIABLES: VariableOption[] = [
+  { token: "{{trigger.event}}", label: "ClickUp event", description: "The ClickUp event type that started this workflow." },
+  { token: "{{trigger.team_id}}", label: "Workspace ID", description: "The ClickUp Workspace that sent the event." },
+  { token: "{{trigger.webhook_id}}", label: "Webhook ID", description: "The ClickUp webhook that sent the event." },
+  { token: "{{trigger.task_id}}", label: "Task ID", description: "The ClickUp task affected by the event." },
+  { token: "{{trigger.history_items}}", label: "Change history", description: "The ClickUp history items describing the changes." },
+];
+
+const MONDAY_TRIGGER_VARIABLES: VariableOption[] = [
+  { token: "{{trigger.type}}", label: "Monday event type", description: "The Monday.com event type that started this workflow." },
+  { token: "{{trigger.boardId}}", label: "Board ID", description: "The Monday.com board containing the changed item." },
+  { token: "{{trigger.pulseId}}", label: "Item ID", description: "The Monday.com item that changed." },
+  { token: "{{trigger.pulseName}}", label: "Item name", description: "The name of the changed Monday.com item." },
+  { token: "{{trigger.columnId}}", label: "Column ID", description: "The Monday.com column that changed." },
+  { token: "{{trigger.columnType}}", label: "Column type", description: "The type of the changed Monday.com column." },
+  { token: "{{trigger.value}}", label: "New value", description: "The new value supplied by Monday.com." },
+  { token: "{{trigger.previousValue}}", label: "Previous value", description: "The previous value supplied by Monday.com." },
+  { token: "{{trigger.changedAt}}", label: "Changed at", description: "When the Monday.com item changed." },
+  { token: "{{trigger.userId}}", label: "User ID", description: "The Monday.com user who made the change." },
+];
+
+const ASANA_TRIGGER_VARIABLES: VariableOption[] = [
+  { token: "{{trigger.action}}", label: "Asana action", description: "The Asana action that started this workflow." },
+  { token: "{{trigger.created_at}}", label: "Created at", description: "When the Asana event was created." },
+  { token: "{{trigger.user}}", label: "Asana user", description: "The Asana user associated with the event." },
+  { token: "{{trigger.resource}}", label: "Task resource", description: "The Asana task resource affected by the event." },
+  { token: "{{trigger.resource.gid}}", label: "Task ID", description: "The ID of the affected Asana task." },
+  { token: "{{trigger.parent}}", label: "Section", description: "The Asana section involved in the task move." },
+  { token: "{{trigger.parent.gid}}", label: "Section ID", description: "The ID of the Asana section." },
+  { token: "{{trigger.parent.name}}", label: "Section name", description: "The name of the Asana section." },
+];
+
+const NOTION_TRIGGER_VARIABLES: VariableOption[] = [
+  { token: "{{trigger.page}}", label: "Notion page", description: "The complete new Notion database page." },
+  { token: "{{trigger.page.id}}", label: "Page ID", description: "The ID of the new Notion page." },
+  { token: "{{trigger.page.url}}", label: "Page URL", description: "The URL of the new Notion page." },
+  { token: "{{trigger.page.created_time}}", label: "Created time", description: "When the Notion page was created." },
+  { token: "{{trigger.page.properties}}", label: "Page properties", description: "The properties of the new Notion page." },
+  { token: "{{trigger.database_id}}", label: "Database ID", description: "The Notion database containing the new page." },
+];
+
 const SLACK_UNANSWERED_VARIABLES: VariableOption[] = [
-  {
-    token: "{{trigger.message}}",
-    label: "Unanswered message",
-    description: "The Slack message that has remained unanswered.",
-  },
-  {
-    token: "{{trigger.channel_id}}",
-    label: "Channel ID",
-    description: "The Slack channel containing the unanswered message.",
-  },
-  {
-    token: "{{trigger.hours_unanswered}}",
-    label: "Hours unanswered",
-    description: "How long the message has remained unanswered.",
-  },
+  { token: "{{trigger.text}}", label: "Message text", description: "The unanswered Slack question." },
+  { token: "{{trigger.message_ts}}", label: "Message timestamp", description: "The Slack timestamp identifying the unanswered message." },
+  { token: "{{trigger.user}}", label: "Slack user ID", description: "The Slack user who posted the unanswered message." },
+  { token: "{{trigger.channel_id}}", label: "Channel ID", description: "The Slack channel containing the unanswered message." },
+  { token: "{{trigger.unanswered_after_hours}}", label: "Unanswered threshold", description: "The configured number of hours before the message is considered unanswered." },
 ];
 
 const ZOHO_TRIGGER_VARIABLES: VariableOption[] = [
@@ -654,6 +707,24 @@ const ZOHO_TRIGGER_VARIABLES: VariableOption[] = [
 
 export function knownTriggerVariables(triggerType: string): VariableOption[] {
   switch (triggerType) {
+    case "email_received":
+      return EMAIL_RECEIVED_VARIABLES;
+
+    case "hubspot_event":
+      return HUBSPOT_TRIGGER_VARIABLES;
+
+    case "clickup_event":
+      return CLICKUP_TRIGGER_VARIABLES;
+
+    case "monday_item_changed":
+      return MONDAY_TRIGGER_VARIABLES;
+
+    case "asana_task_stage_changed":
+      return ASANA_TRIGGER_VARIABLES;
+
+    case "notion_new_item":
+      return NOTION_TRIGGER_VARIABLES;
+
     case "typeform_response_received":
       return TYPEFORM_TRIGGER_VARIABLES;
 
@@ -955,14 +1026,11 @@ export function sampleInputFor(
   if (trigger.trigger_type === "slack_unanswered_check") {
     return {
       trigger: {
-        message: {
-          ts: "1750000000.000000",
-          text: "Can someone please confirm this?",
-          user: "U0123456789",
-          channel: "C0123456789",
-        },
         channel_id: "C0123456789",
-        hours_unanswered: 4,
+        message_ts: "1750000000.000000",
+        text: "Can someone please confirm this?",
+        user: "U0123456789",
+        unanswered_after_hours: 4,
       },
     };
   }
