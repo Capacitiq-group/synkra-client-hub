@@ -6,7 +6,7 @@ const API_BASE =
 
 /**
  * Every integration route on the core side (connect/status/test/disconnect/
- * reauthorize/approve/reject, across Gmail, HubSpot, Slack, Zoho, Tally, and
+ * reauthorize/approve/reject, across HubSpot, Slack, Zoho, Tally, and
  * the ten oauth_integration_factory.py providers) used to trust a plain
  * `user_id` field in the request body with zero auth check. That's now fixed
  * server-side (services/pocketbase.py's require_user_id), which means every
