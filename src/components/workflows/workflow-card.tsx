@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Clock, MoreHorizontal } from "lucide-react";
+import { ChevronRight, Clock, MoreHorizontal, Pencil } from "lucide-react";
 import { StatusBadge } from "@/components/dashboard/primitives";
 import { flowSteps } from "@/lib/workflow/template-summary";
 import { relativeTime } from "@/lib/utils/time";
@@ -44,13 +44,19 @@ export function WorkflowCard({
   const isPublished = workflow.status === "published";
   const { steps, extra } = flowSteps(workflow.blocks);
 
-  const openBuilder = () =>
+  /**
+   * Opens this exact workflow in the builder canvas. The builder loads the
+   * saved blocks, connections and per-step configuration from the record and
+   * saves back to the same record, so editing never creates a duplicate.
+   */
+  const editWorkflow = () =>
     navigate({
       to: "/dashboard/workflows/builder/$workflowId",
       params: { workflowId: workflow.id },
     });
 
   const menuItems: { label: string; action: () => void; danger?: boolean }[] = [
+    { label: "Edit workflow", action: editWorkflow },
     { label: isPublished ? "Pause workflow" : "Resume workflow", action: onToggleStatus },
     {
       label: "View run history",
@@ -135,8 +141,9 @@ export function WorkflowCard({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={openBuilder}
-            className="synkra-focus rounded-md font-semibold"
+            onClick={editWorkflow}
+            aria-label={`Edit workflow ${workflow.name}`}
+            className="synkra-focus inline-flex items-center gap-1.5 rounded-md font-semibold"
             style={{
               backgroundColor: "var(--accent-green)",
               color: "#0A0A0A",
@@ -144,7 +151,8 @@ export function WorkflowCard({
               padding: "7px 16px",
             }}
           >
-            Open
+            <Pencil size={13} aria-hidden="true" />
+            Edit workflow
           </button>
           <div className="relative" ref={menuRef}>
             <button
