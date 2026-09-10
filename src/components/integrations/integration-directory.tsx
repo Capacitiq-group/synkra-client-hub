@@ -19,6 +19,7 @@ import { HubspotConnectButton } from "@/components/integrations/hubspot-connect"
 import { ZohoConnectButton } from "@/components/integrations/zoho-connect";
 import { GenericConnectButton } from "@/components/integrations/generic-connect";
 import { TallyConnectButton } from "@/components/integrations/tally-connect";
+import { GmailConnectButton } from "@/components/integrations/gmail-connect";
 
 // Providers that use the shared Nango-based generic connect flow instead
 // of a bespoke component — everything built with
@@ -330,6 +331,7 @@ export function IntegrationDirectory({ search }: { search: DirectorySearch }) {
     if (item.key === "hubspot") return <HubspotConnectButton />;
     if (item.key === "zoho") return <ZohoConnectButton />;
     if (item.key === "tally") return <TallyConnectButton />;
+    if (item.key === "gmail") return <GmailConnectButton />;
     if (GENERIC_OAUTH_PROVIDERS.includes(item.key)) {
       return <GenericConnectButton providerKey={item.key} />;
     }
