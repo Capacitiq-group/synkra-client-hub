@@ -1,7 +1,22 @@
 import type { WorkflowBlock } from "./types";
+import pb from "@/lib/pocketbase";
 
 const API_BASE =
   (import.meta.env["VITE_API_URL"] as string | undefined) ?? "https://api.synkra.co.za";
+
+/**
+ * Every integration route on the core side (connect/status/test/disconnect/
+ * reauthorize/approve/reject, across Gmail, HubSpot, Slack, Zoho, Tally, and
+ * the ten oauth_integration_factory.py providers) used to trust a plain
+ * `user_id` field in the request body with zero auth check. That's now fixed
+ * server-side (services/pocketbase.py's require_user_id), which means every
+ * one of those calls needs a real Authorization header or it 401s — this is
+ * that header, attached once here rather than at every call site.
+ */
+function authHeaders(): Record<string, string> {
+  const token = pb.authStore.token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export interface TestStepLog {
   block_id?: string;
@@ -22,9 +37,14 @@ export interface TestRunResult {
 async function post(path: string, body: unknown): Promise<Response> {
   return fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
   });
+}
+
+/** GET helper for the provider picker endpoints (channels, spaces, databases, ...) — same auth requirement as post(). */
+async function getWithAuth(path: string): Promise<Response> {
+  return fetch(`${API_BASE}${path}`, { headers: authHeaders() });
 }
 
 export async function testWorkflow(
@@ -253,8 +273,8 @@ export interface SlackChannel {
 
 /** Only channels the Synkra Slack bot has been added to are returned. */
 export async function fetchSlackChannels(userId: string): Promise<SlackChannel[]> {
-  const response = await fetch(
-    `${API_BASE}/integrations/slack/channels?user_id=${encodeURIComponent(userId)}`,
+  const response = await getWithAuth(
+    `/integrations/slack/channels?user_id=${encodeURIComponent(userId)}`,
   );
   if (!response.ok) throw new Error(`Slack channels failed with status ${response.status}`);
   const data = (await response.json()) as { channels?: SlackChannel[] };
@@ -280,15 +300,15 @@ export interface ClickupList {
 
 /** Populates the two-step "which ClickUp list?" picker in the workflow config UI. */
 export async function fetchClickupSpaces(userId: string): Promise<ClickupSpace[]> {
-  const response = await fetch(`${API_BASE}/integrations/clickup/spaces?user_id=${encodeURIComponent(userId)}`);
+  const response = await getWithAuth(`/integrations/clickup/spaces?user_id=${encodeURIComponent(userId)}`);
   if (!response.ok) throw new Error(`ClickUp spaces failed with status ${response.status}`);
   const data = (await response.json()) as { spaces?: ClickupSpace[] };
   return data.spaces ?? [];
 }
 
 export async function fetchClickupLists(userId: string, spaceId: string): Promise<ClickupList[]> {
-  const response = await fetch(
-    `${API_BASE}/integrations/clickup/lists?user_id=${encodeURIComponent(userId)}&space_id=${encodeURIComponent(spaceId)}`,
+  const response = await getWithAuth(
+    `/integrations/clickup/lists?user_id=${encodeURIComponent(userId)}&space_id=${encodeURIComponent(spaceId)}`,
   );
   if (!response.ok) throw new Error(`ClickUp lists failed with status ${response.status}`);
   const data = (await response.json()) as { lists?: ClickupList[] };
@@ -401,7 +421,7 @@ export interface NotionDatabase {
  * it as an error (see integrations_notion.py's /databases docstring).
  */
 export async function fetchNotionDatabases(userId: string): Promise<NotionDatabase[]> {
-  const response = await fetch(`${API_BASE}/integrations/notion/databases?user_id=${encodeURIComponent(userId)}`);
+  const response = await getWithAuth(`/integrations/notion/databases?user_id=${encodeURIComponent(userId)}`);
   if (!response.ok) throw new Error(`Notion databases failed with status ${response.status}`);
   const data = (await response.json()) as { databases?: NotionDatabase[] };
   return data.databases ?? [];
@@ -430,7 +450,6 @@ export async function retryRun(
   workflowId: string,
   inputData: Record<string, unknown>,
 ): Promise<void> {
-  const { default: pb } = await import("@/lib/pocketbase");
   const response = await fetch("/api/workflows/retry", {
     method: "POST",
     headers: {
