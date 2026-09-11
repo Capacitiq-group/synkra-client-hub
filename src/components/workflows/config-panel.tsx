@@ -468,6 +468,22 @@ export function ConfigPanel({
     setLoopEditorOpen(false);
     setBranchEditor(null);
   }, [block?.id]);
+  // if_else's stored result defaults to a fixed, shared context variable
+  // name ("if_else_result") on the backend when output_variable isn't
+  // set — fine for a single decision block, but a workflow with two or
+  // more if_else blocks would have the second one's result silently
+  // overwrite the first's. Seed a per-block default immediately so an
+  // untouched block never relies on that shared fallback.
+  useEffect(() => {
+    if (
+      block &&
+      blockSubtype(block) === "if_else" &&
+      !(block.config ?? {})["output_variable"]
+    ) {
+      onChange(block.id, { ...(block.config ?? {}), output_variable: `if_else_result_${block.id}` });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block?.id]);
 
   if (!block) {
     return (
@@ -1022,6 +1038,11 @@ export function ConfigPanel({
             label="Name for the “false” path"
             value={text("false_label", "No")}
             onChange={(v) => set("false_label", v)}
+          />
+          <PlainField
+            label="Save the result as"
+            value={text("output_variable", `if_else_result_${block.id}`)}
+            onChange={(v) => set("output_variable", v)}
           />
           {(["true", "false"] as const).map((path) => {
             const key = path === "true" ? "true_blocks" : "false_blocks";
