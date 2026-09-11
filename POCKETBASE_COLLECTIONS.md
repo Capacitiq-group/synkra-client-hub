@@ -360,6 +360,38 @@ Indexes:
 - `idx_notion_poll_cursors_workflow_db`: unique on (`workflow_id`,
   `database_id`).
 
+## `billing_plan_changes` (base, server-only)
+
+Purpose: a scheduled upgrade or downgrade for an account's plan, always
+authoritative on the server (`src/lib/billing/plan-changes.server.ts`).
+Created when a user requests a plan change from Billing; applied — never
+before — at the start of the account's next real billing period, as
+reported by Paystack. The current plan and its limits stay active until
+then; no refund or credit is issued for the period already paid for.
+
+| Field                    | Type                                            | Notes                                                                          |
+| ------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `user_id`                | text, required                                    | Owner.                                                                          |
+| `from_tier`              | select (`free`,`basic`,`pro`), required           | Plan at the time the change was requested.                                     |
+| `to_tier`                | select (`free`,`basic`,`pro`), required           | Plan the account switches to.                                                  |
+| `direction`              | select (`upgrade`,`downgrade`), required          | Derived from `from_tier`/`to_tier` at request time.                            |
+| `status`                 | select (`scheduled`,`applied`,`cancelled`,`failed`), required | `scheduled` until the billing date; only one `scheduled` row may exist per user at a time. |
+| `effective_at`           | date, required                                    | The account's next billing period start — never a calendar month end.         |
+| `requested_at`           | date                                               | When the user requested the change.                                            |
+| `applied_at`             | date                                               | When the change actually took effect.                                          |
+| `provider`               | text                                               | Always `paystack` currently.                                                   |
+| `old_subscription_code`  | text                                               | The subscription being replaced, disabled so it never renews at the old price. |
+| `new_subscription_code`  | text                                               | Real Paystack subscription pre-booked with a future `start_date`.              |
+| `new_plan_code`          | text                                               | Paystack plan code for `to_tier`.                                              |
+| `amount_cents`           | number                                             | Recomputed server-side — never taken from the browser.                         |
+| `note`                   | text                                               | Provider error or status detail, for support/debugging.                        |
+| `claim_count`            | number                                             | Atomic claim gate: this row can be applied from a Paystack webhook or the scheduled sweep, and only the caller whose increment lands on 1 may proceed. Released back on any failed attempt so retries aren't permanently blocked. |
+
+Indexes:
+
+- `idx_billing_plan_changes_user` on `user_id`
+- `idx_billing_plan_changes_status` on `status`
+
 Note: adding these three collections to a live PocketBase requires re-running
 the first-time setup (`runFirstTimeSetup`, `/setup`) or applying
 `pb_schema.json` manually.

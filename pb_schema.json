@@ -74,7 +74,12 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": ["draft", "published", "paused", "error"]
+          "values": [
+            "draft",
+            "published",
+            "paused",
+            "error"
+          ]
         },
         {
           "name": "blocks",
@@ -104,7 +109,11 @@
         {
           "name": "last_run_status",
           "type": "select",
-          "values": ["success", "failed", "running"]
+          "values": [
+            "success",
+            "failed",
+            "running"
+          ]
         },
         {
           "name": "workspace_id",
@@ -131,7 +140,13 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": ["running", "success", "failed", "blocked", "scheduled"]
+          "values": [
+            "running",
+            "success",
+            "failed",
+            "blocked",
+            "scheduled"
+          ]
         },
         {
           "name": "execution_id",
@@ -199,7 +214,27 @@
         {
           "name": "type",
           "type": "select",
-          "values": ["email", "ai", "webhook", "slack", "hubspot", "zoho", "clickup", "notion", "whatsapp", "sms", "shopify", "typeform", "tally", "calendly", "xero", "airtable", "monday", "asana", "pipedrive"]
+          "values": [
+            "email",
+            "ai",
+            "webhook",
+            "slack",
+            "hubspot",
+            "zoho",
+            "clickup",
+            "notion",
+            "whatsapp",
+            "sms",
+            "shopify",
+            "typeform",
+            "tally",
+            "calendly",
+            "xero",
+            "airtable",
+            "monday",
+            "asana",
+            "pipedrive"
+          ]
         },
         {
           "name": "credentials",
@@ -208,7 +243,11 @@
         {
           "name": "status",
           "type": "select",
-          "values": ["connected", "disconnected", "error"]
+          "values": [
+            "connected",
+            "disconnected",
+            "error"
+          ]
         },
         {
           "name": "display_name",
@@ -276,7 +315,9 @@
           "type": "bool"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_workspaces_owner` ON `workspaces` (`owner_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_workspaces_owner` ON `workspaces` (`owner_id`)"
+      ]
     },
     {
       "name": "workspace_members",
@@ -305,13 +346,20 @@
           "name": "role",
           "type": "select",
           "required": true,
-          "values": ["owner", "admin", "member"]
+          "values": [
+            "owner",
+            "admin",
+            "member"
+          ]
         },
         {
           "name": "status",
           "type": "select",
           "required": true,
-          "values": ["active", "removed"]
+          "values": [
+            "active",
+            "removed"
+          ]
         },
         {
           "name": "invited_by",
@@ -346,13 +394,21 @@
           "name": "role",
           "type": "select",
           "required": true,
-          "values": ["admin", "member"]
+          "values": [
+            "admin",
+            "member"
+          ]
         },
         {
           "name": "status",
           "type": "select",
           "required": true,
-          "values": ["pending", "accepted", "cancelled", "expired"]
+          "values": [
+            "pending",
+            "accepted",
+            "cancelled",
+            "expired"
+          ]
         },
         {
           "name": "token",
@@ -444,7 +500,11 @@
           "name": "tier",
           "type": "select",
           "required": true,
-          "values": ["free", "basic", "pro"]
+          "values": [
+            "free",
+            "basic",
+            "pro"
+          ]
         },
         {
           "name": "amount_cents",
@@ -462,7 +522,13 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": ["pending", "paid", "failed", "cancelled", "activated"]
+          "values": [
+            "pending",
+            "paid",
+            "failed",
+            "cancelled",
+            "activated"
+          ]
         },
         {
           "name": "authorization_url",
@@ -515,7 +581,11 @@
         {
           "name": "tier",
           "type": "select",
-          "values": ["free", "basic", "pro"]
+          "values": [
+            "free",
+            "basic",
+            "pro"
+          ]
         },
         {
           "name": "amount_cents",
@@ -536,7 +606,10 @@
         {
           "name": "status",
           "type": "select",
-          "values": ["success", "failed"]
+          "values": [
+            "success",
+            "failed"
+          ]
         },
         {
           "name": "paid_at",
@@ -565,14 +638,23 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": ["pending", "approved", "rejected"]
+          "values": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
         },
         {
           "name": "document",
           "type": "file",
           "maxSelect": 1,
           "maxSize": 10485760,
-          "mimeTypes": ["application/pdf", "image/jpeg", "image/png", "image/webp"]
+          "mimeTypes": [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+          ]
         },
         {
           "name": "institution_name",
@@ -590,7 +672,10 @@
           "name": "verification_method",
           "type": "select",
           "required": true,
-          "values": ["academic_email", "document_upload"]
+          "values": [
+            "academic_email",
+            "document_upload"
+          ]
         },
         {
           "name": "reviewed_by",
@@ -616,13 +701,23 @@
           "name": "tier",
           "type": "select",
           "required": true,
-          "values": ["free", "basic", "pro"]
+          "values": [
+            "free",
+            "basic",
+            "pro"
+          ]
         },
         {
           "name": "status",
           "type": "select",
           "required": true,
-          "values": ["active", "cancelled", "expired"]
+          "values": [
+            "active",
+            "non_renewing",
+            "past_due",
+            "cancelled",
+            "expired"
+          ]
         },
         {
           "name": "provider",
@@ -643,6 +738,34 @@
         {
           "name": "current_period_end",
           "type": "date"
+        },
+        {
+          "name": "provider_customer_code",
+          "type": "text"
+        },
+        {
+          "name": "provider_subscription_code",
+          "type": "text"
+        },
+        {
+          "name": "provider_email_token",
+          "type": "text"
+        },
+        {
+          "name": "provider_plan_code",
+          "type": "text"
+        },
+        {
+          "name": "provider_authorization_code",
+          "type": "text"
+        },
+        {
+          "name": "next_payment_date",
+          "type": "date"
+        },
+        {
+          "name": "cancel_at_period_end",
+          "type": "bool"
         }
       ],
       "indexes": [
@@ -745,12 +868,19 @@
           "name": "kind",
           "type": "select",
           "required": true,
-          "values": ["ai_ops", "emails", "sms", "whatsapp", "voice_minutes", "storage_gb"]
+          "values": [
+            "ai_ops",
+            "emails",
+            "sms",
+            "whatsapp",
+            "voice_minutes",
+            "storage_gb"
+          ]
         },
         {
           "name": "pack_id",
           "type": "text",
-          "note": "Fixed pack id from src/lib/billing/addon-packs.ts, e.g. 'ai_ops_100'. Authoritative for what was actually bought — kind/units/amount_cents are a snapshot for display, never re-trusted for pricing."
+          "note": "Fixed pack id from src/lib/billing/addon-packs.ts, e.g. 'ai_ops_100'. Authoritative for what was actually bought \u2014 kind/units/amount_cents are a snapshot for display, never re-trusted for pricing."
         },
         {
           "name": "packs",
@@ -789,7 +919,11 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": ["pending", "paid", "failed"]
+          "values": [
+            "pending",
+            "paid",
+            "failed"
+          ]
         },
         {
           "name": "provider_transaction_id",
@@ -812,7 +946,7 @@
       "name": "addon_credits",
       "type": "base",
       "serverOnly": true,
-      "$comment": "BREAKING SCHEMA CHANGE (see migration note below): this used to be one row per user+kind (unique index on user_id+kind). It is now one row per PURCHASE — a 'lot' — to support FIFO consumption across purchases, matching src/lib/billing/addon-ledger.server.ts and services/ai_credits.py. The old unique index must be dropped; it would reject every purchase after a customer's first for the same kind. MIGRATION: any existing addon_credits rows under the old shape (one per user+kind, with units_purchased/units_used already aggregated) remain valid AS-IS under the new model — one pre-existing row just becomes that user's single lot. Backfill purchased_at from each row's `created` timestamp so it still sorts correctly in FIFO order alongside any new lots purchased after this migration. The old monthly/period_start/last_reference fields are no longer read by either consumer and can be dropped once you've confirmed nothing else references them.",
+      "$comment": "BREAKING SCHEMA CHANGE (see migration note below): this used to be one row per user+kind (unique index on user_id+kind). It is now one row per PURCHASE \u2014 a 'lot' \u2014 to support FIFO consumption across purchases, matching src/lib/billing/addon-ledger.server.ts and services/ai_credits.py. The old unique index must be dropped; it would reject every purchase after a customer's first for the same kind. MIGRATION: any existing addon_credits rows under the old shape (one per user+kind, with units_purchased/units_used already aggregated) remain valid AS-IS under the new model \u2014 one pre-existing row just becomes that user's single lot. Backfill purchased_at from each row's `created` timestamp so it still sorts correctly in FIFO order alongside any new lots purchased after this migration. The old monthly/period_start/last_reference fields are no longer read by either consumer and can be dropped once you've confirmed nothing else references them.",
       "fields": [
         {
           "name": "user_id",
@@ -823,7 +957,14 @@
           "name": "kind",
           "type": "select",
           "required": true,
-          "values": ["ai_ops", "emails", "sms", "whatsapp", "voice_minutes", "storage_gb"]
+          "values": [
+            "ai_ops",
+            "emails",
+            "sms",
+            "whatsapp",
+            "voice_minutes",
+            "storage_gb"
+          ]
         },
         {
           "name": "pack_id",
@@ -841,7 +982,7 @@
         {
           "name": "price_cents",
           "type": "number",
-          "note": "What this specific lot cost — a purchase-history/receipt detail, never re-used to compute a charge."
+          "note": "What this specific lot cost \u2014 a purchase-history/receipt detail, never re-used to compute a charge."
         },
         {
           "name": "reference",
@@ -863,7 +1004,7 @@
       "name": "addon_consumption",
       "type": "base",
       "serverOnly": true,
-      "$comment": "Append-only ledger line for every unit ever drawn from an addon_credits lot. New collection — needed for the 'consumption history' and 'transaction history' requirements in the Billing UI. Never updated or deleted after creation.",
+      "$comment": "Append-only ledger line for every unit ever drawn from an addon_credits lot. New collection \u2014 needed for the 'consumption history' and 'transaction history' requirements in the Billing UI. Never updated or deleted after creation.",
       "fields": [
         {
           "name": "user_id",
@@ -874,7 +1015,14 @@
           "name": "kind",
           "type": "select",
           "required": true,
-          "values": ["ai_ops", "emails", "sms", "whatsapp", "voice_minutes", "storage_gb"]
+          "values": [
+            "ai_ops",
+            "emails",
+            "sms",
+            "whatsapp",
+            "voice_minutes",
+            "storage_gb"
+          ]
         },
         {
           "name": "lot_id",
@@ -916,13 +1064,21 @@
           "name": "kind",
           "type": "select",
           "required": true,
-          "values": ["executions"]
+          "values": [
+            "executions"
+          ]
         },
         {
           "name": "pack_id",
           "type": "select",
           "required": true,
-          "values": ["exec_250", "exec_1000", "exec_5000", "exec_10000", "exec_25000"]
+          "values": [
+            "exec_250",
+            "exec_1000",
+            "exec_5000",
+            "exec_10000",
+            "exec_25000"
+          ]
         },
         {
           "name": "units",
@@ -957,7 +1113,11 @@
           "name": "status",
           "type": "select",
           "required": true,
-          "values": ["pending", "paid", "failed"]
+          "values": [
+            "pending",
+            "paid",
+            "failed"
+          ]
         },
         {
           "name": "provider_transaction_id",
@@ -990,7 +1150,9 @@
           "name": "kind",
           "type": "select",
           "required": true,
-          "values": ["executions"]
+          "values": [
+            "executions"
+          ]
         },
         {
           "name": "units_purchased",
@@ -1066,7 +1228,10 @@
         {
           "name": "confirmation_method",
           "type": "select",
-          "values": ["auto", "manual"]
+          "values": [
+            "auto",
+            "manual"
+          ]
         },
         {
           "name": "last_confirmation_attempted_at",
@@ -1133,7 +1298,11 @@
         {
           "name": "status",
           "type": "select",
-          "values": ["pending", "processing", "failed"]
+          "values": [
+            "pending",
+            "processing",
+            "failed"
+          ]
         }
       ]
     },
@@ -1228,7 +1397,10 @@
         {
           "name": "consent_type",
           "type": "select",
-          "values": ["terms_and_privacy", "marketing"],
+          "values": [
+            "terms_and_privacy",
+            "marketing"
+          ],
           "required": true
         },
         {
@@ -1332,7 +1504,9 @@
           "type": "bool"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_clients_status` ON `clients` (`status`)"]
+      "indexes": [
+        "CREATE INDEX `idx_clients_status` ON `clients` (`status`)"
+      ]
     },
     {
       "name": "team_members",
@@ -1372,7 +1546,9 @@
           "type": "bool"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_team_members_company` ON `team_members` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_team_members_company` ON `team_members` (`company_id`)"
+      ]
     },
     {
       "name": "leads",
@@ -1424,7 +1600,9 @@
           "type": "json"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_leads_company` ON `leads` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_leads_company` ON `leads` (`company_id`)"
+      ]
     },
     {
       "name": "revenue_log",
@@ -1452,7 +1630,9 @@
           "type": "text"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_revenue_log_company` ON `revenue_log` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_revenue_log_company` ON `revenue_log` (`company_id`)"
+      ]
     },
     {
       "name": "support_tickets",
@@ -1535,7 +1715,9 @@
           "type": "text"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_refund_requests_company` ON `refund_requests` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_refund_requests_company` ON `refund_requests` (`company_id`)"
+      ]
     },
     {
       "name": "invoices",
@@ -1614,7 +1796,9 @@
           "type": "text"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_payments_company` ON `payments` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_payments_company` ON `payments` (`company_id`)"
+      ]
     },
     {
       "name": "pending_payments",
@@ -1676,7 +1860,9 @@
           "type": "text"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_credit_ledger_company` ON `credit_ledger` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_credit_ledger_company` ON `credit_ledger` (`company_id`)"
+      ]
     },
     {
       "name": "expenses",
@@ -1720,7 +1906,9 @@
           "type": "text"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_expenses_company` ON `expenses` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_expenses_company` ON `expenses` (`company_id`)"
+      ]
     },
     {
       "name": "purchase_orders",
@@ -1764,7 +1952,9 @@
           "type": "text"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_purchase_orders_company` ON `purchase_orders` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_purchase_orders_company` ON `purchase_orders` (`company_id`)"
+      ]
     },
     {
       "name": "documents",
@@ -1800,7 +1990,9 @@
           "type": "text"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_documents_company` ON `documents` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_documents_company` ON `documents` (`company_id`)"
+      ]
     },
     {
       "name": "file_logs",
@@ -1832,7 +2024,9 @@
           "type": "text"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_file_logs_company` ON `file_logs` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_file_logs_company` ON `file_logs` (`company_id`)"
+      ]
     },
     {
       "name": "onboarding_tasks",
@@ -1914,7 +2108,9 @@
           "type": "text"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_leave_requests_company` ON `leave_requests` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_leave_requests_company` ON `leave_requests` (`company_id`)"
+      ]
     },
     {
       "name": "performance_reviews",
@@ -2086,7 +2282,9 @@
           "type": "json"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_workflow_logs_company` ON `workflow_logs` (`company_id`)"]
+      "indexes": [
+        "CREATE INDEX `idx_workflow_logs_company` ON `workflow_logs` (`company_id`)"
+      ]
     },
     {
       "name": "pending_approvals",
@@ -2250,6 +2448,104 @@
         "CREATE INDEX `idx_error_logs_created` ON `error_logs` (`created_at`)",
         "CREATE INDEX `idx_error_logs_service` ON `error_logs` (`service`)"
       ]
+    },
+    {
+      "name": "billing_plan_changes",
+      "type": "base",
+      "serverOnly": true,
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "from_tier",
+          "type": "select",
+          "required": true,
+          "values": [
+            "free",
+            "basic",
+            "pro"
+          ]
+        },
+        {
+          "name": "to_tier",
+          "type": "select",
+          "required": true,
+          "values": [
+            "free",
+            "basic",
+            "pro"
+          ]
+        },
+        {
+          "name": "direction",
+          "type": "select",
+          "required": true,
+          "values": [
+            "upgrade",
+            "downgrade"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "values": [
+            "scheduled",
+            "applied",
+            "cancelled",
+            "failed"
+          ]
+        },
+        {
+          "name": "effective_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "requested_at",
+          "type": "date"
+        },
+        {
+          "name": "applied_at",
+          "type": "date"
+        },
+        {
+          "name": "provider",
+          "type": "text"
+        },
+        {
+          "name": "old_subscription_code",
+          "type": "text"
+        },
+        {
+          "name": "new_subscription_code",
+          "type": "text"
+        },
+        {
+          "name": "new_plan_code",
+          "type": "text"
+        },
+        {
+          "name": "amount_cents",
+          "type": "number"
+        },
+        {
+          "name": "note",
+          "type": "text"
+        },
+        {
+          "name": "claim_count",
+          "type": "number",
+          "required": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_billing_plan_changes_user` ON `billing_plan_changes` (`user_id`)",
+        "CREATE INDEX `idx_billing_plan_changes_status` ON `billing_plan_changes` (`status`)"
+      ]
     }
   ],
   "userFields": [
@@ -2260,7 +2556,12 @@
     {
       "name": "student_verification_status",
       "type": "select",
-      "values": ["none", "pending", "approved", "rejected"]
+      "values": [
+        "none",
+        "pending",
+        "approved",
+        "rejected"
+      ]
     },
     {
       "name": "business_name",
@@ -2293,7 +2594,10 @@
     {
       "name": "user_type",
       "type": "select",
-      "values": ["beta", "paid"]
+      "values": [
+        "beta",
+        "paid"
+      ]
     },
     {
       "name": "trial_ends_at",
@@ -2302,7 +2606,11 @@
     {
       "name": "theme_preference",
       "type": "select",
-      "values": ["dark", "light", "system"]
+      "values": [
+        "dark",
+        "light",
+        "system"
+      ]
     },
     {
       "name": "notify_on_failure",
@@ -2355,7 +2663,11 @@
     {
       "name": "tier",
       "type": "select",
-      "values": ["free", "basic", "pro"]
+      "values": [
+        "free",
+        "basic",
+        "pro"
+      ]
     },
     {
       "name": "billing_period_start",

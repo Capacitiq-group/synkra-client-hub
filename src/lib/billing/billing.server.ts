@@ -502,6 +502,20 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     ...(metadata ? { metadata } : {}),
   });
 
+  // A plan makes this a real Paystack subscription rather than a one-off
+  // charge, so Paystack owns the recurring schedule from the first payment.
+  // Only attached when the amount is the plain monthly plan price: bespoke
+  // totals (annual, add-on bundles) stay one-off charges as before.
+  let planCode = "";
+  if (amountCents === priceCents(tier, studentVerified) && input.billingPeriod !== "annual") {
+    try {
+      const { ensurePlan } = await import("./paystack.server");
+      planCode = (await ensurePlan({ tier, amountCents, currency: CURRENCY })).plan_code;
+    } catch (err) {
+      console.error("[billing] could not ensure Paystack plan:", err);
+    }
+  }
+
   try {
     const init = await initializeTransaction({
       email,
@@ -510,6 +524,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       currency: CURRENCY,
       callbackUrl: `${appUrl()}/checkout/return?reference=${encodeURIComponent(reference)}`,
       metadata: { user_id: userId, tier, name },
+      ...(planCode ? { plan: planCode } : {}),
     });
     await pb.collection("billing_checkouts").update(checkout.id, {
       authorization_url: init.authorization_url,
@@ -635,6 +650,35 @@ export async function settleTransaction(
   }
 
   await applyEntitlement(pb, { userId, tier, reference });
+
+  // Keep the provider identifiers needed to manage the subscription later
+  // (scheduling a plan change re-uses the saved card and customer code).
+  const customerCode = verification.customer?.customer_code ?? "";
+  const authorizationCode = verification.authorization?.authorization_code ?? "";
+  const planCode =
+    typeof verification.plan === "string"
+      ? verification.plan
+      : (verification.plan?.plan_code ?? "");
+  if (customerCode || authorizationCode || planCode) {
+    const subscriptionRow = await findByField(pb, "billing_subscriptions", "user_id", userId);
+    if (subscriptionRow) {
+      await pb.collection("billing_subscriptions").update(str(subscriptionRow, "id"), {
+        ...(customerCode ? { provider_customer_code: customerCode } : {}),
+        ...(authorizationCode ? { provider_authorization_code: authorizationCode } : {}),
+        ...(planCode ? { provider_plan_code: planCode } : {}),
+        cancel_at_period_end: false,
+      });
+    }
+    if (customerCode) {
+      const customer = await findByField(pb, "billing_customers", "user_id", userId);
+      if (customer) {
+        await pb
+          .collection("billing_customers")
+          .update(str(customer, "id"), { provider_customer_code: customerCode });
+      }
+    }
+  }
+
   await pb.collection("billing_checkouts").update(str(checkout, "id"), {
     status: "paid",
     paid_at: paidAt,
@@ -695,7 +739,16 @@ export async function handleWebhookEvent(payload: {
   let result = "ignored";
   let ok = true;
   try {
-    if (event === "charge.success" && reference) {
+    if (event.startsWith("subscription.") || event.startsWith("invoice.")) {
+      // Paystack owns the recurring schedule; the local mirror follows it and
+      // a scheduled plan change becomes real on the renewal it reports.
+      const { handleSubscriptionEvent } = await import("./plan-changes.server");
+      result = await handleSubscriptionEvent(event, data);
+    } else if (event === "charge.success" && !reference.startsWith("SYN")) {
+      // A recurring charge carries a plan and no checkout reference of ours.
+      const { recordRecurringCharge } = await import("./plan-changes.server");
+      result = await recordRecurringCharge(data);
+    } else if (event === "charge.success" && reference) {
             // One webhook, three settlement paths: add-on and execution-pack
       // references are namespaced, so the transaction type is decided from the
       // reference itself. Every path is idempotent, so a redelivery grants

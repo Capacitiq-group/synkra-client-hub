@@ -49,6 +49,8 @@ export function initializeTransaction(input: {
   currency: string;
   callbackUrl: string;
   metadata: Record<string, unknown>;
+  /** When set, Paystack creates a recurring subscription on this plan. */
+  plan?: string;
 }): Promise<InitializeResult> {
   return call<InitializeResult>("/transaction/initialize", {
     method: "POST",
@@ -59,6 +61,7 @@ export function initializeTransaction(input: {
       currency: input.currency,
       callback_url: input.callbackUrl,
       metadata: input.metadata,
+      ...(input.plan ? { plan: input.plan } : {}),
     }),
   });
 }
@@ -71,6 +74,8 @@ export interface VerifyResult {
   currency: string;
   paid_at?: string;
   customer?: { email?: string; customer_code?: string };
+  authorization?: { authorization_code?: string; reusable?: boolean };
+  plan?: string | { plan_code?: string };
   metadata?: Record<string, unknown>;
 }
 
@@ -89,4 +94,126 @@ export function verifyWebhookSignature(rawBody: string, signature: string | null
   const a = Buffer.from(expected, "utf8");
   const b = Buffer.from(signature, "utf8");
   return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/* ------------------------------------------------------------------ */
+/* Plans & subscriptions (recurring billing)                           */
+/* ------------------------------------------------------------------ */
+
+export interface PaystackPlan {
+  id: number;
+  name: string;
+  plan_code: string;
+  amount: number;
+  interval: string;
+  currency: string;
+}
+
+/** Deterministic plan name so the same tier+price always maps to one plan. */
+export function planName(tier: string, amountCents: number, currency: string): string {
+  return `SYNKRA ${tier.toUpperCase()} ${currency} ${amountCents} monthly`;
+}
+
+/**
+ * Returns the Paystack plan for a tier+price, creating it the first time.
+ * Paystack owns the recurring schedule, so a subscription is always attached
+ * to one of these plans rather than to a bare transaction amount.
+ */
+export async function ensurePlan(input: {
+  tier: string;
+  amountCents: number;
+  currency: string;
+}): Promise<PaystackPlan> {
+  const name = planName(input.tier, input.amountCents, input.currency);
+  const existing = await call<PaystackPlan[]>(
+    `/plan?perPage=100&status=active&amount=${input.amountCents}`,
+  ).catch(() => [] as PaystackPlan[]);
+  const match = existing.find((p) => p.name === name);
+  if (match) return match;
+  return call<PaystackPlan>("/plan", {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      amount: input.amountCents,
+      interval: "monthly",
+      currency: input.currency,
+    }),
+  });
+}
+
+export interface PaystackSubscription {
+  id: number;
+  subscription_code: string;
+  email_token: string;
+  status: string;
+  next_payment_date?: string | null;
+  createdAt?: string;
+  plan?: { plan_code?: string; amount?: number; name?: string };
+  authorization?: { authorization_code?: string; reusable?: boolean };
+  customer?: { customer_code?: string; email?: string };
+}
+
+export function fetchSubscription(code: string): Promise<PaystackSubscription> {
+  return call<PaystackSubscription>(`/subscription/${encodeURIComponent(code)}`);
+}
+
+/**
+ * Creates a subscription on the given plan. `startDate` is what makes a
+ * scheduled plan change real on Paystack's side: the first charge for the new
+ * plan happens then, never now.
+ */
+export function createSubscription(input: {
+  customer: string;
+  plan: string;
+  authorization?: string;
+  startDate?: string;
+}): Promise<PaystackSubscription> {
+  return call<PaystackSubscription>("/subscription", {
+    method: "POST",
+    body: JSON.stringify({
+      customer: input.customer,
+      plan: input.plan,
+      ...(input.authorization ? { authorization: input.authorization } : {}),
+      ...(input.startDate ? { start_date: input.startDate } : {}),
+    }),
+  });
+}
+
+/** Stops a subscription renewing. The current period is never cut short. */
+export function disableSubscription(input: { code: string; token: string }): Promise<unknown> {
+  return call<unknown>("/subscription/disable", {
+    method: "POST",
+    body: JSON.stringify({ code: input.code, token: input.token }),
+  });
+}
+
+export function enableSubscription(input: { code: string; token: string }): Promise<unknown> {
+  return call<unknown>("/subscription/enable", {
+    method: "POST",
+    body: JSON.stringify({ code: input.code, token: input.token }),
+  });
+}
+
+export interface PaystackCustomer {
+  id: number;
+  customer_code: string;
+  email: string;
+  authorizations?: Array<{
+    authorization_code?: string;
+    reusable?: boolean;
+    channel?: string;
+    signature?: string;
+  }>;
+  subscriptions?: PaystackSubscription[];
+}
+
+export function fetchCustomer(emailOrCode: string): Promise<PaystackCustomer> {
+  return call<PaystackCustomer>(`/customer/${encodeURIComponent(emailOrCode)}`);
+}
+
+/** The most recent reusable card authorization for a customer, if any. */
+export async function reusableAuthorization(emailOrCode: string): Promise<string> {
+  const customer = await fetchCustomer(emailOrCode).catch(() => null);
+  const auth = customer?.authorizations?.find((a) => a.reusable && a.authorization_code);
+  return auth?.authorization_code ?? "";
 }

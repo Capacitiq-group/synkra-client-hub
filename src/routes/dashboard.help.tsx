@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, Mail, PlayCircle, Search } from "lucide-react";
+import { ChevronDown, Mail, Search } from "lucide-react";
 import { DiagnosticsPanel } from "@/components/portal/diagnostics-panel";
 
 export const Route = createFileRoute("/dashboard/help")({
@@ -22,24 +22,6 @@ export const Route = createFileRoute("/dashboard/help")({
   }),
   component: HelpPage,
 });
-
-const VIDEOS = [
-  [
-    "Activating your first template",
-    "A 3-minute walkthrough of choosing a pre-built automation and seeing it run.",
-    import.meta.env["VITE_LOOM_VIDEO_TEMPLATES"],
-  ],
-  [
-    "Building a workflow from scratch",
-    "How to use the builder to create a custom automation for your business.",
-    import.meta.env["VITE_LOOM_VIDEO_BUILDER"],
-  ],
-  [
-    "Reading your activity logs",
-    "How to check if automations are running and fix anything that goes wrong.",
-    import.meta.env["VITE_LOOM_VIDEO_LOGS"],
-  ],
-] as const;
 
 const FAQ_CATEGORIES = [
   "Getting Started",
@@ -73,7 +55,8 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   },
   {
     question: "What happens when my email credits run out?",
-    answer: "Email automations pause automatically. You receive a warning at 20 percent remaining. When your trial ends in September paid plans launch with higher limits and top-up options. You will receive an email before your trial ends.",
+    answer:
+      "Email sending pauses until more become available. Each plan includes a monthly email allowance (Free: 300, Basic: 2,000, Pro: 5,000) that resets every billing period and does not roll over. If you need more before your next billing date, buy an email add-on pack from Settings → Usage — purchased email credit never expires and is used automatically once your monthly allowance runs out.",
     category: "Billing & Credits",
   },
   {
@@ -118,7 +101,7 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   },
   {
     question: "Can I send emails to multiple people from one workflow?",
-    answer: "Not with a single Send email block. The Send email block sends to one recipient per run. To email multiple people you need either separate workflows for each person or a scheduled workflow that loops through a list. A proper loop block for list processing is coming in a future update.",
+    answer: "Not with a single Send email block. The Send email block sends to one recipient per run. To email multiple people, use a \"List: fetch\" step to pull the list and a \"Repeat for each item\" step (under Logic) to send once per person — or use separate workflows for each person.",
     category: "Workflows & Templates",
   },
   {
@@ -163,7 +146,8 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   },
   {
     question: "How many workflows can I have active at once?",
-    answer: "During your free trial you can have unlimited workflows. Your only limit is 2000 total workflow runs per month and 100 emails per month.",
+    answer:
+      "It depends on your plan: Free Forever allows 5 active workflows and 500 automation executions a month, Basic allows 25 active workflows and 15,000 executions, and Pro allows 100 active workflows and 35,000 executions. If you need more executions before your next billing date, you can buy an execution top-up pack from Settings → Usage — purchased executions never expire.",
     category: "Billing & Credits",
   },
   {
@@ -173,7 +157,8 @@ const FAQ: { question: string; answer: string; category: (typeof FAQ_CATEGORIES)
   },
   {
     question: "Can I use Synkra to send automated WhatsApp messages?",
-    answer: "Not yet. WhatsApp automation is coming in September 2026 when we launch our full platform. Your current free trial includes email automation only.",
+    answer:
+      "Not yet — WhatsApp automation is on the roadmap and each plan already reserves a monthly conversation allowance for it (shown as \"Coming soon\" under Settings → Usage), but the feature itself isn't available to build workflows with yet. Email automation is fully available today on every plan.",
     category: "Getting Started",
   },
   {
@@ -238,65 +223,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         {children}
       </div>
     </section>
-  );
-}
-
-function VideoCard({
-  title,
-  description,
-  url,
-}: {
-  title: string;
-  description: string;
-  url?: string;
-}) {
-  const [hover, setHover] = useState(false);
-  const thumb = (
-    <div
-      className="flex aspect-video flex-col items-center justify-center gap-1"
-      style={{ backgroundColor: "var(--bg-elevated)" }}
-    >
-      <PlayCircle
-        size={44}
-        style={{
-          color: url && hover ? "var(--accent-green)" : "var(--text-muted)",
-          transition: "color 150ms ease",
-        }}
-      />
-      {!url && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Coming soon</span>}
-    </div>
-  );
-  return (
-    <article
-      className="overflow-hidden border"
-      style={{
-        backgroundColor: "var(--bg-card)",
-        border: "1px solid var(--border-default)",
-        borderRadius: "var(--radius-lg)",
-      }}
-    >
-      {url ? (
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Watch ${title}`}
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          className="block"
-        >
-          {thumb}
-        </a>
-      ) : (
-        thumb
-      )}
-      <div style={{ padding: 16 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{title}</h3>
-        <p className="mt-1.5" style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-          {description}
-        </p>
-      </div>
-    </article>
   );
 }
 

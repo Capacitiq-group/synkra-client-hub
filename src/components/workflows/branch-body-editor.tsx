@@ -4,13 +4,13 @@
  * steps are recorded as skipped by run_blocks in workflow_engine.py.
  *
  * Deliberately mirrors LoopBodyEditor: same modal, same BuilderCanvas /
- * BlockLibrary / ConfigPanel reuse, no bespoke nested-canvas rendering.
+ * BlockPicker / ConfigPanel reuse, no bespoke nested-canvas rendering.
  * Unlike a loop, a branch shares the outer workflow's working data, so
  * anything a step here stores is usable after the decision.
  */
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BlockLibrary } from "./block-library";
+import { BlockPicker, type PickerMode } from "./block-picker";
 import { BuilderCanvas } from "./builder-canvas";
 import { ConfigPanel } from "./config-panel";
 import { createBlock, type BlockDefinition } from "@/lib/workflow/blocks";
@@ -29,6 +29,7 @@ export function BranchBodyEditor({
 }) {
   const [blocks, setBlocks] = useState<WorkflowBlock[]>(initialBlocks);
   const [selectedId, setSelectedId] = useState<string | null>(initialBlocks[0]?.id ?? null);
+  const [picker, setPicker] = useState<PickerMode | null>(null);
 
   const addBlock = (definition: BlockDefinition, index?: number) => {
     const block = createBlock(definition);
@@ -68,16 +69,32 @@ export function BranchBodyEditor({
           </p>
         </DialogHeader>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[240px_1fr_320px]">
-          <div className="min-h-0 border-r" style={{ borderColor: "var(--border-default)" }}>
-            <BlockLibrary onAdd={(definition) => addBlock(definition)} hasTrigger />
-          </div>
+        <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[1fr_320px]">
           <div className="min-h-0 overflow-auto p-3">
-            {blocks.length === 0 ? (
-              <p className="p-6 text-center text-[13px]" style={{ color: "var(--text-muted)" }}>
-                Add a step from the left — it will run only on the “{pathLabel}” path.
+            {blocks.length === 0 && (
+              <p className="pb-2 text-center text-[13px]" style={{ color: "var(--text-muted)" }}>
+                Add a step — it will run only on the “{pathLabel}” path.
               </p>
-            ) : (
+            )}
+            <div className="flex justify-center gap-2 pb-3">
+              <button
+                type="button"
+                onClick={() => setPicker("action")}
+                className="synkra-focus rounded-md px-3 py-2 text-[13px] font-medium"
+                style={{ border: "1px dashed var(--border-strong)", color: "var(--text-secondary)" }}
+              >
+                + Add Action
+              </button>
+              <button
+                type="button"
+                onClick={() => setPicker("logic")}
+                className="synkra-focus rounded-md px-3 py-2 text-[13px] font-medium"
+                style={{ border: "1px dashed var(--border-strong)", color: "var(--text-secondary)" }}
+              >
+                + Add Logic
+              </button>
+            </div>
+            {blocks.length > 0 && (
               <BuilderCanvas
                 blocks={blocks}
                 selectedId={selectedId}
@@ -98,6 +115,17 @@ export function BranchBodyEditor({
             />
           </div>
         </div>
+
+        {picker && (
+          <BlockPicker
+            mode={picker}
+            hasTrigger
+            onAdd={(definition) => addBlock(definition)}
+            onClose={() => setPicker(null)}
+          />
+        )}
+
+
 
         <div
           className="flex items-center justify-end gap-2 border-t p-3"

@@ -34,6 +34,7 @@ import { Route as ApiPublicPlansRouteImport } from './routes/api/public/plans'
 import { Route as ApiWorkflowsRetryRouteImport } from './routes/api/workflows/retry'
 import { Route as DashboardWorkflowsIndexRouteImport } from './routes/dashboard.workflows.index'
 import { Route as ResetPasswordConfirmTokenRouteImport } from './routes/reset-password_.confirm.$token'
+import { Route as ApiPublicBillingApplyPlanChangesRouteImport } from './routes/api/public/billing/apply-plan-changes'
 import { Route as ApiPublicBillingWebhookRouteImport } from './routes/api/public/billing/webhook'
 import { Route as ApiPublicExecutionsCompleteRouteImport } from './routes/api/public/executions/complete'
 import { Route as ApiPublicExecutionsStartRouteImport } from './routes/api/public/executions/start'
@@ -167,6 +168,12 @@ const ResetPasswordConfirmTokenRoute =
     path: '/$token',
     getParentRoute: () => ResetPasswordConfirmRoute,
   } as any)
+const ApiPublicBillingApplyPlanChangesRoute =
+  ApiPublicBillingApplyPlanChangesRouteImport.update({
+    id: '/api/public/billing/apply-plan-changes',
+    path: '/api/public/billing/apply-plan-changes',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicBillingWebhookRoute = ApiPublicBillingWebhookRouteImport.update({
   id: '/api/public/billing/webhook',
   path: '/api/public/billing/webhook',
@@ -229,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/api/workflows/retry': typeof ApiWorkflowsRetryRoute
   '/reset-password/confirm/$token': typeof ResetPasswordConfirmTokenRoute
   '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
+  '/api/public/billing/apply-plan-changes': typeof ApiPublicBillingApplyPlanChangesRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/executions/complete': typeof ApiPublicExecutionsCompleteRoute
   '/api/public/executions/start': typeof ApiPublicExecutionsStartRoute
@@ -261,6 +269,7 @@ export interface FileRoutesByTo {
   '/api/workflows/retry': typeof ApiWorkflowsRetryRoute
   '/reset-password/confirm/$token': typeof ResetPasswordConfirmTokenRoute
   '/dashboard/workflows': typeof DashboardWorkflowsIndexRoute
+  '/api/public/billing/apply-plan-changes': typeof ApiPublicBillingApplyPlanChangesRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/executions/complete': typeof ApiPublicExecutionsCompleteRoute
   '/api/public/executions/start': typeof ApiPublicExecutionsStartRoute
@@ -295,6 +304,7 @@ export interface FileRoutesById {
   '/api/workflows/retry': typeof ApiWorkflowsRetryRoute
   '/reset-password_/confirm/$token': typeof ResetPasswordConfirmTokenRoute
   '/dashboard/workflows/': typeof DashboardWorkflowsIndexRoute
+  '/api/public/billing/apply-plan-changes': typeof ApiPublicBillingApplyPlanChangesRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/executions/complete': typeof ApiPublicExecutionsCompleteRoute
   '/api/public/executions/start': typeof ApiPublicExecutionsStartRoute
@@ -330,6 +340,7 @@ export interface FileRouteTypes {
     | '/api/workflows/retry'
     | '/reset-password/confirm/$token'
     | '/dashboard/workflows/'
+    | '/api/public/billing/apply-plan-changes'
     | '/api/public/billing/webhook'
     | '/api/public/executions/complete'
     | '/api/public/executions/start'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/api/workflows/retry'
     | '/reset-password/confirm/$token'
     | '/dashboard/workflows'
+    | '/api/public/billing/apply-plan-changes'
     | '/api/public/billing/webhook'
     | '/api/public/executions/complete'
     | '/api/public/executions/start'
@@ -395,6 +407,7 @@ export interface FileRouteTypes {
     | '/api/workflows/retry'
     | '/reset-password_/confirm/$token'
     | '/dashboard/workflows/'
+    | '/api/public/billing/apply-plan-changes'
     | '/api/public/billing/webhook'
     | '/api/public/executions/complete'
     | '/api/public/executions/start'
@@ -419,6 +432,7 @@ export interface RootRouteChildren {
   ResetPasswordConfirmRoute: typeof ResetPasswordConfirmRouteWithChildren
   ApiPublicPlansRoute: typeof ApiPublicPlansRoute
   ApiWorkflowsRetryRoute: typeof ApiWorkflowsRetryRoute
+  ApiPublicBillingApplyPlanChangesRoute: typeof ApiPublicBillingApplyPlanChangesRoute
   ApiPublicBillingWebhookRoute: typeof ApiPublicBillingWebhookRoute
   ApiPublicExecutionsCompleteRoute: typeof ApiPublicExecutionsCompleteRoute
   ApiPublicExecutionsStartRoute: typeof ApiPublicExecutionsStartRoute
@@ -602,6 +616,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordConfirmTokenRouteImport
       parentRoute: typeof ResetPasswordConfirmRoute
     }
+    '/api/public/billing/apply-plan-changes': {
+      id: '/api/public/billing/apply-plan-changes'
+      path: '/api/public/billing/apply-plan-changes'
+      fullPath: '/api/public/billing/apply-plan-changes'
+      preLoaderRoute: typeof ApiPublicBillingApplyPlanChangesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/billing/webhook': {
       id: '/api/public/billing/webhook'
       path: '/api/public/billing/webhook'
@@ -707,6 +728,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordConfirmRoute: ResetPasswordConfirmRouteWithChildren,
   ApiPublicPlansRoute: ApiPublicPlansRoute,
   ApiWorkflowsRetryRoute: ApiWorkflowsRetryRoute,
+  ApiPublicBillingApplyPlanChangesRoute: ApiPublicBillingApplyPlanChangesRoute,
   ApiPublicBillingWebhookRoute: ApiPublicBillingWebhookRoute,
   ApiPublicExecutionsCompleteRoute: ApiPublicExecutionsCompleteRoute,
   ApiPublicExecutionsStartRoute: ApiPublicExecutionsStartRoute,

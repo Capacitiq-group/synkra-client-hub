@@ -5,13 +5,20 @@
  * the caller's PocketBase token. The upgrade reuses the signed-in account's own
  * email, so the existing user id (and its data) is kept — never replaced.
  */
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, Loader2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
 import pb from "@/lib/pocketbase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Shimmer, SectionError } from "@/components/dashboard/primitives";
-import { getBillingOverviewFn, startUpgradeFn } from "@/lib/billing/billing.functions";
-import { formatZar, PURCHASABLE_TIERS, type PurchasableTier } from "@/lib/billing/config";
+import {
+  getBillingOverviewFn,
+  getPlanChangeContextFn,
+  schedulePlanChangeFn,
+  cancelScheduledPlanChangeFn,
+  startUpgradeFn,
+} from "@/lib/billing/billing.functions";
+import { formatZar, isPurchasableTier, type PurchasableTier } from "@/lib/billing/config";
+import type { PlanChangeContext } from "@/lib/billing/plan-changes.server";
 import {
   getPlanLimits,
   getPlanName,
@@ -66,6 +73,25 @@ export function BillingSettings() {
     staleTime: 15000,
   });
 
+  const queryClient = useQueryClient();
+
+  // Plan changes are governed entirely by the server: which switches are
+  // possible, when they take effect, and what is already scheduled.
+  const planChange = useQuery({
+    queryKey: ["plan-change-context", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () =>
+      unwrap(
+        (await getPlanChangeContextFn({ data: { token: token() } })) as unknown as Result,
+      ) as unknown as PlanChangeContext,
+    staleTime: 15000,
+  });
+
+  const refreshBilling = () => {
+    void queryClient.invalidateQueries({ queryKey: ["plan-change-context", user?.id] });
+    void queryClient.invalidateQueries({ queryKey: ["billing-overview", user?.id] });
+  };
+
   const upgrade = useMutation({
     mutationFn: async (tier: PurchasableTier) => {
       const result = unwrap(
@@ -76,6 +102,24 @@ export function BillingSettings() {
       window.location.href = url;
       return result;
     },
+  });
+
+  const schedule = useMutation({
+    mutationFn: async (tier: string) =>
+      unwrap(
+        (await schedulePlanChangeFn({
+          data: { token: token(), tier: tier as "free" | PurchasableTier },
+        })) as unknown as Result,
+      ),
+    onSuccess: refreshBilling,
+  });
+
+  const cancelChange = useMutation({
+    mutationFn: async () =>
+      unwrap(
+        (await cancelScheduledPlanChangeFn({ data: { token: token() } })) as unknown as Result,
+      ),
+    onSuccess: refreshBilling,
   });
 
   if (overview.isLoading) {
@@ -95,9 +139,14 @@ export function BillingSettings() {
 
   const data = overview.data;
   const currentTier = normalizeTier(data.tier);
-  const upgrades = PURCHASABLE_TIERS.filter(
-    (tier) => getPlanLimits(tier).priceZar > getPlanLimits(currentTier).priceZar,
-  );
+  const context = planChange.data ?? null;
+  const scheduled = context?.scheduled ?? null;
+  const options = context?.options ?? [];
+  // With no active billing period there is nothing to schedule against, so the
+  // account pays now instead — the server decides this, never the browser.
+  const payNow = !context || context.requiresCheckout;
+  const changeError = schedule.error ?? cancelChange.error ?? upgrade.error;
+
 
   return (
     <div className="space-y-6">
@@ -131,57 +180,107 @@ export function BillingSettings() {
         )}
       </Card>
 
-      {upgrades.length > 0 && (
+      {scheduled && (
         <Card>
-          <h2 className="text-[16px] font-semibold">Upgrade</h2>
+          <h2 className="text-[16px] font-semibold">Scheduled plan change</h2>
+          <p className="mt-2 text-[13px]" style={{ color: "var(--text-secondary)" }}>
+            You are moving from <strong>{scheduled.fromPlanName}</strong> to{" "}
+            <strong>{scheduled.toPlanName}</strong>. This takes effect on{" "}
+            <strong>{formatDate(scheduled.effectiveAt)}</strong>, the start of your next billing
+            period. Your current plan and its limits stay active until then, and nothing is
+            charged, refunded or credited for the current period.
+          </p>
+          {scheduled.amountCents > 0 && (
+            <p className="mt-1 text-[13px]" style={{ color: "var(--text-muted)" }}>
+              From that date you will be charged {formatZar(scheduled.amountCents)} per month.
+            </p>
+          )}
+          {scheduled.cancellable && (
+            <button
+              type="button"
+              disabled={cancelChange.isPending}
+              onClick={() => cancelChange.mutate()}
+              className="mt-4 flex h-9 items-center gap-1 rounded-lg px-3 text-[13px] font-semibold"
+              style={{
+                border: "1px solid var(--border-default)",
+                color: "var(--text-primary)",
+                opacity: cancelChange.isPending ? 0.6 : 1,
+              }}
+            >
+              {cancelChange.isPending && <Loader2 size={14} className="animate-spin" />}
+              Cancel scheduled change
+            </button>
+          )}
+        </Card>
+      )}
+
+      {options.length > 0 && (
+        <Card>
+          <h2 className="text-[16px] font-semibold">Change plan</h2>
           <p className="mt-1 text-[13px]" style={{ color: "var(--text-secondary)" }}>
-            Your account keeps its history, workflows and team when you move up a plan.
+            {payNow
+              ? "You have no active billing period yet, so a new plan starts with a payment."
+              : `Any change takes effect on ${formatDate(
+                  context?.effectiveAt ?? "",
+                )} — the start of your next billing period. Your current plan and limits stay active until then, with no refund or credit for the current period.`}
           </p>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {upgrades.map((tier) => {
-              const limits = getPlanLimits(tier);
+            {options.map((option) => {
+              const isUpgrade = option.direction === "upgrade";
+              const busy = schedule.isPending || upgrade.isPending;
+              const canPayNow = payNow && isPurchasableTier(option.tier);
               return (
                 <div
-                  key={tier}
+                  key={option.tier}
                   className="flex items-center justify-between rounded-lg p-4"
                   style={{ border: "1px solid var(--border-default)" }}
                 >
                   <div>
-                    <p className="text-[14px] font-semibold">{getPlanName(tier)}</p>
+                    <p className="text-[14px] font-semibold">{option.planName}</p>
                     <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>
-                      {formatZar(Math.round(limits.priceZar * 100))} / month ·{" "}
-                      {limits.seats} seats
+                      {option.priceCents > 0
+                        ? `${formatZar(option.priceCents)} / month`
+                        : "No charge"}{" "}
+                      · {getPlanLimits(option.tier).seats} seats
                     </p>
                   </div>
                   <button
                     type="button"
-                    disabled={upgrade.isPending}
-                    onClick={() => upgrade.mutate(tier)}
+                    disabled={busy || (payNow && !canPayNow)}
+                    onClick={() =>
+                      canPayNow
+                        ? upgrade.mutate(option.tier as PurchasableTier)
+                        : schedule.mutate(option.tier)
+                    }
                     className="flex h-9 items-center gap-1 rounded-lg px-3 text-[13px] font-semibold"
                     style={{
-                      backgroundColor: "var(--accent-green)",
-                      color: "var(--bg-base)",
-                      opacity: upgrade.isPending ? 0.6 : 1,
+                      backgroundColor: isUpgrade ? "var(--accent-green)" : "transparent",
+                      border: isUpgrade ? "none" : "1px solid var(--border-default)",
+                      color: isUpgrade ? "var(--bg-base)" : "var(--text-primary)",
+                      opacity: busy || (payNow && !canPayNow) ? 0.6 : 1,
                     }}
                   >
-                    {upgrade.isPending ? (
+                    {busy ? (
                       <Loader2 size={14} className="animate-spin" />
-                    ) : (
+                    ) : isUpgrade ? (
                       <ArrowUpRight size={14} />
+                    ) : (
+                      <ArrowDownRight size={14} />
                     )}
-                    Upgrade
+                    {canPayNow ? "Upgrade" : isUpgrade ? "Schedule upgrade" : "Schedule downgrade"}
                   </button>
                 </div>
               );
             })}
           </div>
-          {upgrade.error && (
+          {changeError && (
             <p className="mt-3 text-[13px]" style={{ color: "var(--state-error)" }} role="alert">
-              {upgrade.error instanceof Error ? upgrade.error.message : "Upgrade failed."}
+              {changeError instanceof Error ? changeError.message : "Plan change failed."}
             </p>
           )}
         </Card>
       )}
+
 
       <Card>
         <h2 className="text-[16px] font-semibold">Payment history</h2>

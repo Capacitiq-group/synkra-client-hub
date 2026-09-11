@@ -198,10 +198,12 @@ export function AddonPurchaseModal({ kind, onClose }: Props) {
         )}
         <p className="mt-3 text-center" style={{ fontSize: 12, color: "var(--text-muted)" }}>
           {product.purchasable
-            ? "Non-expiring balance, oldest pack used first. You'll be redirected to Paystack to complete payment securely."
+            ? product.kind === "storage_gb"
+              ? "Billed as GB purchased, oldest pack used first. You'll be redirected to Paystack to complete payment securely."
+              : "Non-expiring balance, oldest pack used first. You'll be redirected to Paystack to complete payment securely."
             : `${ADDON_UNAVAILABLE_MESSAGE} We'll enable it here as soon as ${product.label} is connected.`}
         </p>
       </div>
     </div>
   );
-                                          }
+}

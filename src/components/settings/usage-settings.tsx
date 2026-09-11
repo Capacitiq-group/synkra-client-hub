@@ -471,8 +471,8 @@ export function UsageSettings() {
                   <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>
                     +{formatNumber(balanceFor("storage_gb"))} GB purchased
                   </span>{" "}
-                  available. Purchased storage never expires and is only used once this month's
-                  included allowance runs out.
+                  available, billed as GB purchased rather than a non-expiring credit, and only
+                  used once this month's included allowance runs out.
                 </>
               ) : (
                 <>
@@ -484,8 +484,8 @@ export function UsageSettings() {
                     style={{ color: "var(--accent-green)", fontWeight: 600 }}
                   >
                     Buy a storage add-on pack
-                  </button>{" "}
-                  — purchased storage never expires.
+                  </button>
+                  .
                 </>
               )
             }

@@ -17,12 +17,12 @@ import {
   ensureCalendlyWebhook,
 } from "@/lib/workflow/api";
 import type { WorkflowBlock } from "@/lib/workflow/types";
-import { BlockLibrary } from "./block-library";
+import { BlockPicker, type PickerMode } from "./block-picker";
 import { BuilderCanvas } from "./builder-canvas";
 import { ConfigPanel } from "./config-panel";
 import { TestModal } from "./test-modal";
 
-type MobileTab = "library" | "canvas" | "config";
+type MobileTab = "canvas" | "config";
 
 export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
   const navigate = useNavigate();
@@ -38,6 +38,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [testing, setTesting] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>("canvas");
+  const [picker, setPicker] = useState<PickerMode | null>(null);
   const dirty = useRef(false);
   const loaded = useRef(false);
 
@@ -379,19 +380,6 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
       </header>
 
       <div className="hidden min-h-0 flex-1 md:flex">
-        <aside
-          className="h-full min-h-0 shrink-0 overflow-hidden"
-          style={{
-            width: 240,
-            borderRight: panelBorder,
-          }}
-          aria-label="Block library"
-        >
-          <BlockLibrary
-            onAdd={(definition) => addBlock(definition)}
-            hasTrigger={hasTrigger}
-          />
-        </aside>
 
         <main className="h-full min-h-0 min-w-0 flex-1 overflow-auto">
           <BuilderCanvas
@@ -420,6 +408,9 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
             onDropDefinition={(definition, index) =>
               addBlock(definition, index)
             }
+            onAddTrigger={hasTrigger ? undefined : () => setPicker("trigger")}
+            onAddAction={() => setPicker("action")}
+            onAddLogic={() => setPicker("logic")}
           />
         </main>
 
@@ -450,15 +441,6 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
 
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
         <div className="min-h-0 flex-1 overflow-auto">
-          {mobileTab === "library" && (
-            <BlockLibrary
-              onAdd={(definition) => {
-                addBlock(definition);
-                setMobileTab("canvas");
-              }}
-              hasTrigger={hasTrigger}
-            />
-          )}
 
           {mobileTab === "canvas" && (
             <BuilderCanvas
@@ -490,6 +472,9 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
               onDropDefinition={(definition, index) =>
                 addBlock(definition, index)
               }
+              onAddTrigger={hasTrigger ? undefined : () => setPicker("trigger")}
+              onAddAction={() => setPicker("action")}
+              onAddLogic={() => setPicker("logic")}
             />
           )}
 
@@ -516,9 +501,18 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           style={{ borderTop: panelBorder }}
           aria-label="Builder panels"
         >
+          <button
+            type="button"
+            onClick={() => setPicker(hasTrigger ? "action" : "trigger")}
+            className="synkra-focus flex flex-col items-center gap-1 py-2"
+            style={{ fontSize: 12, color: "var(--text-muted)" }}
+          >
+            <Layers size={16} aria-hidden="true" />
+            {hasTrigger ? "Add step" : "Add trigger"}
+          </button>
+
           {(
             [
-              ["library", "Blocks", Layers],
               ["canvas", "Canvas", Play],
               ["config", "Settings", Settings2],
             ] as const
@@ -545,6 +539,20 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
           ))}
         </nav>
       </div>
+
+      {picker && (
+        <BlockPicker
+          mode={picker}
+          hasTrigger={hasTrigger}
+          onAdd={(definition) => {
+            addBlock(definition);
+            setMobileTab("config");
+          }}
+          onClose={() => setPicker(null)}
+        />
+      )}
+
+
 
       {testing && user && (
         <TestModal

@@ -183,3 +183,49 @@ export const startUpgradeFn = createServerFn({ method: "POST" })
       });
     }),
   );
+
+/**
+ * What the signed-in account may switch to, when a switch would take effect
+ * and any change already scheduled. All of it is computed server-side from
+ * the account's real Paystack billing period.
+ */
+export const getPlanChangeContextFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => authSchema.parse(data))
+  .handler(async ({ data }) =>
+    guard(async () => {
+      const { verifyUserToken } = await import("@/lib/usage/pocketbase.server");
+      const { getPlanChangeContext } = await import("./plan-changes.server");
+      const { userId } = await verifyUserToken(data.token);
+      return { ok: true as const, ...(await getPlanChangeContext(userId)) };
+    }),
+  );
+
+/**
+ * Schedules an upgrade or downgrade for the start of the next billing period.
+ * The target tier is validated here and the price is always recomputed on the
+ * server — never taken from the browser.
+ */
+export const schedulePlanChangeFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    authSchema.extend({ tier: z.enum(["free", ...PURCHASABLE_TIERS]) }).parse(data),
+  )
+  .handler(async ({ data }) =>
+    guard(async () => {
+      const { verifyUserToken } = await import("@/lib/usage/pocketbase.server");
+      const { schedulePlanChange } = await import("./plan-changes.server");
+      const { userId } = await verifyUserToken(data.token);
+      return schedulePlanChange(userId, data.tier);
+    }),
+  );
+
+/** Cancels a pending plan change before its billing date. */
+export const cancelScheduledPlanChangeFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => authSchema.parse(data))
+  .handler(async ({ data }) =>
+    guard(async () => {
+      const { verifyUserToken } = await import("@/lib/usage/pocketbase.server");
+      const { cancelScheduledPlanChange } = await import("./plan-changes.server");
+      const { userId } = await verifyUserToken(data.token);
+      return cancelScheduledPlanChange(userId);
+    }),
+  );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDown, GripVertical, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowDown, GripVertical, Trash2, AlertTriangle, Plus, Zap } from "lucide-react";
 import {
   BLOCK_DEFINITIONS,
   definitionFor,
@@ -16,6 +16,10 @@ export function BuilderCanvas({
   onRemove,
   onReorder,
   onDropDefinition,
+  onAddTrigger,
+  onAddAction,
+  onAddLogic,
+  emptyHint,
 }: {
   blocks: WorkflowBlock[];
   selectedId: string | null;
@@ -23,6 +27,11 @@ export function BuilderCanvas({
   onRemove: (id: string) => void;
   onReorder: (from: number, to: number) => void;
   onDropDefinition: (definition: BlockDefinition, index: number) => void;
+  /** Opens the trigger selector. When absent the old empty-state copy shows. */
+  onAddTrigger?: (() => void) | undefined;
+  onAddAction?: (() => void) | undefined;
+  onAddLogic?: (() => void) | undefined;
+  emptyHint?: string | undefined;
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -79,8 +88,29 @@ export function BuilderCanvas({
           }}
         >
           <p style={{ fontSize: 15, color: "var(--text-secondary)" }}>
-            Add a trigger to start. Tap a block on mobile or drag one across on desktop.
+            {emptyHint ??
+              (onAddTrigger
+                ? "Every workflow starts with a trigger — the thing that sets it off."
+                : "Add a trigger to start. Tap a block on mobile or drag one across on desktop.")}
           </p>
+          {onAddTrigger && (
+            <button
+              type="button"
+              onClick={onAddTrigger}
+              className="synkra-focus mt-4 inline-flex items-center gap-2 rounded-md"
+              style={{
+                backgroundColor: "var(--accent-green)",
+                color: "#04120B",
+                fontSize: 14,
+                fontWeight: 600,
+                padding: "10px 18px",
+              }}
+            >
+              <Zap size={15} aria-hidden="true" />
+              Select a Trigger
+            </button>
+          )}
+
         </div>
       ) : (
         <>
@@ -173,6 +203,45 @@ export function BuilderCanvas({
               </div>
             );
           })}
+
+          {(onAddAction || onAddLogic) && (
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {onAddAction && (
+                <button
+                  type="button"
+                  onClick={onAddAction}
+                  className="synkra-focus inline-flex items-center gap-1.5 rounded-md"
+                  style={{
+                    border: "1px dashed var(--border-strong)",
+                    color: "var(--text-secondary)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    padding: "9px 14px",
+                  }}
+                >
+                  <Plus size={14} aria-hidden="true" />
+                  Add Action
+                </button>
+              )}
+              {onAddLogic && (
+                <button
+                  type="button"
+                  onClick={onAddLogic}
+                  className="synkra-focus inline-flex items-center gap-1.5 rounded-md"
+                  style={{
+                    border: "1px dashed var(--border-strong)",
+                    color: "var(--text-secondary)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    padding: "9px 14px",
+                  }}
+                >
+                  <Plus size={14} aria-hidden="true" />
+                  Add Logic
+                </button>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
