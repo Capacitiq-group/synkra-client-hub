@@ -503,8 +503,9 @@ function WorkflowsPage() {
 
   const { run: runDuplicate, saving: duplicating } = useSaveAction(
     async (workflow: PortalWorkflow) => {
-      await duplicateWorkflow(workflow);
+      const created = await duplicateWorkflow(workflow);
       await refreshWorkflows();
+      return created;
     },
     {
       pending: "Duplicating workflow…",
@@ -512,6 +513,18 @@ function WorkflowsPage() {
       error: "Could not duplicate the workflow",
     },
   );
+
+  const handleDuplicate = async (workflow: PortalWorkflow) => {
+    const created = await runDuplicate(workflow);
+    // Open the copy's own canvas — a duplicate a user can't find and
+    // continue editing straight away isn't meaningfully "duplicated".
+    if (created?.id) {
+      void navigate({
+        to: "/dashboard/workflows/builder/$workflowId",
+        params: { workflowId: created.id },
+      });
+    }
+  };
 
   const { run: runDelete, saving: deleting } = useSaveAction(
     async (workflowId: string) => {
@@ -834,7 +847,7 @@ function WorkflowsPage() {
                 workflow.template_id ? templateNames.get(workflow.template_id) : undefined
               }
               onToggleStatus={() => void runToggleStatus(workflow)}
-              onDuplicate={() => void runDuplicate(workflow)}
+              onDuplicate={() => void handleDuplicate(workflow)}
               onRename={() => void handleRename(workflow)}
               onDelete={() => setDeleteTarget(workflow)}
               busy={workflowActionBusy}

@@ -31,10 +31,19 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    /**
+     * Extra classes merged onto the portalled overlay. Needed when this
+     * dialog is opened from inside another `fixed`, stacked surface (e.g.
+     * the full-screen workflow builder at z-[60]) — the overlay and
+     * content otherwise default to z-50 and render underneath it even
+     * though the dialog is "open". See workflow-builder.tsx / block-picker.tsx.
+     */
+    overlayClassName?: string;
+  }
+>(({ className, overlayClassName, children, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

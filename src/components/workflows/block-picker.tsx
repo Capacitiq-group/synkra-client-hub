@@ -235,7 +235,10 @@ export function BlockPicker({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex h-[80vh] w-full max-w-[720px] flex-col gap-0 p-0">
+      <DialogContent
+        className="z-[65] flex h-[80vh] w-full max-w-[720px] flex-col gap-0 p-0"
+        overlayClassName="z-[65]"
+      >
         <DialogHeader className="border-b p-4" style={{ borderColor: "var(--border-default)" }}>
           <DialogTitle className="flex items-center gap-2">
             {platform && mode !== "logic" && !needle && (

@@ -61,7 +61,10 @@ export function LoopBodyEditor({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex h-[85vh] w-full max-w-[1100px] flex-col p-0">
+      <DialogContent
+        className="z-[65] flex h-[85vh] w-full max-w-[1100px] flex-col p-0"
+        overlayClassName="z-[65]"
+      >
         <DialogHeader className="border-b p-4" style={{ borderColor: "var(--border-default)" }}>
           <DialogTitle>Steps for each item</DialogTitle>
           <p className="text-[13px]" style={{ color: "var(--text-secondary)" }}>
@@ -101,7 +104,6 @@ export function LoopBodyEditor({
                 onSelect={setSelectedId}
                 onRemove={removeBlock}
                 onReorder={reorderBlocks}
-                onDropDefinition={(definition, index) => addBlock(definition, index)}
               />
             )}
           </div>

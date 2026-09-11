@@ -3,13 +3,16 @@ import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Play, Save, Upload, Layers, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { createBlock, type BlockDefinition } from "@/lib/workflow/blocks";
+import { Shimmer, SectionError } from "@/components/dashboard/primitives";
+import { createBlock, definitionFor, type BlockDefinition } from "@/lib/workflow/blocks";
 import { usePlanUsage } from "@/hooks/usePlanUsage";
+import { useIntegrationsMap } from "@/hooks/useIntegrations";
+import { integrationConnected } from "@/lib/workflow/scopes";
+import { findIntegration } from "@/lib/integrations/catalog";
 import { countWorkflowSteps, checkStepsAllowed } from "@/lib/usage/limits";
 import { validateWorkflow } from "@/lib/workflow/describe";
 import { saveWorkflowDraft, useWorkflow } from "@/hooks/useWorkflows";
 import {
-  registerWorkflow,
   ensureClickupWebhook,
   ensureAsanaWebhook,
   ensureMondayWebhook,
@@ -27,8 +30,14 @@ type MobileTab = "canvas" | "config";
 export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: existing } = useWorkflow(workflowId);
+  const {
+    data: existing,
+    isLoading: loadingExisting,
+    isError: existingErrored,
+    refetch: refetchExisting,
+  } = useWorkflow(workflowId);
   const { data: planUsage } = usePlanUsage();
+  const { data: integrations = {} } = useIntegrationsMap();
 
   const [name, setName] = useState("Untitled workflow");
   const [blocks, setBlocks] = useState<WorkflowBlock[]>([]);
@@ -104,7 +113,6 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
   const save = useCallback(
     async (silent = false) => {
       if (!user) return;
-      if (!blocks.length) return;
 
       setSaving(true);
 
@@ -159,6 +167,35 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
       return;
     }
 
+    /*
+     * Integration readiness gate.
+     *
+     * Until now, an unconnected integration only ever showed an advisory
+     * "not connected" warning in the block picker — the block could still
+     * be added, and publish() never checked it, so a workflow could go
+     * live with a step that has nothing to actually call. This blocks
+     * publish (not save — drafts should stay easy to leave half-set-up)
+     * on the first block whose required integration isn't connected, and
+     * points the user at the exact block so they know what to fix.
+     */
+    const disconnectedBlock = blocks.find((block) => {
+      const requires = definitionFor(block)?.requiresIntegration;
+      return requires && !integrationConnected(requires, integrations);
+    });
+
+    if (disconnectedBlock) {
+      const requires = definitionFor(disconnectedBlock)?.requiresIntegration;
+      const integrationName = findIntegration(requires)?.name ?? requires ?? "This integration";
+
+      toast.error(
+        `Connect ${integrationName} before publishing — "${disconnectedBlock.label}" needs it to run.`,
+      );
+      setSelectedId(disconnectedBlock.id);
+      setMobileTab("config");
+
+      return;
+    }
+
     if (!user) return;
 
     setSaving(true);
@@ -176,30 +213,22 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
 
       const trigger = blocks.find((b) => b.type === "trigger");
 
-      try {
-        await registerWorkflow({
-          workflowId: record.id,
-          userId: user.id,
-          blocks,
-          trigger: {
-            type: trigger?.trigger_type ?? "webhook",
-            config: trigger?.config ?? {},
-          },
-        });
-      } catch (registerError) {
-        console.warn(
-          "Workflow registration failed (non-fatal)",
-          registerError,
-        );
-      }
-
       /*
        * Provider webhook registration.
        *
        * These calls are intentionally keyed to the actual trigger type
        * of the workflow being published. A workflow can therefore only
        * provision the webhook it actually needs.
+       *
+       * (There used to be a generic registerWorkflow() call here against
+       * POST /workflows/register. No such route exists in synkra-core —
+       * the backend resolves a trigger purely from the saved, published
+       * workflow record (see webhooks.py's /run/{workflow_id}), so that
+       * call always 404'd and was removed rather than "fixed" toward a
+       * backend contract that doesn't exist.)
        */
+      let webhookRegistrationFailed = false;
+
       try {
         const triggerType = trigger?.trigger_type;
         const triggerConfig = trigger?.config ?? {};
@@ -245,19 +274,27 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
       } catch (webhookError) {
         /*
          * Registration failure must not turn a successfully persisted
-         * workflow into a misleading failed publish. The warning is
-         * retained so the failure is visible during development and
-         * debugging.
+         * workflow into a misleading failed publish — the workflow record
+         * itself did save. But the user still needs to know the trigger
+         * connection didn't come up, or they'll wait for runs that can
+         * never fire.
          */
+        webhookRegistrationFailed = true;
         console.warn(
-          "Provider webhook registration failed (non-fatal)",
+          "Provider webhook registration failed",
           webhookError,
         );
       }
 
       dirty.current = false;
 
-      toast.success("Workflow published");
+      if (webhookRegistrationFailed) {
+        toast.warning(
+          "Workflow published, but its trigger connection couldn't be set up — it may not run automatically. Try republishing, or contact support if this continues.",
+        );
+      } else {
+        toast.success("Workflow published");
+      }
 
       void navigate({
         to: "/dashboard/workflows",
@@ -274,6 +311,44 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
   };
 
   const panelBorder = "1px solid var(--border-default)";
+
+  // Editing an existing workflow: don't render an editable, empty-looking
+  // canvas while the saved record is still in flight — an edit made in
+  // that window can be silently discarded once the real data arrives (see
+  // the load effect above, which only ever applies once via `loaded`).
+  if (workflowId && !loaded.current) {
+    if (loadingExisting) {
+      return (
+        <div
+          className="fixed inset-0 z-[60] flex flex-col gap-4 p-6"
+          style={{ backgroundColor: "var(--bg-base)" }}
+        >
+          <Shimmer height={32} width={240} />
+          <Shimmer height={48} />
+          <Shimmer height={400} />
+        </div>
+      );
+    }
+
+    if (existingErrored) {
+      return (
+        <div
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-3 p-6"
+          style={{ backgroundColor: "var(--bg-base)" }}
+        >
+          <SectionError label="this workflow" onRetry={() => void refetchExisting()} />
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/dashboard/workflows" })}
+            className="synkra-focus rounded-sm"
+            style={{ fontSize: 13, color: "var(--text-muted)" }}
+          >
+            Back to workflows
+          </button>
+        </div>
+      );
+    }
+  }
 
   return (
     <div
@@ -335,12 +410,15 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
         <button
           type="button"
           onClick={() => void save()}
+          disabled={saving}
           className="synkra-focus inline-flex items-center gap-1.5 rounded-md border"
           style={{
             borderColor: "var(--border-default)",
             color: "var(--text-secondary)",
             fontSize: 13,
             padding: "6px 12px",
+            opacity: saving ? 0.6 : 1,
+            cursor: saving ? "not-allowed" : "pointer",
           }}
         >
           <Save size={13} aria-hidden="true" />
@@ -350,12 +428,15 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
         <button
           type="button"
           onClick={() => setTesting(true)}
+          disabled={saving || !blocks.length}
           className="synkra-focus inline-flex items-center gap-1.5 rounded-md border"
           style={{
             borderColor: "var(--border-default)",
             color: "var(--text-secondary)",
             fontSize: 13,
             padding: "6px 12px",
+            opacity: saving || !blocks.length ? 0.6 : 1,
+            cursor: saving || !blocks.length ? "not-allowed" : "pointer",
           }}
         >
           <Play size={13} aria-hidden="true" />
@@ -365,6 +446,7 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
         <button
           type="button"
           onClick={() => void publish()}
+          disabled={saving}
           className="synkra-focus inline-flex items-center gap-1.5 rounded-md"
           style={{
             backgroundColor: "var(--accent-green)",
@@ -372,6 +454,8 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
             fontSize: 13,
             fontWeight: 600,
             padding: "6px 12px",
+            opacity: saving ? 0.6 : 1,
+            cursor: saving ? "not-allowed" : "pointer",
           }}
         >
           <Upload size={13} aria-hidden="true" />
@@ -404,9 +488,6 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
 
                 return next;
               })
-            }
-            onDropDefinition={(definition, index) =>
-              addBlock(definition, index)
             }
             onAddTrigger={hasTrigger ? undefined : () => setPicker("trigger")}
             onAddAction={() => setPicker("action")}
@@ -468,9 +549,6 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
 
                   return next;
                 })
-              }
-              onDropDefinition={(definition, index) =>
-                addBlock(definition, index)
               }
               onAddTrigger={hasTrigger ? undefined : () => setPicker("trigger")}
               onAddAction={() => setPicker("action")}

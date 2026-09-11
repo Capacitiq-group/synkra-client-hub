@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { ArrowDown, GripVertical, Trash2, AlertTriangle, Plus, Zap } from "lucide-react";
 import {
-  BLOCK_DEFINITIONS,
   definitionFor,
   kindColor,
-  type BlockDefinition,
 } from "@/lib/workflow/blocks";
 import { isConfigured, summariseConfig } from "@/lib/workflow/describe";
 import type { WorkflowBlock } from "@/lib/workflow/types";
@@ -15,7 +13,6 @@ export function BuilderCanvas({
   onSelect,
   onRemove,
   onReorder,
-  onDropDefinition,
   onAddTrigger,
   onAddAction,
   onAddLogic,
@@ -26,7 +23,6 @@ export function BuilderCanvas({
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
   onReorder: (from: number, to: number) => void;
-  onDropDefinition: (definition: BlockDefinition, index: number) => void;
   /** Opens the trigger selector. When absent the old empty-state copy shows. */
   onAddTrigger?: (() => void) | undefined;
   onAddAction?: (() => void) | undefined;
@@ -36,15 +32,16 @@ export function BuilderCanvas({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
+  /**
+   * Reorders an already-placed block by dragging it to a new position.
+   * (This used to also accept a drag-and-drop payload from a standalone
+   * block-library sidebar — that component was removed once the
+   * trigger/action/logic picker replaced it, so this now only ever
+   * handles reordering existing canvas blocks.)
+   */
   const handleDrop = (index: number) => (event: React.DragEvent) => {
     event.preventDefault();
     setOverIndex(null);
-    const key = event.dataTransfer.getData("application/synkra-block");
-    if (key) {
-      const definition = BLOCK_DEFINITIONS.find((d) => d.key === key);
-      if (definition) onDropDefinition(definition, index);
-      return;
-    }
     if (dragIndex !== null && dragIndex !== index) {
       onReorder(dragIndex, dragIndex < index ? index - 1 : index);
     }
@@ -74,24 +71,18 @@ export function BuilderCanvas({
     <div className="mx-auto w-full max-w-[560px] overflow-x-hidden px-3 py-6 sm:px-4">
       {blocks.length === 0 ? (
         <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setOverIndex(0);
-          }}
-          onDrop={handleDrop(0)}
           className="text-center"
           style={{
             border: "1px dashed var(--border-strong)",
             borderRadius: "var(--radius-lg)",
             padding: "48px 24px",
-            backgroundColor: overIndex === 0 ? "var(--accent-green-subtle)" : "transparent",
           }}
         >
           <p style={{ fontSize: 15, color: "var(--text-secondary)" }}>
             {emptyHint ??
               (onAddTrigger
                 ? "Every workflow starts with a trigger — the thing that sets it off."
-                : "Add a trigger to start. Tap a block on mobile or drag one across on desktop.")}
+                : "Add a trigger to start.")}
           </p>
           {onAddTrigger && (
             <button
