@@ -2846,5 +2846,236 @@
       }
     ],
     "sort_order": 201
+  },
+  {
+    "template_id": "tpl_google_drive_save_submission",
+    "name": "Save Form Submission to Google Drive",
+    "category": "Operations",
+    "description": "When someone submits a form, save their full submission as a text file directly in your Google Drive — an automatic, timestamped record you never have to file yourself.",
+    "integrations_required": [
+      "google_drive"
+    ],
+    "requires_paid_api": false,
+    "is_active": true,
+    "sort_order": 210,
+    "blocks": [
+      {
+        "id": "trigger_1",
+        "type": "trigger",
+        "trigger_type": "webhook",
+        "label": "Form submitted",
+        "description": "Fires when a contact form or lead form is submitted",
+        "config": {
+          "path": "/webhooks/lead/{{workspace_id}}",
+          "description": "Paste this URL into your website form or Typeform as the submission destination",
+          "expected_fields": [
+            "name",
+            "email",
+            "message"
+          ]
+        },
+        "next": "action_1"
+      },
+      {
+        "id": "action_1",
+        "type": "action",
+        "action_type": "google_drive_save_file",
+        "label": "Save to Google Drive",
+        "description": "Creates a text file with the submission in your Drive",
+        "config": {
+          "file_name": "Form submission — {{payload.name}} ({{now}}).txt",
+          "content": "Name: {{payload.name}}\nEmail: {{payload.email}}\nMessage: {{payload.message}}",
+          "output_variable": "drive_file"
+        },
+        "next": null
+      }
+    ]
+  },
+  {
+    "template_id": "tpl_google_sheets_add_lead",
+    "name": "Add New Lead to Google Sheets",
+    "category": "Sales",
+    "description": "When a new lead comes in through your website or a form, add their details as a new row in a Google Sheet you choose — a running list of every lead with no manual copy-pasting.",
+    "integrations_required": [
+      "google_sheets"
+    ],
+    "requires_paid_api": false,
+    "is_active": true,
+    "sort_order": 211,
+    "blocks": [
+      {
+        "id": "trigger_1",
+        "type": "trigger",
+        "trigger_type": "webhook",
+        "label": "New lead received",
+        "description": "Fires when a new lead is submitted through your website or a form",
+        "config": {
+          "path": "/webhooks/lead/{{workspace_id}}",
+          "description": "Paste this URL into your website form or Typeform as the submission destination",
+          "expected_fields": [
+            "name",
+            "email",
+            "company",
+            "enquiry"
+          ]
+        },
+        "next": "action_1"
+      },
+      {
+        "id": "action_1",
+        "type": "action",
+        "action_type": "google_sheets_add_row",
+        "label": "Add row to Google Sheets",
+        "description": "Adds the lead's details as a new row",
+        "config": {
+          "spreadsheet_id": "",
+          "sheet_name": "Sheet1",
+          "values": [
+            "{{payload.name}}",
+            "{{payload.email}}",
+            "{{payload.company}}",
+            "{{payload.enquiry}}",
+            "{{now}}"
+          ],
+          "output_variable": "sheets_row"
+        },
+        "next": null
+      }
+    ]
+  },
+  {
+    "template_id": "tpl_gmail_lead_confirmation",
+    "name": "Send New Lead Confirmation Email",
+    "category": "Sales",
+    "description": "When a new lead comes in, automatically send them a confirmation email from your own connected Gmail account, so they know their enquiry was received while you follow up properly later.",
+    "integrations_required": [
+      "google_gmail"
+    ],
+    "requires_paid_api": false,
+    "is_active": true,
+    "sort_order": 212,
+    "blocks": [
+      {
+        "id": "trigger_1",
+        "type": "trigger",
+        "trigger_type": "webhook",
+        "label": "New lead received",
+        "description": "Fires when a new lead is submitted through your website or a form",
+        "config": {
+          "path": "/webhooks/lead/{{workspace_id}}",
+          "description": "Paste this URL into your website form or Typeform as the submission destination",
+          "expected_fields": [
+            "name",
+            "email"
+          ]
+        },
+        "next": "action_1"
+      },
+      {
+        "id": "action_1",
+        "type": "action",
+        "action_type": "gmail_send_email",
+        "label": "Send confirmation via Gmail",
+        "description": "Sends the lead a confirmation email from your connected Gmail account",
+        "config": {
+          "to": "{{payload.email}}",
+          "subject": "We received your enquiry",
+          "body": "Hi {{payload.name}},\n\nThanks for getting in touch. We have received your enquiry and will get back to you shortly.",
+          "output_variable": "gmail_message"
+        },
+        "next": null
+      }
+    ]
+  },
+  {
+    "template_id": "tpl_google_forms_create_feedback",
+    "name": "Create Customer Feedback Form",
+    "category": "Forms",
+    "description": "Creates a ready-to-use Google Form for collecting customer feedback, with a title, description and four questions already added — run it once whenever you need a fresh feedback form.",
+    "integrations_required": [
+      "google_forms"
+    ],
+    "requires_paid_api": false,
+    "is_active": true,
+    "sort_order": 213,
+    "blocks": [
+      {
+        "id": "trigger_1",
+        "type": "trigger",
+        "trigger_type": "manual",
+        "label": "Run manually",
+        "description": "Runs only when you click \"Run now\"",
+        "config": {},
+        "next": "action_1"
+      },
+      {
+        "id": "action_1",
+        "type": "action",
+        "action_type": "google_forms_create_feedback_form",
+        "label": "Create Google Form",
+        "description": "Creates the feedback form and adds the questions",
+        "config": {
+          "title": "Customer Feedback Form",
+          "description": "We'd love to hear about your experience.",
+          "questions": [
+            "How satisfied were you with our service?",
+            "What did you like most?",
+            "What could we improve?",
+            "Would you recommend us?"
+          ],
+          "output_variable": "google_form"
+        },
+        "next": null
+      }
+    ]
+  },
+  {
+    "template_id": "tpl_google_forms_read_responses",
+    "name": "Read Google Form Responses",
+    "category": "Forms",
+    "description": "Reads every response submitted so far to a Google Form you already own, formats them into a readable summary, and emails that summary to you — run it whenever you want an up-to-date look at the responses.",
+    "integrations_required": [
+      "google_forms_responses",
+      "email"
+    ],
+    "requires_paid_api": false,
+    "is_active": true,
+    "sort_order": 214,
+    "blocks": [
+      {
+        "id": "trigger_1",
+        "type": "trigger",
+        "trigger_type": "manual",
+        "label": "Run manually",
+        "description": "Runs only when you click \"Run now\"",
+        "config": {},
+        "next": "action_1"
+      },
+      {
+        "id": "action_1",
+        "type": "action",
+        "action_type": "google_forms_get_responses",
+        "label": "Get Google Form responses",
+        "description": "Reads all responses submitted to the form",
+        "config": {
+          "form_id": "",
+          "output_variable": "google_form_responses"
+        },
+        "next": "action_2"
+      },
+      {
+        "id": "action_2",
+        "type": "action",
+        "action_type": "send_email",
+        "label": "Email the results",
+        "description": "Emails you the formatted responses",
+        "config": {
+          "to": "{{user.email}}",
+          "subject": "Latest Google Form responses ({{google_form_responses.count}})",
+          "body": "{{google_form_responses.formatted_text}}"
+        },
+        "next": null
+      }
+    ]
   }
 ]

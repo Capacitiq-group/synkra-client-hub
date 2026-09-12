@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Plus, X } from "lucide-react";
+import { Check, Copy, Play, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import { ForwardingAddressCard } from "@/components/email/forwarding-address-card";
 import {
   webhookUrlFor,
   tallyWebhookUrlFor,
   zohoContactCreatedWebhookUrlFor,
+  retryRun,
 } from "@/lib/workflow/api";
 import { OPERATORS, blockSubtype, definitionFor } from "@/lib/workflow/blocks";
 import { useIntegrationsMap } from "@/hooks/useIntegrations";
@@ -14,6 +17,7 @@ import { missingScopes, integrationConnected } from "@/lib/workflow/scopes";
 import { HubspotConnectButton, HubspotReauthorizeButton } from "@/components/integrations/hubspot-connect";
 import { SlackConnectButton } from "@/components/integrations/slack-connect";
 import { ZohoConnectButton, ZohoReauthorizeButton } from "@/components/integrations/zoho-connect";
+import { GenericConnectButton, GenericReauthorizeButton } from "@/components/integrations/generic-connect";
 import {
   availableVariableOptions,
   extractFieldEntries,
@@ -441,6 +445,60 @@ function WebhookUrlField({
   );
 }
 
+/**
+ * "Run now" button for manual-trigger workflows (the two Google Forms
+ * verification-demo templates use this — see blocks.ts's
+ * "manual_trigger" block). Reuses the existing retry endpoint rather
+ * than adding new plumbing: /api/workflows/retry already runs any
+ * *published* workflow regardless of whether it has prior run
+ * history (see lib/workflow/api.ts's retryRun docstring), so a
+ * "manual trigger" is really just "the only way to fire this
+ * workflow is this button" — the run mechanism itself is unchanged.
+ * A draft workflow's click surfaces the server's "publish it first"
+ * error via toast, rather than this component tracking status itself.
+ */
+function ManualRunField({ workflowId }: { workflowId?: string | undefined }) {
+  const [running, setRunning] = useState(false);
+
+  const run = async () => {
+    if (!workflowId) return;
+    setRunning(true);
+    try {
+      await retryRun(workflowId, {});
+      toast.success("Workflow started.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start the workflow.");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
+        Run this workflow
+      </span>
+      {workflowId ? (
+        <Button
+          variant="secondary"
+          disabled={running}
+          onClick={() => void run()}
+          className="inline-flex w-fit items-center gap-1.5"
+        >
+          <Play size={12} aria-hidden="true" />
+          {running ? "Starting…" : "Run now"}
+        </Button>
+      ) : (
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Save the workflow first to run it.</p>
+      )}
+      <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+        This workflow only runs when you click this button — publish the workflow first, then come back here
+        whenever you want to run it.
+      </p>
+    </div>
+  );
+}
+
 export function ConfigPanel({
   blocks,
   block,
@@ -528,6 +586,10 @@ export function ConfigPanel({
           {requiresIntegration === "hubspot" && <HubspotConnectButton label="Connect" />}
           {requiresIntegration === "slack" && <SlackConnectButton label="Connect" />}
           {requiresIntegration === "zoho" && <ZohoConnectButton label="Connect" />}
+          {requiresIntegration &&
+            !["hubspot", "slack", "zoho"].includes(requiresIntegration) && (
+              <GenericConnectButton providerKey={requiresIntegration} label="Connect" />
+            )}
         </div>
       );
     }
@@ -543,9 +605,15 @@ export function ConfigPanel({
           </p>
           {/* hubspot and zoho both have /reauthorize endpoints now —
               slack doesn't yet, see nango-integration-architecture.md's
-              checklist for extending this further. */}
+              checklist for extending this further. Every other
+              requiresIntegration value (all 9 launch integrations plus
+              the 5 google_* ones) is factory-generated and always has
+              one, so it falls through to the generic button below. */}
           {requiresIntegration === "hubspot" && <HubspotReauthorizeButton missingScopes={needsMoreScopes} />}
           {requiresIntegration === "zoho" && <ZohoReauthorizeButton missingScopes={needsMoreScopes} />}
+          {requiresIntegration && !["hubspot", "zoho"].includes(requiresIntegration) && (
+            <GenericReauthorizeButton providerKey={requiresIntegration} missingScopes={needsMoreScopes} />
+          )}
         </div>
       );
     }
@@ -580,6 +648,10 @@ export function ConfigPanel({
           workflowId={workflowId}
           subtype={subtype}
         />
+      )}
+
+      {block.type === "trigger" && subtype === "manual" && (
+        <ManualRunField workflowId={workflowId} />
       )}
 
       {subtype === "webhook" && (
@@ -764,6 +836,119 @@ export function ConfigPanel({
             onChange={(v) => set("body", v)}
           />
         </>
+      )}
+
+      {subtype === "google_drive_save_file" && (
+        <>
+          <VariableField
+            label="File name"
+            value={text("file_name")}
+            variables={variables}
+            onChange={(v) => set("file_name", v)}
+          />
+          <VariableField
+            label="File content"
+            multiline
+            value={text("content")}
+            variables={variables}
+            onChange={(v) => set("content", v)}
+          />
+        </>
+      )}
+
+      {subtype === "google_sheets_add_row" && (
+        <>
+          <VariableField
+            label="Spreadsheet ID"
+            value={text("spreadsheet_id")}
+            variables={variables}
+            onChange={(v) => set("spreadsheet_id", v)}
+            hint="Found in the spreadsheet's URL: docs.google.com/spreadsheets/d/THIS_PART/edit"
+          />
+          <PlainField
+            label="Sheet name"
+            value={text("sheet_name", "Sheet1")}
+            onChange={(v) => set("sheet_name", v)}
+          />
+          <PlainField
+            label="Row values (in column order)"
+            value={((config["values"] as string[] | undefined) ?? []).join(", ")}
+            placeholder="{{payload.name}}, {{payload.email}}, {{payload.company}}"
+            onChange={(value) =>
+              set(
+                "values",
+                value.split(",").map((v) => v.trim()),
+              )
+            }
+            hint="Separate each column's value with a comma — you can use variables from earlier steps here too."
+          />
+        </>
+      )}
+
+      {subtype === "gmail_send_email" && (
+        <>
+          <VariableField
+            label="To"
+            value={text("to")}
+            variables={variables}
+            onChange={(v) => set("to", v)}
+          />
+          <VariableField
+            label="Subject"
+            value={text("subject")}
+            variables={variables}
+            onChange={(v) => set("subject", v)}
+          />
+          <VariableField
+            label="Body"
+            multiline
+            value={text("body")}
+            variables={variables}
+            onChange={(v) => set("body", v)}
+          />
+        </>
+      )}
+
+      {subtype === "google_forms_create_feedback_form" && (
+        <>
+          <PlainField
+            label="Form title"
+            value={text("title")}
+            onChange={(v) => set("title", v)}
+          />
+          <PlainField
+            label="Form description"
+            multiline
+            value={text("description")}
+            onChange={(v) => set("description", v)}
+          />
+          <PlainField
+            label="Questions"
+            multiline
+            value={((config["questions"] as string[] | undefined) ?? []).join("\n")}
+            placeholder={"How satisfied were you with our service?\nWhat did you like most?"}
+            onChange={(value) =>
+              set(
+                "questions",
+                value
+                  .split("\n")
+                  .map((v) => v.trim())
+                  .filter(Boolean),
+              )
+            }
+            hint="One question per line. Each becomes a short-answer question on the form."
+          />
+        </>
+      )}
+
+      {subtype === "google_forms_get_responses" && (
+        <VariableField
+          label="Form ID"
+          value={text("form_id")}
+          variables={variables}
+          onChange={(v) => set("form_id", v)}
+          hint="Found in the form's edit URL: docs.google.com/forms/d/THIS_PART/edit"
+        />
       )}
 
       {subtype === "wait" && (

@@ -23,9 +23,11 @@ import {
   Building2,
   Calendar,
   CheckSquare,
+  ClipboardCheck,
   ClipboardList,
   DollarSign,
   Globe,
+  HardDrive,
   Hash,
   KanbanSquare,
   Mail,
@@ -406,6 +408,83 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     endpoint: "pipedrive",
     authMethod: "oauth",
     requiresPaidPlan: true,
+    available: true,
+  },
+  // ————————————————————————————————————————————————————————
+  // Google OAuth-verification demo integrations (5 platforms, one
+  // shared Google Cloud OAuth Client — see backend
+  // services/google_service.py's module docstring). Icons below are
+  // placeholders (plain lucide icons, no logoUrl) until real Google
+  // product logos are added — functionally complete either way, this
+  // is purely cosmetic.
+  {
+    key: "google_drive",
+    name: "Google Drive",
+    category: "Productivity",
+    summary: "Save form submissions and workflow output as files in your Drive.",
+    description:
+      "Connect Google Drive so a workflow can create a file — a saved form submission, a generated document — directly in your Drive. Uses the drive.file scope: Synkra can only see and manage files it creates itself, never the rest of your Drive.",
+    notes: ["Connected through Google OAuth", "Non-sensitive scope (drive.file)"],
+    icon: HardDrive,
+    iconColor: "#0F9D58",
+    endpoint: "google_drive",
+    authMethod: "oauth",
+    available: true,
+  },
+  {
+    key: "google_sheets",
+    name: "Google Sheets",
+    category: "Productivity",
+    summary: "Add new leads and workflow data as rows in a spreadsheet.",
+    description:
+      "Connect Google Sheets so a workflow can append a row — a new lead, a form response — to a spreadsheet you choose. Independent of the other Google connections below: connecting Sheets doesn't grant access to Gmail, Drive, or Forms.",
+    notes: ["Connected through Google OAuth", "Sensitive scope (spreadsheets)"],
+    icon: Table2,
+    iconColor: "#0F9D58",
+    endpoint: "google_sheets",
+    authMethod: "oauth",
+    available: true,
+  },
+  {
+    key: "google_gmail",
+    name: "Gmail",
+    category: "Communication",
+    summary: "Send confirmation and notification emails from your own Gmail account.",
+    description:
+      "Connect Gmail so a workflow can send an email — a lead confirmation, a notification — from your own connected Gmail account rather than Synkra's shared sending address. Uses the gmail.send scope only: Synkra can send mail on your behalf, never read your inbox.",
+    notes: ["Connected through Google OAuth", "Sensitive scope (gmail.send)"],
+    icon: Mail,
+    iconColor: "#EA4335",
+    endpoint: "google_gmail",
+    authMethod: "oauth",
+    available: true,
+  },
+  {
+    key: "google_forms",
+    name: "Google Forms",
+    category: "Forms",
+    summary: "Create and edit Google Forms directly from a workflow.",
+    description:
+      "Connect Google Forms so a workflow can create a new form and add questions to it — a customer feedback form, an intake form — without you having to build it by hand each time.",
+    notes: ["Connected through Google OAuth", "Sensitive scope (forms.body)"],
+    icon: ClipboardList,
+    iconColor: "#673AB7",
+    endpoint: "google_forms",
+    authMethod: "oauth",
+    available: true,
+  },
+  {
+    key: "google_forms_responses",
+    name: "Google Forms Responses",
+    category: "Forms",
+    summary: "Read responses from a Google Form you already own.",
+    description:
+      "Connect this separately from Google Forms above if you only need to read responses from a form you already built by hand, rather than have Synkra create forms for you. Uses the read-only forms.responses scope.",
+    notes: ["Connected through Google OAuth", "Sensitive scope (forms.responses.readonly)"],
+    icon: ClipboardCheck,
+    iconColor: "#673AB7",
+    endpoint: "google_forms_responses",
+    authMethod: "oauth",
     available: true,
   },
 ];

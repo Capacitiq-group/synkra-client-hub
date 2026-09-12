@@ -34,6 +34,11 @@ import { TallyConnectButton } from "@/components/integrations/tally-connect";
 const GENERIC_OAUTH_PROVIDERS = [
   "shopify", "typeform", "calendly", "xero", "airtable", "monday", "asana", "pipedrive",
   "clickup", "notion",
+  // Google OAuth-verification demo integrations — see
+  // services/google_service.py's module docstring (backend) for why
+  // these 5 are independent connections sharing one Google Cloud
+  // OAuth Client.
+  "google_drive", "google_sheets", "google_gmail", "google_forms", "google_forms_responses",
 ];
 import { checkIntegrationConnectFn } from "@/lib/usage/usage.functions";
 import { INTEGRATIONS_PAID_PLAN_NOTE, integrationsAllowed } from "@/lib/plans";
